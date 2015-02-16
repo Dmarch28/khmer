@@ -128,6 +128,7 @@ def get_parser():
                         'that have high coverage.')
 
     # expert options
+    parser.add_argument('--ignore-pairs', default=False, action='store_true')
     parser.add_argument('--ignore-pairs', type=bool, default=False)
     add_loadgraph_args(parser)
     parser.add_argument('-s', '--savegraph', metavar="filename", default='',

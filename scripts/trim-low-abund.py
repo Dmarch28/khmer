@@ -127,6 +127,8 @@ def get_parser():
                         help='Only trim low-abundance k-mers from sequences '
                         'that have high coverage.')
 
+    # expert options
+    parser.add_argument('--ignore-pairs', type=bool, default=False)
     add_loadgraph_args(parser)
     parser.add_argument('-s', '--savegraph', metavar="filename", default='',
                         help='save the k-mer countgraph to disk after all'
@@ -210,6 +212,10 @@ def main():
         pass2fp = open(pass2filename, 'w')
 
         save_pass2 = 0
+
+        iter = broken_paired_reader(screed_iter, min_length=K,
+                                    force_single=args.ignore_pairs)
+        for n, is_pair, read1, read2 in iter:
         n = 0
 
         paired_iter = broken_paired_reader(screed_iter, min_length=K,
@@ -342,6 +348,18 @@ def main():
     percent_reads_trimmed = float(trimmed_reads + (n_reads - written_reads)) /\
         n_reads * 100.0
 
+    print 'read %d reads, %d bp' % (n_reads, n_bp,)
+    print 'wrote %d reads, %d bp' % (written_reads, written_bp,)
+    print 'looked at %d reads twice (%.2f passes)' % (save_pass2_total,
+                                                      n_passes)
+    print 'removed %d reads and trimmed %d reads (%.2f%%)' % \
+        (n_reads - written_reads, trimmed_reads, percent_reads_trimmed)
+    print 'trimmed or removed %.2f%% of bases (%d total)' % \
+        ((1 - (written_bp / float(n_bp))) * 100.0, n_bp - written_bp)
+    n_passes = 1.0 + (float(save_pass2_total) / n_reads)
+    percent_reads_trimmed = float(trimmed_reads + (n_reads - written_reads)) /\
+        n_reads * 100.0
+
     print('read %d reads, %d bp' % (n_reads, n_bp,), file=sys.stderr)
     print('wrote %d reads, %d bp' % (written_reads, written_bp,),
           file=sys.stderr)
@@ -356,6 +374,10 @@ def main():
           file=sys.stderr)
 
     if args.variable_coverage:
+        percent_reads_hicov = 100.0 * float(n_reads - skipped_n) / n_reads
+        print '%d reads were high coverage;' % (n_reads - skipped_n)
+        print 'skipped %d reads/%d bases because of low coverage' % \
+              (skipped_n, skipped_bp)
         percent_reads_hicov = 100.0 * float(n_reads - skipped_n) / n_reads
         print('%d reads were high coverage (%.2f%%);' % (n_reads - skipped_n,
                                                          percent_reads_hicov),

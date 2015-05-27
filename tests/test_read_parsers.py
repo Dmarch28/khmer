@@ -200,6 +200,7 @@ def test_gzip_decompression_truncated_pairiter():
             pass
         assert 0, "this should fail"
     except OSError as err:
+    except OSError as err:
         print(str(err))
     except ValueError as err:
         print(str(err))
@@ -223,6 +224,7 @@ def test_bzip2_decompression_truncated():
             pass
         assert 0, "this should fail"
     except OSError as err:
+    except OSError as err:
         print(str(err))
     except ValueError as err:
         print(str(err))
@@ -235,6 +237,7 @@ def test_bzip2_decompression_truncated_pairiter():
         for _ in rparser.iter_read_pairs():
             pass
         assert 0, "this should fail"
+    except OSError as err:
     except OSError as err:
         print(str(err))
     except ValueError as err:
@@ -425,6 +428,8 @@ def test_read_pair_iterator_in_error_mode_xfail_osxsafe():
         for _ in rparser.iter_read_pairs():
             pass
         failed = False
+    except ValueError as exc:
+        assert "Invalid read pair detected" in str(exc), str(exc)
     except ValueError:
         pass
     assert failed

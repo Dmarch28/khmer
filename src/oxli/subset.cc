@@ -147,6 +147,13 @@ size_t SubsetPartition::output_partitioned_file(
             break;
         }
 
+        seq = read.sequence;
+        try {
+            read = parser->get_next_read();
+        } catch (NoMoreReadsAvailable &exc) {
+            break;
+        }
+
         read.set_clean_seq();
         seq = read.cleaned_seq;
 

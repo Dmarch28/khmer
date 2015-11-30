@@ -256,6 +256,7 @@ KHMER_HEADERS= \
 	counting.hh \
 	hashbits.hh \
 	hashtable.hh \
+	hllcounter.hh \
 	khmer_exception.hh \
 	khmer.hh \
 	kmer_hash.hh \

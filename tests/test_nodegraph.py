@@ -1079,7 +1079,7 @@ def test_traverse_linear_path_3_stopgraph():
     assert len(degree_nodes) == 1
     assert nodegraph.hash(contig[100:121]) in degree_nodes
 
-    stopgraph.count(contig[101:122])      # stop traversal - only adj to start
+    stopgraph.count(contig[101:122])       # stop traversal - only adj to start
 
     size, conns, visited = nodegraph.traverse_linear_path(contig[101:122],
                                                           degree_nodes,
@@ -1101,7 +1101,7 @@ def test_assemble_linear_path_1():
     nodegraph = khmer.Nodegraph(K, 1e5, 4)
 
     nodegraph.consume(contig)
-    nodegraph.count(contig[101:121] + 'G') # will add another neighbor
+    nodegraph.count(contig[101:121] + 'G')  # will add another neighbor
 
     path = nodegraph.assemble_linear_path(contig[0:K])
     len_path = len(path)
@@ -1119,7 +1119,7 @@ def test_assemble_linear_path_2():
     nodegraph = khmer.Nodegraph(K, 1e5, 4)
 
     nodegraph.consume(contig)
-    nodegraph.count(contig[101:121] + 'G') # will add another neighbor
+    nodegraph.count(contig[101:121] + 'G')  # will add another neighbor
 
     path = nodegraph.assemble_linear_path(contig[100:100+K])
     len_path = len(path)

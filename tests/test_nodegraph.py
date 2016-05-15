@@ -986,8 +986,7 @@ def test_find_high_degree_nodes():
 
     nodegraph.consume(contig)
 
-    degree_nodes = khmer.HashSet(K)
-    nodegraph.find_high_degree_nodes(contig, degree_nodes)
+    degree_nodes = nodegraph.find_high_degree_nodes(contig)
     assert len(degree_nodes) == 0
 
 
@@ -1003,8 +1002,7 @@ def test_find_high_degree_nodes_2():
     nodegraph.count(contig[2:22] + 'G')   # will add another neighbor to 1:22
     print(nodegraph.neighbors(contig[1:22]))
 
-    degree_nodes = khmer.HashSet(K)
-    nodegraph.find_high_degree_nodes(contig, degree_nodes)
+    degree_nodes = nodegraph.find_high_degree_nodes(contig)
     assert len(degree_nodes) == 1
     assert nodegraph.hash(contig[1:22]) in degree_nodes
 
@@ -1023,8 +1021,7 @@ def test_traverse_linear_path_2():
     nodegraph.count(contig[101:121] + 'G') # will add another neighbor
     print(nodegraph.neighbors(contig[101:122]))
 
-    degree_nodes = khmer.HashSet(K)
-    nodegraph.find_high_degree_nodes(contig, degree_nodes)
+    degree_nodes = nodegraph.find_high_degree_nodes(contig)
 
     assert len(degree_nodes) == 1
     assert nodegraph.hash(contig[100:121]) in degree_nodes
@@ -1077,8 +1074,7 @@ def test_traverse_linear_path_3_stopgraph():
     nodegraph.count(contig[101:121] + 'G') # will add another neighbor
     print(nodegraph.neighbors(contig[101:122]))
 
-    degree_nodes = khmer.HashSet(K)
-    nodegraph.find_high_degree_nodes(contig, degree_nodes)
+    degree_nodes = nodegraph.find_high_degree_nodes(contig)
 
     assert len(degree_nodes) == 1
     assert nodegraph.hash(contig[100:121]) in degree_nodes

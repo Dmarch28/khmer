@@ -1079,8 +1079,19 @@ const
     return size;
 }
 
+// Starting from the given seed k-mer, assemble the maximal linear path in
+// both directions.
+//
+// No guarantees on direction, of course - this may return the reverse
+// complement of the input sequence.
+//
+// Note: as written, will ignore branches to the left and continue
+// past them; this probably needs to be fixed.  For now, this means
+// that assembling from two different directions may yield different
+// results.
+
 std::string Hashtable::assemble_linear_path(const Kmer seed_kmer,
-                                            const Hashbits * stop_bf)
+                                            const Hashtable * stop_bf)
     const
 {
     std::string start_kmer = seed_kmer.get_string_rep(_ksize);
@@ -1094,7 +1105,7 @@ std::string Hashtable::assemble_linear_path(const Kmer seed_kmer,
 }
 
 std::string Hashtable::_assemble_right(const char * start_kmer,
-                                       const Hashbits * stop_bf)
+                                       const Hashtable * stop_bf)
     const
 {
     const char bases[] = "ACGT";
@@ -1111,7 +1122,8 @@ std::string Hashtable::_assemble_right(const char * start_kmer,
             std::string try_kmer = kmer.substr(1) + (char) *base;
 
             // a hit!
-            if (this->get_count(try_kmer.c_str())) {
+            if (this->get_count(try_kmer.c_str()) &&
+                (!stop_bf || !stop_bf->get_count(try_kmer.c_str()))) {
                 if (found) {
                     found2 = true;
                     break;

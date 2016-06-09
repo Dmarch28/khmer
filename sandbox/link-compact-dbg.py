@@ -45,7 +45,7 @@ class Pathfinder(object):
 
     def add_adjacency(self, node_id, adj):
         node_id, adj = min(node_id, adj), max(node_id, adj)
-        
+
         x = self.adjacencies.get(node_id, set())
         x.add(adj)
         self.adjacencies[node_id] = x
@@ -65,7 +65,8 @@ def traverse_and_mark_linear_paths(graph, nk, stop_bf, pathy, degree_nodes,
     for node in visited:
         linear_path_labels.update(lh.get_tag_labels(node))
 
-    print('xxx', linear_path_labels)
+    # TODO: do something graph-y with these, like split paths across HDNs
+    # or simply omit HDNs altogether with traversal.
 
     linear_path_labels = set()
     for node in visited:
@@ -155,6 +156,7 @@ def main():
                 print('...2', seqfile, n)
             lh.label_across_high_degree_nodes(record.sequence, degree_nodes, n)
 
+    print('num labels:', lh.n_labels())
     print(lh.n_labels())
             graph.label_across_hdn(record.sequence, degree_nodes, n)
             lh.label_across_high_degree_nodes(record.sequence, degree_nodes, n)
@@ -202,7 +204,7 @@ def main():
         print('saving to', args.output)
         fp = open(args.output, 'w')
         w = graph_writer.GmlWriter(fp, [], [])
-        
+
         for k, v in pathy.segments.items():
             w.add_vertex(k, v, [])
 

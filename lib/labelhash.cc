@@ -591,7 +591,7 @@ void LabelHash::label_across_high_degree_nodes(const char * s,
     KmerIterator kmers(s, graph->_ksize);
 
     unsigned long n = 0;
-    
+
     Kmer prev_kmer = kmers.next();
     if (kmers.done()) { return; }
     Kmer kmer = kmers.next();

@@ -3223,6 +3223,32 @@ labelhash_assemble_labeled_path(khmer_KGraphLabels_Object * me,
     LabelHash* labelhash = me->labelhash;
 
     PyObject * val_o;
+
+    if (!PyArg_ParseTuple(args, "O", &val_o)) {
+        return NULL;
+    }
+
+    Kmer start_kmer;
+    if (!convert_PyObject_to_Kmer(val_o, start_kmer,
+                                  labelhash->graph->ksize())) {
+        return NULL;
+    }
+
+    std::string contig = labelhash->assemble_labeled_path(start_kmer);
+
+    PyObject * ret = Py_BuildValue("s", contig.c_str());
+
+    return ret;
+}
+
+static
+PyObject *
+labelhash_assemble_labeled_path(khmer_KGraphLabels_Object * me,
+                                PyObject * args)
+{
+    LabelHash* labelhash = me->labelhash;
+
+    PyObject * val_o;
     khmer_KNodegraph_Object * nodegraph_o = NULL;
     Nodegraph * stop_bf = NULL;
 

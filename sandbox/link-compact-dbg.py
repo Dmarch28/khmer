@@ -45,12 +45,13 @@ class Pathfinder(object):
 
     def add_adjacency(self, node_id, adj):
         node_id, adj = min(node_id, adj), max(node_id, adj)
-
+        
         x = self.adjacencies.get(node_id, set())
         x.add(adj)
         self.adjacencies[node_id] = x
 
 
+def traverse_and_mark_linear_paths(graph, nk, stop_bf, pathy, degree_nodes):
 def traverse_and_mark_linear_paths(graph, nk, stop_bf, pathy, degree_nodes,
                                    lh):
     size, conns, visited = graph.traverse_linear_path(nk, degree_nodes,
@@ -135,6 +136,7 @@ def main():
 
     ####
 
+    lh = khmer._LabelHash(graph)
     lh = khmer._GraphLabels(graph)
     n = 0
     for seqfile in args.seqfiles:
@@ -142,6 +144,7 @@ def main():
             n += 1
             if n % 10000 == 0:
                 print('...2', seqfile, n)
+            graph.label_across_hdn(record.sequence, degree_nodes, n)
             lh.label_across_high_degree_nodes(record.sequence, degree_nodes, n)
 
     print('num labels:', lh.n_labels())
@@ -173,6 +176,7 @@ def main():
             else:
                 # linear! walk it.
                 traverse_and_mark_linear_paths(graph, nk, stop_bf, pathy,
+                                               degree_nodes)
                                                degree_nodes, lh)
 
     print(len(pathy.segments), 'segments, containing',
@@ -185,7 +189,7 @@ def main():
         print('saving to', args.output)
         fp = open(args.output, 'w')
         w = graph_writer.GmlWriter(fp, [], [])
-
+        
         for k, v in pathy.segments.items():
             w.add_vertex(k, v, [])
 

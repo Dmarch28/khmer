@@ -587,6 +587,12 @@ const
     return posns;
 }
 
+
+unsigned int Hashtable::traverse_linear_path(const Kmer seed_kmer,
+                                             SeenSet &adjacencies,
+                                             SeenSet &visited, Hashtable &bf,
+                                             SeenSet &high_degree_nodes)
+    const
 void Nodegraph::update_from(const Nodegraph &otherBASE)
 {
     if (_ksize != otherBASE._ksize) {

@@ -269,6 +269,14 @@ public:
     void get_kmer_counts(const std::string &s,
                          std::vector<BoundedCounterType> &counts) const;
 
+    //
+    void find_high_degree_nodes(const char * sequence,
+                                SeenSet& high_degree_nodes) const;
+                         
+    unsigned int traverse_linear_path(const Kmer start_kmer,
+                                      SeenSet &adjacencies,
+                                      SeenSet &nodes, Hashtable& bf,
+                                      SeenSet &high_degree_nodes) const;
     // get access to raw tables.
     Byte ** get_raw_tables() { return store->get_raw_tables(); }
 

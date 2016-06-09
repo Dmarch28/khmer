@@ -170,6 +170,7 @@ public:
             Label current_label,
             SeenSet * new_tags = 0);
 
+    LabelSet get_tag_labels(const HashIntoType tag) const;
     void get_tag_labels(const HashIntoType tag,
                         LabelSet& labels) const;
     void get_tags_from_label(const Label label,
@@ -192,8 +193,10 @@ public:
     void label_across_high_degree_nodes(const char * sequence,
                                         SeenSet& high_degree_nodes,
                                         const Label label);
-    std::string assemble_labeled_path(const Kmer seed_kmer) const;
+    std::vector<std::string> assemble_labeled_path(const Kmer seed_kmer) const;
     std::string _assemble_labeled_right(const char * start_kmer) const;
+    std::string _assemble_linear_labels(const std::string kmer,
+                                        const Label label) const;
 };
 }
 

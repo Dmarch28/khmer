@@ -677,6 +677,7 @@ const
             }
             base++;
         }
+        if (!found || found2) {
 
         // exit condition: no suffix k-mer, or more than one.
         if (!found or found2) {

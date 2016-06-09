@@ -51,6 +51,8 @@ class Pathfinder(object):
         self.adjacencies[node_id] = x
 
 
+def traverse_and_mark_linear_paths(graph, nk, stop_bf, pathy, degree_nodes,
+                                   lh):
 def traverse_and_mark_linear_paths(graph, nk, stop_bf, pathy, degree_nodes):
 def traverse_and_mark_linear_paths(graph, nk, stop_bf, pathy, degree_nodes,
                                    lh):
@@ -58,6 +60,12 @@ def traverse_and_mark_linear_paths(graph, nk, stop_bf, pathy, degree_nodes,
                                                       stop_bf)
     if not size:
         return
+
+    linear_path_labels = set()
+    for node in visited:
+        linear_path_labels.update(lh.get_tag_labels(node))
+
+    print('xxx', linear_path_labels)
 
     linear_path_labels = set()
     for node in visited:
@@ -136,6 +144,7 @@ def main():
 
     ####
 
+    lh = khmer._GraphLabels(graph)
     lh = khmer._LabelHash(graph)
     lh = khmer._GraphLabels(graph)
     n = 0
@@ -144,6 +153,9 @@ def main():
             n += 1
             if n % 10000 == 0:
                 print('...2', seqfile, n)
+            lh.label_across_high_degree_nodes(record.sequence, degree_nodes, n)
+
+    print(lh.n_labels())
             graph.label_across_hdn(record.sequence, degree_nodes, n)
             lh.label_across_high_degree_nodes(record.sequence, degree_nodes, n)
 
@@ -176,6 +188,7 @@ def main():
             else:
                 # linear! walk it.
                 traverse_and_mark_linear_paths(graph, nk, stop_bf, pathy,
+                                               degree_nodes, lh)
                                                degree_nodes)
                                                degree_nodes, lh)
 

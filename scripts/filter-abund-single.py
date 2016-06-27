@@ -91,6 +91,10 @@ def get_parser():
     parser.add_argument('--savegraph', metavar="filename", default='',
                         help="If present, the name of the file to save the "
                         "k-mer countgraph to")
+    parser.add_argument('-o', '--outfile', metavar='optional_output_filename',
+                        default=None, help='Override default output filename '
+                        'and output trimmed sequences into a file with the '
+                        'given filename.')
     parser.add_argument('datafile', metavar='input_sequence_filename',
                         help="FAST[AQ] sequence file to trim")
     parser.add_argument('-f', '--force', default=False, action='store_true',
@@ -158,6 +162,13 @@ def main():
         return None, None
 
     # the filtering loop
+    print('filtering', args.datafile, file=sys.stderr)
+    if args.outfile is None:
+        outfile = os.path.basename(args.datafile) + '.abundfilt'
+    else:
+        outfile = args.outfile
+    outfp = open(outfile, 'wb')
+    outfp = get_file_writer(outfp, args.gzip, args.bzip)
     log_info('filtering {datafile}', datafile=args.datafile)
     outfile = os.path.basename(args.datafile) + '.abundfilt'
     outfile = open(outfile, 'wb')
@@ -166,6 +177,7 @@ def main():
     tsp = ThreadedSequenceProcessor(process_fn, verbose=not args.quiet)
     tsp.start(verbose_loader(args.datafile), outfp)
 
+    print('output in', outfile, file=sys.stderr)
     log_info('output in {outfile}', outfile=outfile.name)
 
     if args.savegraph:

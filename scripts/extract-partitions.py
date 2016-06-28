@@ -54,12 +54,13 @@ import argparse
 import textwrap
 from contextlib import contextmanager
 import khmer
+
 from khmer import __version__
 from khmer.kfile import (check_input_files, check_space,
                          add_output_compression_type,
                          get_file_writer)
 from khmer.khmer_args import (info, sanitize_help, ComboFormatter,
-                              _VersionStdErrAction)
+                              _VersionStdErrAction, __version__)
 from khmer.utils import write_record
 
 DEFAULT_MAX_SIZE = int(1e6)

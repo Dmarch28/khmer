@@ -598,6 +598,23 @@ void Nodegraph::update_from(const Nodegraph &otherBASE)
     if (_ksize != otherBASE._ksize) {
         throw khmer_exception("both nodegraphs must have same k size");
     }
+
+    std::vector<Kmer> to_be_visited;
+    to_be_visited.push_back(seed_kmer);
+
+    while (to_be_visited.size()) {
+        Kmer kmer = to_be_visited.back();
+        to_be_visited.pop_back();
+
+        visited.insert(kmer);
+        size += 1;
+
+        KmerQueue node_q;
+        traverser.traverse(kmer, node_q);
+
+        while (node_q.size()) {
+            Kmer node = node_q.front();
+            node_q.pop();
     BitStorage * myself = dynamic_cast<BitStorage *>(this->store);
     const BitStorage * other;
     other = dynamic_cast<const BitStorage*>(otherBASE.store);

@@ -260,6 +260,22 @@ public:
      */
     virtual char next_symbol();
 
+    unsigned int traverse_left(Kmer& node,
+                               KmerQueue &node_q,
+                               std::function<bool (Kmer&)> filter=0,
+                               unsigned short max_neighbors=4);
+    unsigned int traverse_right(Kmer& node,
+                                KmerQueue &node_q,
+                                std::function<bool (Kmer&)> filter=0,
+                                unsigned short max_neighbors=4);
+    unsigned int traverse(Kmer& node,
+                          KmerQueue &node_q,
+                          std::function<bool (Kmer&)> filter=0) {
+        unsigned int found;
+        found = traverse_left(node, node_q, filter);
+        found += traverse_right(node, node_q, filter);
+        return found;
+    };
     /**
      * @brief Utility function to join two overlapping contigs with proper directionality.
      *

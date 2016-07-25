@@ -48,6 +48,9 @@ Contact: khmer-project@idyll.org
 #include "khmer.hh"
 #include "kmer_hash.hh"
 #include "hashtable.hh"
+#include "hashbits.hh"
+#include "counting.hh"
+#include "assembler.hh"
 #include "hashgraph.hh"
 #include "assembler.hh"
 #include "read_aligner.hh"
@@ -1620,6 +1623,165 @@ hashtable_get(khmer_KHashtable_Object * me, PyObject * args)
 
 static
 PyObject *
+hashtable_find_high_degree_nodes(khmer_KHashtable_Object * me, PyObject * args)
+{
+    Hashtable * hashtable = me->hashtable;
+
+    const char * long_str;
+
+    if (!PyArg_ParseTuple(args, "s", &long_str)) {
+        return NULL;
+    }
+
+    if (strlen(long_str) < hashtable->ksize()) {
+        PyErr_SetString(PyExc_ValueError,
+                        "string length must >= the hashtable k-mer size");
+        return NULL;
+    }
+
+    SeenSet * hashes = new SeenSet;
+    hashtable->find_high_degree_nodes(long_str, *hashes);
+
+    khmer_HashSet_Object * o;
+    o = create_HashSet_Object(hashes, hashtable->ksize());
+
+    return (PyObject *) o;
+}
+
+static
+PyObject *
+hashtable_neighbors(khmer_KHashtable_Object * me, PyObject * args)
+{
+    Hashtable * hashtable = me->hashtable;
+    PyObject * val_obj;
+
+    if (!PyArg_ParseTuple(args, "O", &val_obj)) {
+        return NULL;
+    }
+
+    Kmer start_kmer;
+    if (!convert_PyObject_to_Kmer(val_obj, start_kmer, hashtable->ksize())) {
+        return NULL;
+    }
+
+    KmerQueue node_q;
+    Traverser traverser(hashtable);
+
+    traverser.traverse(start_kmer, node_q);
+
+    PyObject * x =  PyList_New(node_q.size());
+    if (x == NULL) {
+        return NULL;
+    }
+
+    unsigned int i;
+    for (i = 0; node_q.size() > 0; i++) {
+        HashIntoType h = node_q.front();
+        node_q.pop();
+        // type K for python unsigned long long
+        PyList_SET_ITEM(x, i, Py_BuildValue("K", h));
+    }
+
+    return x;
+}
+
+static
+PyObject *
+hashtable_traverse_linear_path(khmer_KHashtable_Object * me, PyObject * args)
+{
+    Hashtable * hashtable = me->hashtable;
+
+    PyObject * val_o;
+    khmer_KHashbits_Object * nodegraph_o = NULL;
+    khmer_HashSet_Object * hdn_o = NULL;
+
+    if (!PyArg_ParseTuple(args, "OO!O!", &val_o,
+                          &khmer_HashSet_Type, &hdn_o,
+                          &khmer_KNodegraph_Type, &nodegraph_o)) {
+        return NULL;
+    }
+    Kmer start_kmer;
+    if (!convert_PyObject_to_Kmer(val_o, start_kmer, hashtable->ksize())) {
+        return NULL;
+    }
+
+    SeenSet * adj = new SeenSet;
+    SeenSet * visited = new SeenSet;
+    unsigned int size = hashtable->traverse_linear_path(start_kmer,
+                                                        *adj, *visited,
+                                                        *nodegraph_o->hashbits,
+                                                        *hdn_o->hashes);
+
+    khmer_HashSet_Object * adj_o = create_HashSet_Object(adj,
+                                                         hashtable->ksize());
+    khmer_HashSet_Object * visited_o = create_HashSet_Object(visited,
+                                                           hashtable->ksize());
+
+    PyObject * ret = Py_BuildValue("kOO", (unsigned long) size,
+                                   (PyObject *) adj_o, (PyObject *) visited_o);
+    Py_DECREF(adj_o);
+    Py_DECREF(visited_o);
+
+    return ret;
+}
+
+static
+PyObject *
+hashtable_assemble_linear_path(khmer_KHashtable_Object * me, PyObject * args)
+{
+    Hashtable * hashtable = me->hashtable;
+
+    PyObject * val_o;
+    khmer_KHashbits_Object * nodegraph_o = NULL;
+    Hashbits * stop_bf = NULL;
+
+    if (!PyArg_ParseTuple(args, "O|O!", &val_o,
+                          &khmer_KNodegraph_Type, &nodegraph_o)) {
+        return NULL;
+    }
+
+    Kmer start_kmer;
+    if (!convert_PyObject_to_Kmer(val_o, start_kmer, hashtable->ksize())) {
+        return NULL;
+    }
+
+    if (nodegraph_o) {
+        stop_bf = nodegraph_o->hashbits;
+    }
+    Assembler assembler(hashtable);
+
+    std::string contig = assembler.assemble_linear_path(start_kmer, stop_bf);
+
+    PyObject * ret = Py_BuildValue("s", contig.c_str());
+
+    return ret;
+}
+
+static
+PyObject *
+hashtable_load(khmer_KHashtable_Object * me, PyObject * args)
+{
+    Hashtable * hashtable = me->hashtable;
+
+    const char * filename = NULL;
+
+    if (!PyArg_ParseTuple(args, "s", &filename)) {
+        return NULL;
+    }
+
+    try {
+        hashtable->load(filename);
+    } catch (khmer_file_exception &e) {
+        PyErr_SetString(PyExc_OSError, e.what());
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+static
+PyObject *
+hashtable_save(khmer_KHashtable_Object * me, PyObject * args)
 hashtable_set_use_bigcount(khmer_KHashtable_Object * me, PyObject * args)
 {
     Hashtable * hashtable = me->hashtable;

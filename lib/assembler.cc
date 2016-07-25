@@ -34,14 +34,19 @@ LICENSE (END)
 
 Contact: khmer-project@idyll.org
 */
+#include "hashtable.hh"
+#include "traversal.hh"
 
 #include "assembler.hh"
 
+using namespace khmer;
 #include <algorithm>
 #include <iostream>
 
 using namespace std;
 
+Assembler::Assembler(const Hashtable * ht) :
+    Traverser(ht)
 namespace khmer
 {
 
@@ -57,10 +62,22 @@ LinearAssembler::LinearAssembler(const Hashgraph * ht) :
 
 // Starting from the given seed k-mer, assemble the maximal linear path in
 // both directions.
+//
+// No guarantees on direction, of course - this may return the reverse
+// complement of the input sequence.
+//
+// Note: as written, will ignore branches to the left and continue
+// past them; this probably needs to be fixed.  For now, this means
+// that assembling from two different directions may yield different
+// results.
+std::string Assembler::assemble_linear_path(const Kmer seed_kmer,
+                                            const Hashtable * stop_bf)
 std::string LinearAssembler::assemble(const Kmer seed_kmer,
                                       const Hashgraph * stop_bf)
-const
+    const
 {
+    std::string start_kmer = seed_kmer.get_string_rep(_ksize);
+    std::string right = _assemble_right(start_kmer.c_str(), stop_bf);
     if (graph->get_count(seed_kmer) == 0) {
         // If the seed k-mer is not in the de Bruijn graph, stop trying to make
         // something happen. It's not going to happen!
@@ -69,30 +86,52 @@ const
     std::string right_contig = assemble_right(seed_kmer, stop_bf);
     std::string left_contig = assemble_left(seed_kmer, stop_bf);
 
+    start_kmer = _revcomp(start_kmer);
+    std::string left = _assemble_right(start_kmer.c_str(), stop_bf);
 #if DEBUG_ASSEMBLY
     std::cout << "Left: " << left_contig << std::endl;
     std::cout << "Right: " << right_contig << std::endl;
 #endif
 
+    left = left.substr(_ksize);
+    return _revcomp(left) + right;
     right_contig = right_contig.substr(_ksize);
     return left_contig + right_contig;
 }
 
 
+std::string Assembler::_assemble_right(const char * start_kmer,
+                                       const Hashtable * stop_bf)
 std::string LinearAssembler::assemble_right(const Kmer seed_kmer,
         const Hashgraph * stop_bf)
-const
+    const
 {
+    const char bases[] = "ACGT";
+    std::string kmer = start_kmer;
+    std::string contig = kmer;
     std::list<KmerFilter> node_filters;
     if (stop_bf) {
         node_filters.push_back(get_stop_bf_filter(stop_bf));
     }
 
+    while (1) {
+        const char * base = &bases[0];
+        bool found = false;
+        char found_base;
+        bool found2 = false;
     AssemblerTraverser<RIGHT> cursor(graph, seed_kmer, node_filters);
     return _assemble_directed<RIGHT>(cursor);
 }
 
+        while(*base != 0) {
+            std::string try_kmer = kmer.substr(1) + (char) *base;
 
+            // a hit!
+            if (graph->get_count(try_kmer.c_str()) &&
+                (!stop_bf || !stop_bf->get_count(try_kmer.c_str()))) {
+                if (found) {
+                    found2 = true;
+                    break;
 std::string LinearAssembler::assemble_left(const Kmer seed_kmer,
         const Hashgraph * stop_bf)
 const
@@ -100,7 +139,9 @@ const
     std::list<KmerFilter> node_filters;
     if (stop_bf) {
         node_filters.push_back(get_stop_bf_filter(stop_bf));
-    }
+                }
+                found_base = (char) *base;
+                found = true;
 
     AssemblerTraverser<LEFT> cursor(graph, seed_kmer, node_filters);
     return _assemble_directed<LEFT>(cursor);
@@ -127,7 +168,8 @@ const
     while ((next_base = cursor.next_symbol()) != '\0') {
         contig += next_base;
         found++;
-    }
+            }
+            base++;
 
     reverse(contig.begin(), contig.end());
 #if DEBUG_ASSEMBLY
@@ -135,7 +177,13 @@ const
 #endif
 
     return contig;
-}
+        }
+        if (!found || found2) {
+            break;
+        } else {
+            contig += found_base;
+            kmer = kmer.substr(1) + found_base;
+            found = true;
 
 template<>
 std::string LinearAssembler::_assemble_directed<RIGHT>
@@ -145,7 +193,7 @@ const
     std::string contig = cursor.cursor.get_string_rep(_ksize);
     if (!cursor.cursor.is_forward()) {
         contig = _revcomp(contig);
-    }
+        }
     char next_base;
     unsigned int found = 0;
 
@@ -163,6 +211,10 @@ const
     return contig;
 }
 
+/*
+std::string Assembler::_assemble_directed(const char * start_kmer,
+                                       const Hashtable * stop_bf,
+                                       const bool assemble_left)
 
 /********************************
  * Labeled Assembly
@@ -224,13 +276,22 @@ template <bool direction>
 void SimpleLabeledAssembler::_assemble_directed(NonLoopingAT<direction>&
         start_cursor,
         StringVector& paths)
-const
+    const
 {
+    Kmer kmer = this->build_kmer(start_kmer);
+    std::cout << "starting on kmer " << kmer.get_string_rep(_ksize) << std::endl;
+    std::string contig = start_kmer;
+    Traverser traverser(this);
+    KmerQueue neighbors;
+    unsigned short found;
 #if DEBUG_ASSEMBLY
     std::cout << "## assemble_labeled_directed_" << direction << " [start] at " <<
               start_cursor.cursor.repr(_ksize) << std::endl;
 #endif
 
+    auto keep_func = [&] (Kmer& node) {
+        return !stop_bf || !stop_bf->get_count(node);
+    };
     // prime the traversal with the first linear segment
     std::string root_contig = linear_asm->_assemble_directed<direction>
                               (start_cursor);
@@ -241,6 +302,10 @@ const
     StringVector segments;
     std::vector< NonLoopingAT<direction> > cursors;
 
+    std::cout << "start loop" << std::endl;
+    while (1) {
+        if (assemble_left) {
+            found = traverser.traverse_left(kmer, neighbors, keep_func, 1);
     segments.push_back(root_contig);
     cursors.push_back(start_cursor);
 
@@ -270,7 +335,8 @@ const
 #endif
                 paths.push_back(segment);
                 continue;
-            } else {
+        } else {
+            found = traverser.traverse_right(kmer, neighbors, keep_func, 1);
                 // if there are labels, try to hop the HDN.
                 // first, get a label filter
                 cursor.push_filter(get_simple_label_intersect_filter(labels, lh));
@@ -312,8 +378,22 @@ const
                     segments.push_back(new_segment);
                     cursors.push_back(branch_cursor);
                 }
-            }
+        }
+        //std::cout << "check traverser result" << std::endl;
+        if (found == 0) {
+            std::cout << "no neighbors, break" << std::endl;
+            break;
+        } else if (found > 1) {
+            KmerQueue().swap(neighbors); // clear queue
+            std::cout << "break" << std::endl;
+            break;
         } else {
+            //std::cout << "put base on contig" << std::endl;
+            //contig += revtwobit_repr(kmer & 3);
+            //std::cout << "get new kmer" << std::endl;
+            kmer = neighbors.front();
+            if (assemble_left) {
+                contig += (kmer.get_string_rep(this->_ksize)[0]);
             // this segment is a dead-end; keep the contig
 #if DEBUG_ASSEMBLY
             std::cout << "degree-1 dead-end" << std::endl;
@@ -356,7 +436,8 @@ const
 
             paths.push_back(root_contig);
             return;
-        } else {
+            } else {
+                contig += (kmer.get_string_rep(this->_ksize)[this->_ksize-1]);
 #if DEBUG_ASSEMBLY
             std::cout << "Found " << labels.size() << " labels" << std::endl;
 #endif
@@ -384,6 +465,8 @@ const
                 _assemble_directed<direction>(branch_cursor, branch_contigs);
             }
 
+            //std::cout << "pop!" << std::endl;
+            neighbors.pop();
             for (auto branch_contig : branch_contigs) {
                 std::string full_contig = start_cursor.join_contigs(root_contig,
                                                                    branch_contig,
@@ -394,6 +477,7 @@ const
     } else {
         paths.push_back(root_contig);
     }
+    return contig;
 }
 
 */

@@ -107,6 +107,11 @@ const
 }
 
 
+unsigned int Traverser::traverse_left(Kmer& node,
+                                      KmerQueue & node_q,
+                                      std::function<bool (Kmer&)> filter,
+                                      unsigned short max_neighbors)
+
 template<bool direction>
 unsigned int NodeGatherer<direction>::neighbors(const Kmer& node,
         KmerQueue & node_q)
@@ -121,6 +126,9 @@ const
         if (graph->get_count(neighbor) && !(apply_kmer_filters(neighbor, filters))) {
             node_q.push(neighbor);
             ++found;
+            if (found > max_neighbors) {
+                return found;
+            }
         }
         ++base;
     }
@@ -128,6 +136,10 @@ const
     return found;
 }
 
+unsigned int Traverser::traverse_right(Kmer& node,
+                                       KmerQueue & node_q,
+                                       std::function<bool (Kmer&)> filter,
+                                       unsigned short max_neighbors)
 
 template<bool direction>
 unsigned int NodeGatherer<direction>::degree(const Kmer& node)
@@ -135,6 +147,16 @@ const
 {
     unsigned int degree = 0;
 
+    char bases[] = "ACGT";
+    char * base = bases;
+    while(*base != '\0') {
+        Kmer next_node = get_right(node, *base);
+        if (graph->get_count(next_node) && (!filter || filter(next_node))) {
+            node_q.push(next_node);
+            ++found;
+            if (found > max_neighbors) {
+                return found;
+            }
     for (auto base : alphabets::DNA_SIMPLE) {
         if (graph->get_count(get_neighbor(node, base))) {
             ++degree;

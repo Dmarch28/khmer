@@ -37,10 +37,15 @@ Contact: khmer-project@idyll.org
 #ifndef ASSEMBLER_HH
 #define ASSEMBLER_HH
 
+#include <queue>
 #include <functional>
 
 #include "khmer.hh"
+
+#include "khmer_exception.hh"
+#include "read_parsers.hh"
 #include "kmer_hash.hh"
+#include "hashtable.hh"
 
 #include "labelhash.hh"
 #include "traversal.hh"
@@ -50,6 +55,7 @@ Contact: khmer-project@idyll.org
 namespace khmer
 {
 
+class Hashtable;
 class Hashgraph;
 class LabelHash;
 
@@ -101,6 +107,7 @@ template<>
 std::string LinearAssembler::_assemble_directed<LEFT>(AssemblerTraverser<LEFT>
         &cursor) const;
 
+class Assembler: public Traverser
 template<>
 std::string LinearAssembler::_assemble_directed<RIGHT>(AssemblerTraverser<RIGHT>
         &cursor) const;
@@ -126,6 +133,7 @@ std::string LinearAssembler::_assemble_directed<RIGHT>(AssemblerTraverser<RIGHT>
  */
 class SimpleLabeledAssembler
 {
+    friend class Hashtable;
     friend class Hashgraph;
     const LinearAssembler * linear_asm;
     const Hashgraph * graph;
@@ -134,11 +142,19 @@ class SimpleLabeledAssembler
 
 public:
 
+    explicit Assembler(const Hashtable * ht);
+    std::string assemble_linear_path(const Kmer seed_kmer,
+                                     const Hashtable * stop_bf=0) const;
+    std::string _assemble_right(const char * start_kmer,
+                                const Hashtable * stop_bf=0) const;
     explicit SimpleLabeledAssembler(const LabelHash * lh);
 
     StringVector assemble(const Kmer seed_kmer,
                           const Hashgraph * stop_bf=0) const;
 
+    //std::string _assemble_directed(const char * start_kmer,
+    //                               const Hashtable * stop_bf,
+    //                               const bool assemble_left=false) const;
     template <bool direction>
     void _assemble_directed(NonLoopingAT<direction>& start_cursor,
                             StringVector& paths) const;

@@ -143,14 +143,19 @@ class SimpleLabeledAssembler
 public:
 
     explicit Assembler(const Hashtable * ht);
+
     std::string assemble_linear_path(const Kmer seed_kmer,
                                      const Hashtable * stop_bf=0) const;
-    std::string _assemble_right(const char * start_kmer,
+
+    std::string _assemble_right(const std::string start_kmer,
                                 const Hashtable * stop_bf=0) const;
     explicit SimpleLabeledAssembler(const LabelHash * lh);
 
     StringVector assemble(const Kmer seed_kmer,
                           const Hashgraph * stop_bf=0) const;
+
+    std::string _assemble_left(const std::string start_kmer,
+                               const Hashtable * stop_bf=0) const;
 
     //std::string _assemble_directed(const char * start_kmer,
     //                               const Hashtable * stop_bf,

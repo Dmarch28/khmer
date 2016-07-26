@@ -86,6 +86,8 @@ std::string LinearAssembler::assemble(const Kmer seed_kmer,
     std::string right_contig = assemble_right(seed_kmer, stop_bf);
     std::string left_contig = assemble_left(seed_kmer, stop_bf);
 
+    std::string right = _assemble_right(start_kmer, stop_bf);
+    std::string left = _assemble_left(start_kmer, stop_bf);
     start_kmer = _revcomp(start_kmer);
     std::string left = _assemble_right(start_kmer.c_str(), stop_bf);
 #if DEBUG_ASSEMBLY
@@ -93,6 +95,17 @@ std::string LinearAssembler::assemble(const Kmer seed_kmer,
     std::cout << "Right: " << right_contig << std::endl;
 #endif
 
+    right = right.substr(_ksize);
+    return left + right;
+}
+
+
+std::string Assembler::_assemble_left(const std::string start_kmer,
+                                      const Hashtable * stop_bf)
+    const
+{
+    std::string contig = _assemble_right(_revcomp(start_kmer), stop_bf);
+    return _revcomp(contig);
     left = left.substr(_ksize);
     return _revcomp(left) + right;
     right_contig = right_contig.substr(_ksize);
@@ -100,7 +113,7 @@ std::string LinearAssembler::assemble(const Kmer seed_kmer,
 }
 
 
-std::string Assembler::_assemble_right(const char * start_kmer,
+std::string Assembler::_assemble_right(const std::string start_kmer,
                                        const Hashtable * stop_bf)
 std::string LinearAssembler::assemble_right(const Kmer seed_kmer,
         const Hashgraph * stop_bf)

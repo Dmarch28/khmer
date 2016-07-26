@@ -60,6 +60,23 @@ LinearAssembler::LinearAssembler(const Hashgraph * ht) :
 
 }
 
+
+bool Assembler::filter_node(Kmer& node, std::list<KmerFilter>& filters)
+    const
+{
+    if (!filters.size()) {
+        return false;
+    }
+
+    for(auto filter : filters) {
+        if (filter(node)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
 // Starting from the given seed k-mer, assemble the maximal linear path in
 // both directions.
 //
@@ -76,6 +93,14 @@ std::string LinearAssembler::assemble(const Kmer seed_kmer,
                                       const Hashgraph * stop_bf)
     const
 {
+    std::list<KmerFilter> node_filters;
+    if (stop_bf) {
+        auto stop_bf_filter = [&] (Kmer& n) {
+            return stop_bf->get_count(n);
+        };
+        node_filters.push_back(stop_bf_filter);
+    }
+
     std::string start_kmer = seed_kmer.get_string_rep(_ksize);
     std::string right = _assemble_right(start_kmer.c_str(), stop_bf);
     if (graph->get_count(seed_kmer) == 0) {
@@ -86,6 +111,8 @@ std::string LinearAssembler::assemble(const Kmer seed_kmer,
     std::string right_contig = assemble_right(seed_kmer, stop_bf);
     std::string left_contig = assemble_left(seed_kmer, stop_bf);
 
+    std::string right = _assemble_right(start_kmer, node_filters);
+    std::string left = _assemble_left(start_kmer, node_filters);
     std::string right = _assemble_right(start_kmer, stop_bf);
     std::string left = _assemble_left(start_kmer, stop_bf);
     start_kmer = _revcomp(start_kmer);
@@ -101,10 +128,10 @@ std::string LinearAssembler::assemble(const Kmer seed_kmer,
 
 
 std::string Assembler::_assemble_left(const std::string start_kmer,
-                                      const Hashtable * stop_bf)
+                                      std::list<KmerFilter>& node_filters)
     const
 {
-    std::string contig = _assemble_right(_revcomp(start_kmer), stop_bf);
+    std::string contig = _assemble_right(_revcomp(start_kmer), node_filters);
     return _revcomp(contig);
     left = left.substr(_ksize);
     return _revcomp(left) + right;
@@ -114,6 +141,7 @@ std::string Assembler::_assemble_left(const std::string start_kmer,
 
 
 std::string Assembler::_assemble_right(const std::string start_kmer,
+                                       std::list<KmerFilter>& node_filters)
                                        const Hashtable * stop_bf)
 std::string LinearAssembler::assemble_right(const Kmer seed_kmer,
         const Hashgraph * stop_bf)
@@ -138,10 +166,12 @@ std::string LinearAssembler::assemble_right(const Kmer seed_kmer,
 
         while(*base != 0) {
             std::string try_kmer = kmer.substr(1) + (char) *base;
+            Kmer try_hashed = build_kmer(try_kmer);
 
             // a hit!
-            if (graph->get_count(try_kmer.c_str()) &&
-                (!stop_bf || !stop_bf->get_count(try_kmer.c_str()))) {
+            if (graph->get_count(try_hashed) &&
+                !filter_node(try_hashed, node_filters)) {
+
                 if (found) {
                     found2 = true;
                     break;

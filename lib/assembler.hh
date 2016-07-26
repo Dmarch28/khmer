@@ -55,6 +55,8 @@ Contact: khmer-project@idyll.org
 namespace khmer
 {
 
+typedef std::function<bool (Kmer&)> KmerFilter;
+
 class Hashtable;
 class Hashgraph;
 class LabelHash;
@@ -144,10 +146,13 @@ public:
 
     explicit Assembler(const Hashtable * ht);
 
+    bool filter_node(Kmer& node, std::list<KmerFilter>& filters) const;
+
     std::string assemble_linear_path(const Kmer seed_kmer,
                                      const Hashtable * stop_bf=0) const;
 
     std::string _assemble_right(const std::string start_kmer,
+                                std::list<KmerFilter>& node_filters) const;
                                 const Hashtable * stop_bf=0) const;
     explicit SimpleLabeledAssembler(const LabelHash * lh);
 
@@ -155,7 +160,7 @@ public:
                           const Hashgraph * stop_bf=0) const;
 
     std::string _assemble_left(const std::string start_kmer,
-                               const Hashtable * stop_bf=0) const;
+                               std::list<KmerFilter>& node_filters) const;
 
     //std::string _assemble_directed(const char * start_kmer,
     //                               const Hashtable * stop_bf,

@@ -98,6 +98,8 @@ install-dep: install-dependencies
 
 install-dependencies:
 	pip install git+https://github.com/dib-lab/screed.git
+	pip install --upgrade $(DEVPKGS)
+	pip install git+https://github.com/dib-lab/screed.git
 	pip install --upgrade --ignore-installed $(DEVPKGS)
 	pip install --upgrade --requirement doc/requirements.txt
 
@@ -105,7 +107,7 @@ install-dependencies:
 sharedobj: $(EXTENSION_MODULE)
 
 $(EXTENSION_MODULE): $(CPPSOURCES)
-	pip install git+https://github.com/dib-lab/screed.git; ./setup.py build_ext --inplace
+	./setup.py build_ext --inplace
 
 coverage-debug: $(CPPSOURCES)
 	export CFLAGS="-pg -fprofile-arcs -ftest-coverage -O0"; ./setup.py \
@@ -292,7 +294,7 @@ libtest: FORCE
 
 ## test        : run the khmer test suite
 test: FORCE
-	pip install git+https://github.com/dib-lab/screed.git; ./setup.py develop
+	./setup.py develop
 	py.test -m ${TESTATTR}
 
 sloccount.sc: $(CPPSOURCES) $(PYSOURCES) $(wildcard tests/*.py) Makefile

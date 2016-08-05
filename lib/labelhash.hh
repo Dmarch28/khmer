@@ -170,6 +170,10 @@ public:
             Label current_label,
             SeenSet * new_tags = 0);
 
+    void get_tag_labels(const HashIntoType tag,
+                            LabelSet& labels) const;
+    void get_tags_from_label(const Label label,
+                               TagSet& tags) const;
     LabelSet get_tag_labels(const HashIntoType tag) const;
     void get_tag_labels(const HashIntoType tag,
                         LabelSet& labels) const;

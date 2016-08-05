@@ -194,6 +194,11 @@ public:
         return revtwobit_repr(kmer_f & 3);
     }
 
+    char get_last_base() const
+    {
+        return revtwobit_repr(kmer_f & 3);
+    }
+
     std::string repr(WordLength K) const
     {
         std::string s = "<Us=" + _revhash(kmer_u, K) + ", Fs=" +

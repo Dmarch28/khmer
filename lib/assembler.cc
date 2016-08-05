@@ -147,7 +147,6 @@ std::string LinearAssembler::assemble_right(const Kmer seed_kmer,
         const Hashgraph * stop_bf)
     const
 {
-    const char bases[] = "ACGT";
     std::string kmer = start_kmer;
     std::string contig = kmer;
     std::list<KmerFilter> node_filters;
@@ -156,7 +155,7 @@ std::string LinearAssembler::assemble_right(const Kmer seed_kmer,
     }
 
     while (1) {
-        const char * base = &bases[0];
+        char * base = alphabets::DNA_SIMPLE;
         bool found = false;
         char found_base;
         bool found2 = false;

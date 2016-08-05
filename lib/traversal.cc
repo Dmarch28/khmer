@@ -37,6 +37,7 @@ Contact: khmer-project@idyll.org
 #include "khmer.hh"
 #include "hashtable.hh"
 #include "traversal.hh"
+#include "symbols.hh"
 #include "alphabets.hh"
 #include "kmer_hash.hh"
 
@@ -118,7 +119,12 @@ unsigned int NodeGatherer<direction>::neighbors(const Kmer& node,
 const
 {
     unsigned int found = 0;
+    char * base = alphabets::DNA_SIMPLE;
 
+    while(*base != '\0') {
+        Kmer prev_node = get_left(node, *base);
+        if (graph->get_count(prev_node) && (!filter || filter(prev_node))) {
+            node_q.push(prev_node);
     for (auto base : alphabets::DNA_SIMPLE) {
         // Get the putative neighboring Kmer
         Kmer neighbor = get_neighbor(node, base);
@@ -145,10 +151,10 @@ template<bool direction>
 unsigned int NodeGatherer<direction>::degree(const Kmer& node)
 const
 {
+    unsigned int found = 0;
+    char * base = alphabets::DNA_SIMPLE;
     unsigned int degree = 0;
 
-    char bases[] = "ACGT";
-    char * base = bases;
     while(*base != '\0') {
         Kmer next_node = get_right(node, *base);
         if (graph->get_count(next_node) && (!filter || filter(next_node))) {
@@ -241,10 +247,19 @@ void Traverser::push_filter(KmerFilter filter)
 unsigned int Traverser::traverse(const Kmer& node,
                                  KmerQueue& node_q) const
 {
+    unsigned int degree = 0;
+    char * base = alphabets::DNA_SIMPLE;
     return left_gatherer.neighbors(node, node_q) +
            right_gatherer.neighbors(node, node_q);
 }
 
+    while(*base != '\0') {
+        Kmer prev_node = get_left(node, *base);
+        if (graph->get_count(prev_node)) {
+            ++degree;
+        }
+        ++base;
+    }
 
 unsigned int Traverser::traverse_left(const Kmer& node,
                                       KmerQueue& node_q) const
@@ -303,6 +318,16 @@ const
 template<bool direction>
 char AssemblerTraverser<direction>::next_symbol()
 {
+    unsigned int degree = 0;
+    char * base = alphabets::DNA_SIMPLE;
+    
+    while(*base != '\0') {
+        Kmer next_node = get_right(node, *base);
+        if (graph->get_count(next_node)) {
+            ++degree;
+        }
+        ++base;
+    }
     short found = 0;
     char found_base = '\0';
     Kmer neighbor;

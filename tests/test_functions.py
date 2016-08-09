@@ -125,6 +125,25 @@ def test_reverse_complement_exception():
         khmer.reverse_complement('FGF')
 
 
+def test_reverse_complement():
+    s = 'AATTCCGG'
+    assert khmer.reverse_complement(s) == 'CCGGAATT'
+
+    s = 'A'
+    assert khmer.reverse_complement(s) == 'T'
+    s = 'T'
+    assert khmer.reverse_complement(s) == 'A'
+    s = 'C'
+    assert khmer.reverse_complement(s) == 'G'
+    s = 'G'
+    assert khmer.reverse_complement(s) == 'C'
+
+
+def test_reverse_complement_exception():
+    with pytest.raises(RuntimeError):
+        khmer.reverse_complement('FGF')
+
+
 def test_reverse_hash_longs():
     # test explicitly with long integers, only needed for python2
     # the builtin `long` exists in the global scope only

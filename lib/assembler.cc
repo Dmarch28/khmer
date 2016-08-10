@@ -51,6 +51,7 @@ using namespace khmer;
 
 using namespace std;
 
+
 AssemblerTraverser::AssemblerTraverser(const Hashtable * ht,
                                  Kmer start_kmer,
                                  KmerFilterList filters,
@@ -68,9 +69,11 @@ namespace khmer
     }
 }
 
+
 Kmer AssemblerTraverser::get_neighbor(Kmer& node, const char symbol) {
     return redirector(this, node, symbol);
 }
+
 
 char AssemblerTraverser::next_symbol()
 {
@@ -79,9 +82,10 @@ char AssemblerTraverser::next_symbol()
     short found = 0;
     Kmer neighbor;
     Kmer cursor_next;
-#if DEBUG
+
+    #if DEBUG
     std::cout << "** start next_symbol (start: " << cursor.repr(_ksize) <<  ") **" << std::endl;
-#endif
+    #endif
 
     while(*symbol_ptr != '\0') {
         neighbor = get_neighbor(cursor, *symbol_ptr);
@@ -93,9 +97,7 @@ char AssemblerTraverser::next_symbol()
 
         if (graph->get_count(neighbor) &&
             !apply_kmer_filters(neighbor, filters)) {
-#if DEBUG
-            std::cout << "Found " << (char)*symbol_ptr << std::endl;
-#endif
+
             found++;
             if (found > 1) {
                 break;
@@ -105,20 +107,12 @@ char AssemblerTraverser::next_symbol()
         }
         symbol_ptr++;
     }
-#if DEBUG
+    #if DEBUG
     std::cout << "** end next_symbol: " << found << " neighbors. **" << std::endl;
-#endif
+    #endif
     if (found != 1) {
-        #if DEBUG
-        std::cout << "return STOP" << std::endl;
-        #endif
         return '\0';
     } else {
-        #if DEBUG
-        std::cout << cursor.repr(_ksize) << std::endl;
-        std::cout << neighbor.repr(_ksize) << std::endl;
-        std::cout << "return " << base << std::endl;
-        #endif
         cursor = cursor_next;
         return base;
     }
@@ -256,18 +250,17 @@ std::string LinearAssembler::assemble_left(const Kmer start_kmer,
     if (!start_kmer.is_forward()) {
         contig = _revcomp(contig);
     }
+
     #if DEBUG
     std::cout << "## assemble_left\nStart Contig: " << contig << std::endl;
     #endif
+
     reverse(contig.begin(), contig.end());
     AssemblerTraverser cursor(graph, start_kmer, node_filters, ASSEMBLE_LEFT);
     char next_base;
 
     while ((next_base = cursor.next_symbol()) != '\0') {
         contig += next_base;
-        #if DEBUG
-        std::cout << "Contig: " << contig << std::endl;
-        #endif
     }
 
     reverse(contig.begin(), contig.end());
@@ -318,11 +311,9 @@ std::string LinearAssembler::assemble_right(const Kmer seed_kmer,
     #if DEBUG
     std::cout << "## assemble_right\nContig: " << contig << std::endl;
     #endif
+
     while ((next_base = cursor.next_symbol()) != '\0') {
         contig += next_base;
-        #if DEBUG
-        std::cout << "Contig: " << contig << std::endl;
-        #endif
     }
                 if (found) {
                     found2 = true;

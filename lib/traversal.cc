@@ -320,7 +320,7 @@ char AssemblerTraverser<direction>::next_symbol()
 {
     unsigned int degree = 0;
     char * base = alphabets::DNA_SIMPLE;
-    
+
     while(*base != '\0') {
         Kmer next_node = get_right(node, *base);
         if (graph->get_count(next_node)) {

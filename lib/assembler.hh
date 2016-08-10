@@ -47,6 +47,7 @@ Contact: khmer-project@idyll.org
 #include "kmer_hash.hh"
 #include "hashtable.hh"
 
+#define DEBUG 1
 #include "labelhash.hh"
 #include "traversal.hh"
 #include "kmer_filters.hh"
@@ -54,6 +55,9 @@ Contact: khmer-project@idyll.org
 
 namespace khmer
 {
+
+#define ASSEMBLE_LEFT 0
+#define ASSEMBLE_RIGHT 1
 
 class Hashtable;
 
@@ -74,9 +78,15 @@ inline bool apply_kmer_filters(Kmer& node, std::list<KmerFilter>& filters)
 
     for(auto filter : filters) {
         if (filter(node)) {
+            #if DEBUG
+            std::cout << "Filtered!" << std::endl;
+            #endif
             return true;
         }
     }
+    #if DEBUG
+    std::cout << "Not filtered." << std::endl;
+    #endif
     return false;
 }
 
@@ -86,18 +96,24 @@ class AssemblerTraverser: public Traverser
 
 protected:
 
-    OrderedKmers contig_kmers;
     Kmer cursor;
     KmerFilterList filters;
-    const bool traverse_right; // 0 for left, 1 for right
+    const bool direction; // 0 for left, 1 for right
+
+private:
+
+    std::function<Kmer(AssemblerTraverser*, Kmer& node, const char symbol)> redirector = &AssemblerTraverser::get_right;
+    Kmer get_neighbor(Kmer& node, const char symbol);
 
 public:
 
     explicit AssemblerTraverser(const Hashtable * ht,
                              Kmer start_kmer,
                              KmerFilterList filters,
-                             bool traverse_right = 1);
+                             bool direction = ASSEMBLE_RIGHT);
 
+    char next_symbol();
+    bool set_cursor(Kmer& node);
     void gather_linear_path();
     unsigned int get_path_length() const;
     std::string build_contig() const;
@@ -151,6 +167,7 @@ public:
     std::string _assemble_directed(AssemblerTraverser<direction>& cursor) const;
 };
 
+class LinearAssembler
 // The explicit specializations need to be declared in the same translation unit
 // as their unspecialized declaration.
 template<>
@@ -184,6 +201,8 @@ std::string LinearAssembler::_assemble_directed<RIGHT>(AssemblerTraverser<RIGHT>
 class SimpleLabeledAssembler
 {
     friend class Hashtable;
+    const Hashtable * graph;
+    WordLength _ksize;
     friend class Hashgraph;
     const LinearAssembler * linear_asm;
     const Hashgraph * graph;
@@ -192,12 +211,12 @@ class SimpleLabeledAssembler
 
 public:
 
-    explicit Assembler(const Hashtable * ht);
+    explicit LinearAssembler(const Hashtable * ht);
 
-    std::string assemble_linear_path(const Kmer seed_kmer,
-                                     const Hashtable * stop_bf=0) const;
+    std::string assemble(const Kmer seed_kmer,
+                         const Hashtable * stop_bf=0) const;
 
-    std::string _assemble_right(const std::string start_kmer,
+    std::string assemble_right(const Kmer start_kmer,
                                 std::list<KmerFilter>& node_filters) const;
                                 const Hashtable * stop_bf=0) const;
     explicit SimpleLabeledAssembler(const LabelHash * lh);
@@ -205,7 +224,7 @@ public:
     StringVector assemble(const Kmer seed_kmer,
                           const Hashgraph * stop_bf=0) const;
 
-    std::string _assemble_left(const std::string start_kmer,
+    std::string assemble_left(const Kmer start_kmer,
                                std::list<KmerFilter>& node_filters) const;
 
     //std::string _assemble_directed(const char * start_kmer,

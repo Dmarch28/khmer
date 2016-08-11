@@ -51,7 +51,7 @@ using namespace khmer;
 
 using namespace std;
 
-
+<template bool direction>
 AssemblerTraverser::AssemblerTraverser(const Hashtable * ht,
                                  Kmer start_kmer,
                                  KmerFilterList filters,
@@ -69,12 +69,12 @@ namespace khmer
     }
 }
 
-
+<template bool direction>
 Kmer AssemblerTraverser::get_neighbor(Kmer& node, const char symbol) {
     return redirector(this, node, symbol);
 }
 
-
+<template bool direction>
 char AssemblerTraverser::next_symbol()
 {
     char * symbol_ptr = alphabets::DNA_SIMPLE;
@@ -150,6 +150,7 @@ LinearAssembler::LinearAssembler(const Hashgraph * ht) :
     graph(ht), _ksize(ht->ksize())
 {
 
+<template bool direction>
 }
 
 unsigned int AssemblerTraverser::get_path_length()
@@ -165,6 +166,12 @@ bool AssemblerTraverser::set_cursor(Kmer& node)
         return true;
     }
     return false;
+}
+
+<template bool direction>
+Kmer AssemblerTraverser::get_cursor()
+{
+    return cursor;
 }
 
 
@@ -186,6 +193,7 @@ LinearAssembler::LinearAssembler(const Hashtable * ht) :
 // that assembling from two different directions may yield different
 // results.
 std::string LinearAssembler::assemble(const Kmer seed_kmer,
+                                      const Hashtable * stop_bf)
                                 const Hashtable * stop_bf)
 std::string Assembler::assemble_linear_path(const Kmer seed_kmer,
                                             const Hashtable * stop_bf)
@@ -201,6 +209,9 @@ std::string LinearAssembler::assemble(const Kmer seed_kmer,
         node_filters.push_back(stop_bf_filter);
     }
 
+    std::string right_contig;
+    AssemblerTraverser<RIGHT> right_cursor(graph, start_kmer, node_filters);
+    assemble_right(seed_kmer, right_contig, node_filters);
     std::string right = assemble_right(seed_kmer, node_filters);
     std::string left = assemble_left(seed_kmer, node_filters);
     AssemblerTraverser right_traverser(graph, seed_kmer, node_filters);
@@ -220,9 +231,13 @@ std::string LinearAssembler::assemble(const Kmer seed_kmer,
     std::string right_contig = assemble_right(seed_kmer, stop_bf);
     std::string left_contig = assemble_left(seed_kmer, stop_bf);
 
+    std::string left_contig;
+    AssemblerTraverser<LEFT> left_cursor(graph, start_kmer, node_filters);
+    assemble_left(seed_kmer, left_contig, left_cursor);
+
     #if DEBUG
-    std::cout << "Left: " << left << std::endl;
-    std::cout << "Right: " << right << std::endl;
+    std::cout << "Left: " << left_contig << std::endl;
+    std::cout << "Right: " << right_contig << std::endl;
     #endif
     std::string right = right_traverser.assemble();
     std::string left = left_traverser.assemble();
@@ -237,16 +252,16 @@ std::string LinearAssembler::assemble(const Kmer seed_kmer,
     std::cout << "Right: " << right_contig << std::endl;
 #endif
 
-    right = right.substr(_ksize);
-    return left + right;
+    right_contig = right_contig.substr(_ksize);
+    return left_contig + right_contig;
 }
 
 
-std::string LinearAssembler::assemble_left(const Kmer start_kmer,
-                                      std::list<KmerFilter>& node_filters)
+Kmer LinearAssembler::assemble_left(std::string& contig,
+                                    AssemblerTraverser<RIGHT>& cursor)
     const
 {
-    std::string contig = start_kmer.get_string_rep(_ksize);
+    contig = start_kmer.get_string_rep(_ksize);
     if (!start_kmer.is_forward()) {
         contig = _revcomp(contig);
     }
@@ -256,7 +271,6 @@ std::string LinearAssembler::assemble_left(const Kmer start_kmer,
     #endif
 
     reverse(contig.begin(), contig.end());
-    AssemblerTraverser cursor(graph, start_kmer, node_filters, ASSEMBLE_LEFT);
     char next_base;
 
     while ((next_base = cursor.next_symbol()) != '\0') {
@@ -264,6 +278,8 @@ std::string LinearAssembler::assemble_left(const Kmer start_kmer,
     }
 
     reverse(contig.begin(), contig.end());
+
+    return cursor.get_cursor();
     return contig;
     std::string contig = _assemble_right(_revcomp(start_kmer), node_filters);
     return _revcomp(contig);
@@ -274,6 +290,8 @@ std::string LinearAssembler::assemble_left(const Kmer start_kmer,
 }
 
 
+Kmer LinearAssembler::assemble_right(std::string& contig,
+                                     AssemblerTraverser<LEFT>& cursor)
 std::string LinearAssembler::assemble_right(const Kmer start_kmer,
                                        std::list<KmerFilter>& node_filters)
                                        const Hashtable * stop_bf)
@@ -281,8 +299,7 @@ std::string LinearAssembler::assemble_right(const Kmer seed_kmer,
         const Hashgraph * stop_bf)
     const
 {
-    AssemblerTraverser cursor(graph, start_kmer, node_filters);
-    std::string contig = start_kmer.get_string_rep(_ksize);
+    contig = start_kmer.get_string_rep(_ksize);
     char next_base;
     std::string kmer = start_kmer;
     std::string contig = kmer;

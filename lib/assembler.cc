@@ -258,7 +258,7 @@ std::string LinearAssembler::assemble(const Kmer seed_kmer,
 
 
 Kmer LinearAssembler::assemble_left(std::string& contig,
-                                    AssemblerTraverser<RIGHT>& cursor)
+                                    AssemblerTraverser<LEFT`>& cursor)
     const
 {
     contig = start_kmer.get_string_rep(_ksize);
@@ -291,6 +291,7 @@ Kmer LinearAssembler::assemble_left(std::string& contig,
 
 
 Kmer LinearAssembler::assemble_right(std::string& contig,
+                                     AssemblerTraverser<RIGHT>& cursor)
                                      AssemblerTraverser<LEFT>& cursor)
 std::string LinearAssembler::assemble_right(const Kmer start_kmer,
                                        std::list<KmerFilter>& node_filters)
@@ -408,6 +409,9 @@ const
         contig += next_base;
         found++;
     }
+
+    return cursor.get_cursor();
+}
 #if DEBUG_ASSEMBLY
     std::cout << "## assemble_linear_right[end] found " << found << std::endl;
 #endif

@@ -40,9 +40,12 @@ Contact: khmer-project@idyll.org
 #include <functional>
 
 #include "khmer.hh"
+
 #include "kmer_hash.hh"
+#include "hashtable.hh"
 #include "labelhash.hh"
 
+#define DEBUG_FILTERS 0
 
 namespace khmer
 {
@@ -50,17 +53,61 @@ namespace khmer
 class Hashtable;
 class LabelHash;
 
+// A function which takes a Kmer and returns true if it
+// is to be filtered / ignored
+typedef std::function<bool (Kmer&)> KmerFilter;
+typedef std::list<KmerFilter> KmerFilterList;
 
 bool apply_kmer_filters(const Kmer& node, const KmerFilterList& filters);
 
+inline bool apply_kmer_filters(Kmer& node, std::list<KmerFilter>& filters)
+{
+    if (!filters.size()) {
+        return false;
+    }
 KmerFilter get_label_filter(const Label label, const LabelHash * lh);
 
+    for(auto filter : filters) {
+        if (filter(node)) {
+            return true;
+        }
+    }
 KmerFilter get_simple_label_intersect_filter(const LabelSet& src_labels,
         const LabelHash * lh,
         const unsigned int min_cov = 5);
 
+    return false;
+}
 KmerFilter get_stop_bf_filter(const Hashtable * stop_bf);
 
+
+inline KmerFilter get_label_filter(const Label label, const LabelHash * lh)
+{
+    KmerFilter filter = [=] (Kmer& node) {
+        LabelSet ls;
+        lh->get_tag_labels(node, ls);
+        return !set_contains(ls, label);
+    };
+    return filter;
+}
+
+
+inline KmerFilter get_stop_bf_filter(const Hashtable * stop_bf)
+{
+    KmerFilter filter = [=] (Kmer& n) {
+        return stop_bf->get_count(n);
+    };
+    return filter;
+}
+
+
+inline KmerFilter get_visited_filter(const SeenSet * visited)
+{
+    KmerFilter filter = [=] (Kmer& node) {
+        return set_contains(*visited, node);
+    };
+    return filter;
+}
 KmerFilter get_visited_filter(const SeenSet * visited);
 
 

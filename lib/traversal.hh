@@ -247,6 +247,8 @@ template <bool direction>
 class AssemblerTraverser: public NodeCursor<direction>
 {
 
+    Kmer get_left(const Kmer& node, const char ch) const;
+    Kmer get_right(const Kmer& node, const char ch) const;
 public:
     using NodeCursor<direction>::NodeCursor;
 
@@ -263,14 +265,14 @@ public:
     unsigned int traverse_left(Kmer& node,
                                KmerQueue &node_q,
                                std::function<bool (Kmer&)> filter=0,
-                               unsigned short max_neighbors=4);
+                               unsigned short max_neighbors=4) const;
     unsigned int traverse_right(Kmer& node,
                                 KmerQueue &node_q,
                                 std::function<bool (Kmer&)> filter=0,
-                                unsigned short max_neighbors=4);
+                                unsigned short max_neighbors=4) const;
     unsigned int traverse(Kmer& node,
                           KmerQueue &node_q,
-                          std::function<bool (Kmer&)> filter=0) {
+                          std::function<bool (Kmer&)> filter=0) const {
         unsigned int found;
         found = traverse_left(node, node_q, filter);
         found += traverse_right(node, node_q, filter);
@@ -293,6 +295,9 @@ public:
                              WordLength offset = 0) const;
 };
 
+    unsigned int degree_left(const Kmer& node) const;
+    unsigned int degree_right(const Kmer& node) const;
+    unsigned int degree(const Kmer& node) const;
 
 /**
  * @brief An AssemblerTraverser which does not traverse to Kmers it has already encountered.

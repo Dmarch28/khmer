@@ -64,6 +64,8 @@ NodeGatherer<direction>::NodeGatherer(const Hashtable * ht,
     rc_left_shift = _ksize * 2 - 2;
 }
 
+Kmer Traverser::get_left(const Kmer& node, const char ch)
+    const
 
 template <bool direction>
 NodeGatherer<direction>::NodeGatherer(const Hashgraph * ht) :
@@ -94,6 +96,8 @@ const
 }
 
 
+Kmer Traverser::get_right(const Kmer& node, const char ch)
+    const
 template<>
 Kmer NodeGatherer<RIGHT>::get_neighbor(const Kmer& node,
                                        const char ch)
@@ -112,6 +116,7 @@ unsigned int Traverser::traverse_left(Kmer& node,
                                       KmerQueue & node_q,
                                       std::function<bool (Kmer&)> filter,
                                       unsigned short max_neighbors)
+    const
 
 template<bool direction>
 unsigned int NodeGatherer<direction>::neighbors(const Kmer& node,
@@ -146,6 +151,7 @@ unsigned int Traverser::traverse_right(Kmer& node,
                                        KmerQueue & node_q,
                                        std::function<bool (Kmer&)> filter,
                                        unsigned short max_neighbors)
+    const
 
 template<bool direction>
 unsigned int NodeGatherer<direction>::degree(const Kmer& node)
@@ -243,6 +249,8 @@ void Traverser::push_filter(KmerFilter filter)
     right_gatherer.push_filter(filter);
 }
 
+unsigned int Traverser::degree_left(const Kmer& node)
+    const
 
 unsigned int Traverser::traverse(const Kmer& node,
                                  KmerQueue& node_q) const
@@ -267,6 +275,8 @@ unsigned int Traverser::traverse_left(const Kmer& node,
     return left_gatherer.neighbors(node, node_q);
 }
 
+unsigned int Traverser::degree_right(const Kmer& node)
+    const
 
 unsigned int Traverser::traverse_right(const Kmer& node,
                                        KmerQueue& node_q) const
@@ -373,6 +383,8 @@ NonLoopingAT<direction>::NonLoopingAT(const Hashgraph * ht,
     AssemblerTraverser<direction>::push_filter(get_visited_filter(visited));
 }
 
+unsigned int Traverser::degree(const Kmer& node)
+    const
 template<bool direction>
 char NonLoopingAT<direction>::next_symbol()
 {

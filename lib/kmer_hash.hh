@@ -260,6 +260,7 @@ public:
      *  @return A complete Kmer object.
      */
     Kmer build_kmer(HashIntoType kmer_u)
+        const
     const
     {
         HashIntoType kmer_f, kmer_r;
@@ -275,6 +276,7 @@ public:
      *  @return A complete Kmer object.
      */
     Kmer build_kmer(HashIntoType kmer_f, HashIntoType kmer_r)
+        const
     const
     {
         HashIntoType kmer_u = uniqify_rc(kmer_f, kmer_r);

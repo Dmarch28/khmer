@@ -40,9 +40,7 @@ Contact: khmer-project@idyll.org
 #include <functional>
 
 #include "khmer.hh"
-
 #include "kmer_hash.hh"
-#include "hashtable.hh"
 #include "labelhash.hh"
 
 #define DEBUG_FILTERS 0
@@ -53,13 +51,11 @@ namespace khmer
 class Hashtable;
 class LabelHash;
 
-// A function which takes a Kmer and returns true if it
-// is to be filtered / ignored
-typedef std::function<bool (Kmer&)> KmerFilter;
-typedef std::list<KmerFilter> KmerFilterList;
 
+bool apply_kmer_filters(Kmer& node, KmerFilterList& filters);
 bool apply_kmer_filters(const Kmer& node, const KmerFilterList& filters);
 
+KmerFilter get_label_filter(const Label label, const LabelHash * lh);
 inline bool apply_kmer_filters(Kmer& node, std::list<KmerFilter>& filters)
 {
     if (!filters.size()) {
@@ -67,6 +63,7 @@ inline bool apply_kmer_filters(Kmer& node, std::list<KmerFilter>& filters)
     }
 KmerFilter get_label_filter(const Label label, const LabelHash * lh);
 
+KmerFilter get_stop_bf_filter(const Hashtable * stop_bf);
     for(auto filter : filters) {
         if (filter(node)) {
             return true;
@@ -76,6 +73,7 @@ KmerFilter get_simple_label_intersect_filter(const LabelSet& src_labels,
         const LabelHash * lh,
         const unsigned int min_cov = 5);
 
+KmerFilter get_visited_filter(const SeenSet * visited);
     return false;
 }
 KmerFilter get_stop_bf_filter(const Hashtable * stop_bf);

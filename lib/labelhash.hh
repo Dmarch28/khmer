@@ -44,6 +44,7 @@ Contact: khmer-project@idyll.org
 #include <string>
 #include <utility>
 
+#include "hashtable.hh"
 #include "hashgraph.hh"
 #include "khmer.hh"
 #include "read_parsers.hh"
@@ -197,16 +198,6 @@ public:
     void label_across_high_degree_nodes(const char * sequence,
                                         SeenSet& high_degree_nodes,
                                         const Label label);
-
-    /*
-    std::vector<std::string> assemble_labeled_path(const Kmer seed_kmer) const;
-    void _assemble_labeled_right(const char * start_kmer,
-                                 std::vector<std::string>& paths,
-                                 SeenSet& visited) const;
-    std::string _assemble_linear_labels(const std::string kmer,
-                                        const Label label,
-                                        SeenSet& visited) const;
-    */
 };
 }
 

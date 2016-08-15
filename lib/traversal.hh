@@ -48,6 +48,15 @@ Contact: khmer-project@idyll.org
 namespace khmer
 {
 
+/*
+#ifndef LEFT
+#define LEFT 0
+#endif
+#ifndef RIGHT
+#define RIGHT 1
+#endif
+*/
+
 #ifndef LEFT
 #define LEFT 0
 #endif
@@ -56,6 +65,7 @@ namespace khmer
 #endif
 
 class Hashtable;
+class LabelHash;
 class Hashgraph;
 class LabelHash;
 
@@ -264,15 +274,15 @@ public:
 
     unsigned int traverse_left(Kmer& node,
                                KmerQueue &node_q,
-                               std::function<bool (Kmer&)> filter=0,
+                               KmerFilter filter=0,
                                unsigned short max_neighbors=4) const;
     unsigned int traverse_right(Kmer& node,
                                 KmerQueue &node_q,
-                                std::function<bool (Kmer&)> filter=0,
+                                KmerFilter filter=0,
                                 unsigned short max_neighbors=4) const;
     unsigned int traverse(Kmer& node,
                           KmerQueue &node_q,
-                          std::function<bool (Kmer&)> filter=0) const {
+                          KmerFilter filter=0) const {
         unsigned int found;
         found = traverse_left(node, node_q, filter);
         found += traverse_right(node, node_q, filter);
@@ -321,6 +331,53 @@ public:
                           KmerFilterList filters,
                           SeenSet * visited);
     virtual char next_symbol();
+};
+
+
+template<bool direction>
+class AssemblerTraverser: public Traverser
+{
+
+protected:
+
+    KmerFilterList filters;
+
+private:
+
+    Kmer get_neighbor(Kmer& node, const char symbol);
+
+public:
+
+    Kmer cursor;
+
+    explicit AssemblerTraverser(const Hashtable * ht,
+                             Kmer start_kmer,
+                             KmerFilterList filters);
+
+    char next_symbol();
+    bool set_cursor(Kmer& node);
+    void push_filter(KmerFilter filter);
+    KmerFilter pop_filter();
+    unsigned int cursor_degree() const;
+
+    std::string join_contigs(std::string& contig_a, std::string& contig_b) const;
+};
+
+
+template<bool direction>
+class NonLoopingAT: public AssemblerTraverser<direction>
+{
+protected:
+
+    const SeenSet * visited;
+
+public:
+
+    explicit NonLoopingAT(const Hashtable * ht,
+                          Kmer start_kmer,
+                          KmerFilterList filters,
+                          const SeenSet * visited);
+    char next_symbol();
 };
 
 }

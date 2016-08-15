@@ -52,6 +52,7 @@ using namespace khmer;
 
 using namespace std;
 
+namespace khmer {
 
 template<bool direction>
 AssemblerTraverser<direction>::AssemblerTraverser(const Hashtable * ht,
@@ -948,5 +949,7 @@ const
 }
 
 */
+
+}
 
 }

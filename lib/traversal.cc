@@ -38,6 +38,7 @@ Contact: khmer-project@idyll.org
 #include "hashtable.hh"
 #include "traversal.hh"
 #include "symbols.hh"
+#include "kmer_hash.hh"
 #include "alphabets.hh"
 #include "kmer_hash.hh"
 
@@ -523,12 +524,19 @@ NonLoopingAT<direction>::NonLoopingAT(const Hashtable * ht,
 template<bool direction>
 char NonLoopingAT<direction>::next_symbol()
 {
-    visited->insert(AssemblerTraverser<direction>::cursor);
+    visited->insert(this->cursor);
     #if DEBUG
     std::cout << "next_symbol; visited " << visited->size() << std::endl;
     #endif
     return AssemblerTraverser<direction>::next_symbol();
 }
+
+
+template class AssemblerTraverser<RIGHT>;
+template class AssemblerTraverser<LEFT>;
+template class NonLoopingAT<RIGHT>;
+template class NonLoopingAT<LEFT>;
+
 
 } // namespace khmer
 

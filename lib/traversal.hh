@@ -369,14 +369,14 @@ class NonLoopingAT: public AssemblerTraverser<direction>
 {
 protected:
 
-    const SeenSet * visited;
+    SeenSet * visited;
 
 public:
 
     explicit NonLoopingAT(const Hashtable * ht,
                           Kmer start_kmer,
                           KmerFilterList filters,
-                          const SeenSet * visited);
+                          SeenSet * visited);
     char next_symbol();
 };
 

@@ -233,6 +233,10 @@ LIBKHMER_OBJS= \
 	subset.o \
 	kmer_filters.o \
 	assembler.o \
+	symbols.o \
+	murmur3.o
+	kmer_filters.o \
+	assembler.o \
 	alphabets.o \
 	murmur3.o \
 	storage.o
@@ -262,6 +266,9 @@ KHMER_HEADERS= \
 	read_aligner.hh \
 	read_parsers.hh \
 	subset.hh \
+	kmer_filters.hh \
+	assembler.hh \
+	symbols.hh
 	kmer_filters.hh \
 	assembler.hh \
 	alphabets.hh \

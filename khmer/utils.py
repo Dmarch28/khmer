@@ -190,6 +190,8 @@ def broken_paired_reader(screed_iter, min_length=None,
             continue
 
     for record in screed_iter:
+        record.sequence = record.sequence.upper()
+
         # ignore short reads
         if min_length and len(record.sequence) < min_length:
             record = None

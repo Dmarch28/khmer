@@ -1,6 +1,6 @@
 # This file is part of khmer, https://github.com/dib-lab/khmer/, and is
 # Copyright (C) 2010-2015, Michigan State University.
-# Copyright (C) 2015, The Regents of the University of California.
+# Copyright (C) 2015-2016, The Regents of the University of California.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -412,6 +412,7 @@ def gather(stream, **kw):
 
     return x, num, m
 
+
 class Test_BrokenPairedReader(object):
     stream = [screed.Record(name='seq1/1', sequence='A' * 5),
               screed.Record(name='seq1/2', sequence='A' * 4),
@@ -515,7 +516,7 @@ def test_BrokenPairedReader_OnPairs_3():
 
 
 def test_BrokenPairedReader_OnPairs_4():
-    stream = [FakeFastaRead(name='seq1/1', sequence='A' * 3), # too short
+    stream = [FakeFastaRead(name='seq1/1', sequence='A' * 3),  # too short
               FakeFastaRead(name='seq1/2', sequence='A' * 4),
               FakeFastaRead(name='seq3/1', sequence='A' * 4),
               FakeFastaRead(name='seq3/2', sequence='A' * 5)]

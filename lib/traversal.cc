@@ -44,7 +44,8 @@ Contact: khmer-project@idyll.org
 
 using namespace std;
 
-namespace khmer {
+namespace khmer
+{
 
 
 Traverser::Traverser(const Hashtable * ht) :
@@ -70,6 +71,7 @@ NodeGatherer<direction>::NodeGatherer(const Hashtable * ht,
 }
 
 Kmer Traverser::get_left(const Kmer& node, const char ch)
+const
     const
 
 template <bool direction>
@@ -102,6 +104,7 @@ const
 
 
 Kmer Traverser::get_right(const Kmer& node, const char ch)
+const
     const
 template<>
 Kmer NodeGatherer<RIGHT>::get_neighbor(const Kmer& node,
@@ -121,6 +124,7 @@ unsigned int Traverser::traverse_left(Kmer& node,
                                       KmerQueue & node_q,
                                       std::function<bool (Kmer&)> filter,
                                       unsigned short max_neighbors)
+const
     const
 
 template<bool direction>
@@ -156,6 +160,7 @@ unsigned int Traverser::traverse_right(Kmer& node,
                                        KmerQueue & node_q,
                                        std::function<bool (Kmer&)> filter,
                                        unsigned short max_neighbors)
+const
     const
 
 template<bool direction>
@@ -255,6 +260,7 @@ void Traverser::push_filter(KmerFilter filter)
 }
 
 unsigned int Traverser::degree_left(const Kmer& node)
+const
     const
 
 unsigned int Traverser::traverse(const Kmer& node,
@@ -281,6 +287,7 @@ unsigned int Traverser::traverse_left(const Kmer& node,
 }
 
 unsigned int Traverser::degree_right(const Kmer& node)
+const
     const
 
 unsigned int Traverser::traverse_right(const Kmer& node,
@@ -389,6 +396,7 @@ NonLoopingAT<direction>::NonLoopingAT(const Hashgraph * ht,
 }
 
 unsigned int Traverser::degree(const Kmer& node)
+const
     const
 template<bool direction>
 char NonLoopingAT<direction>::next_symbol()
@@ -404,8 +412,8 @@ char NonLoopingAT<direction>::next_symbol()
 
 template<bool direction>
 AssemblerTraverser<direction>::AssemblerTraverser(const Hashtable * ht,
-                                 Kmer start_kmer,
-                                 KmerFilterList filters) :
+        Kmer start_kmer,
+        KmerFilterList filters) :
     Traverser(ht), filters(filters)
 {
     cursor = start_kmer;
@@ -413,42 +421,44 @@ AssemblerTraverser<direction>::AssemblerTraverser(const Hashtable * ht,
 
 template<>
 Kmer AssemblerTraverser<LEFT>::get_neighbor(Kmer& node,
-                                            const char symbol) {
+        const char symbol)
+{
     return get_left(node, symbol);
 }
 
 template<>
 Kmer AssemblerTraverser<RIGHT>::get_neighbor(Kmer& node,
-                                             const char symbol) {
+        const char symbol)
+{
     return get_right(node, symbol);
 }
 
 template<>
 unsigned int AssemblerTraverser<LEFT>::cursor_degree()
-    const
+const
 {
     return degree_left(cursor);
 }
 
 template<>
 unsigned int AssemblerTraverser<RIGHT>::cursor_degree()
-    const
+const
 {
     return degree_right(cursor);
 }
 
 template <>
 std::string AssemblerTraverser<RIGHT>::join_contigs(std::string& contig_a,
-                                                           std::string& contig_b)
-    const
+        std::string& contig_b)
+const
 {
     return contig_a + contig_b.substr(_ksize);
 }
 
 template <>
 std::string AssemblerTraverser<LEFT>::join_contigs(std::string& contig_a,
-                                                         std::string& contig_b)
-    const
+        std::string& contig_b)
+const
 {
     return contig_b + contig_a.substr(_ksize);
 }
@@ -466,7 +476,7 @@ char AssemblerTraverser<direction>::next_symbol()
         neighbor = get_neighbor(cursor, *symbol_ptr);
 
         if (graph->get_count(neighbor) &&
-            !apply_kmer_filters(neighbor, filters)) {
+                !apply_kmer_filters(neighbor, filters)) {
 
             found++;
             if (found > 1) {

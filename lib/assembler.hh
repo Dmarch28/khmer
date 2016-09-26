@@ -228,10 +228,10 @@ public:
                          const Hashtable * stop_bf = 0) const;
 
     std::string assemble_right(const Kmer seed_kmer,
-                        const Hashtable * stop_bf = 0) const;
+                               const Hashtable * stop_bf = 0) const;
 
     std::string assemble_left(const Kmer seed_kmer,
-                        const Hashtable * stop_bf = 0) const;
+                              const Hashtable * stop_bf = 0) const;
 
     template <bool direction>
     std::string _assemble_directed(AssemblerTraverser<direction>& cursor) const;
@@ -240,10 +240,12 @@ public:
 // The explicit specializations need to be declared in the same translation unit
 // as their unspecialized declaration.
 template<>
-std::string LinearAssembler::_assemble_directed<LEFT>(AssemblerTraverser<LEFT>& cursor) const;
+std::string LinearAssembler::_assemble_directed<LEFT>(AssemblerTraverser<LEFT>&
+        cursor) const;
 
 template<>
-std::string LinearAssembler::_assemble_directed<RIGHT>(AssemblerTraverser<RIGHT>& cursor) const;
+std::string LinearAssembler::_assemble_directed<RIGHT>
+(AssemblerTraverser<RIGHT>& cursor) const;
 
 
 /**
@@ -275,7 +277,7 @@ public:
     explicit LabeledLinearAssembler(const LabelHash * lh);
 
     StringVector assemble(const Kmer seed_kmer,
-                         const Hashtable * stop_bf=0) const;
+                          const Hashtable * stop_bf=0) const;
 
     template <bool direction>
     void _assemble_directed(NonLoopingAT<direction>& start_cursor,

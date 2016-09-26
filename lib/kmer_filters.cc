@@ -41,7 +41,8 @@ Contact: khmer-project@idyll.org
 #include "labelhash.hh"
 #include "kmer_filters.hh"
 
-namespace khmer {
+namespace khmer
+{
 
 bool apply_kmer_filters(Kmer& node, std::list<KmerFilter>& filters)
 namespace khmer
@@ -69,12 +70,12 @@ KmerFilter get_label_filter(const Label label, const LabelHash * lh)
     KmerFilter filter = [=] (const Kmer& node) {
         LabelSet ls;
         lh->get_tag_labels(node, ls);
-        #if DEBUG_FILTERS
+#if DEBUG_FILTERS
         if (ls.size() == 0) {
             // this should never happen
             std::cout << "no labels to jump to!" << std::endl;
         }
-        #endif
+#endif
 
         return !set_contains(ls, label);
 
@@ -136,6 +137,7 @@ KmerFilter get_visited_filter(const SeenSet * visited)
 {
     KmerFilter filter = [=] (Kmer& node) {
 #if DEBUG_FILTERS
+#if DEBUG_FILTERS
     std::cout << "Create new visited filter with " << visited <<
               " containing " << visited->size() << " nodes" << std::endl;
 #endif
@@ -144,6 +146,7 @@ KmerFilter get_visited_filter(const SeenSet * visited)
         if(set_contains(*visited, node)) {
             std::cout << "loop!" << std::endl;
         }
+#endif
         std::cout << "Check visited filter (" << visited->size()
                   << " elems)" << std::endl;
         #endif

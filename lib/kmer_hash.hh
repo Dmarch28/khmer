@@ -197,13 +197,14 @@ public:
     std::string repr(WordLength K) const
     {
         std::string s = "<Us=" + _revhash(kmer_u, K) + ", Fs=" +
-            _revhash(kmer_f, K) + ", Rs=" + _revhash(kmer_r, K) +
-            ", U=" + std::to_string(kmer_u) + ", F=" + std::to_string(kmer_f) +
-            ", R=" + std::to_string(kmer_r) + ">";
+                        _revhash(kmer_f, K) + ", Rs=" + _revhash(kmer_r, K) +
+                        ", U=" + std::to_string(kmer_u) + ", F=" + std::to_string(kmer_f) +
+                        ", R=" + std::to_string(kmer_r) + ">";
         return s;
     }
 
-    bool is_forward() const {
+    bool is_forward() const
+    {
         return kmer_f == kmer_u;
     }
     char get_last_base() const
@@ -260,6 +261,7 @@ public:
      *  @return A complete Kmer object.
      */
     Kmer build_kmer(HashIntoType kmer_u)
+    const
         const
     const
     {
@@ -276,6 +278,7 @@ public:
      *  @return A complete Kmer object.
      */
     Kmer build_kmer(HashIntoType kmer_f, HashIntoType kmer_r)
+    const
         const
     const
     {

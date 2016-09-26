@@ -280,6 +280,9 @@ public:
                                 unsigned short max_neighbors=4) const;
     unsigned int traverse(Kmer& node,
                           KmerQueue &node_q,
+                          KmerFilter filter=0) const
+    {
+
                           KmerFilter filter=0) const {
         unsigned int found;
         found = traverse_left(node, node_q, filter);
@@ -349,8 +352,8 @@ public:
     Kmer cursor;
 
     explicit AssemblerTraverser(const Hashtable * ht,
-                             Kmer start_kmer,
-                             KmerFilterList filters);
+                                Kmer start_kmer,
+                                KmerFilterList filters);
 
     char next_symbol();
     bool set_cursor(Kmer& node);

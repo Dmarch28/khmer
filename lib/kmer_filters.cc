@@ -44,6 +44,7 @@ Contact: khmer-project@idyll.org
 namespace khmer
 {
 
+bool apply_kmer_filters(const Kmer& node, const std::list<KmerFilter>& filters)
 bool apply_kmer_filters(Kmer& node, std::list<KmerFilter>& filters)
 namespace khmer
 {
@@ -66,6 +67,7 @@ bool apply_kmer_filters(const Kmer& node, const std::list<KmerFilter>& filters)
 
 KmerFilter get_label_filter(const Label label, const LabelHash * lh)
 {
+    KmerFilter filter = [=] (const Kmer& node) {
     KmerFilter filter = [=] (Kmer& node) {
     KmerFilter filter = [=] (const Kmer& node) {
         LabelSet ls;
@@ -123,8 +125,35 @@ KmerFilter get_simple_label_intersect_filter(const LabelSet& src_labels,
 }
 
 
+KmerFilter get_label_intersect_filter(const LabelSet * src_labels, 
+                                      const LabelHash * lh)
+{
+    KmerFilter filter = [=] (const Kmer& node) {
+        LabelSet dst_labels;
+        lh->get_tag_labels(node, dst_labels);
+        if (dst_labels.size() == 1) {
+            // probably a tip
+            return true;
+        } else {
+            LabelSet intersect;
+            std::set_intersection(src_labels->begin(), src_labels->end(),
+                                  dst_labels.begin(), dst_labels.end(),
+                                  std::inserter(intersect, intersect.begin()));
+            if (intersect.size() > 0) {
+                return false;
+            } else {
+                return true;
+            }
+        }
+    };
+
+    return filter;
+}
+                                      
+
 KmerFilter get_stop_bf_filter(const Hashtable * stop_bf)
 {
+    KmerFilter filter = [=] (const Kmer& n) {
     KmerFilter filter = [=] (Kmer& n) {
     KmerFilter filter = [=] (const Kmer& n) {
         return stop_bf->get_count(n);
@@ -135,7 +164,7 @@ KmerFilter get_stop_bf_filter(const Hashtable * stop_bf)
 
 KmerFilter get_visited_filter(const SeenSet * visited)
 {
-    KmerFilter filter = [=] (Kmer& node) {
+    KmerFilter filter = [=] (const Kmer& node) {
 #if DEBUG_FILTERS
 #if DEBUG_FILTERS
     std::cout << "Create new visited filter with " << visited <<

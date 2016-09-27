@@ -442,6 +442,46 @@ Hashtable::abundance_distribution(
                 }
             }
 
+//////////////////////////////////////////////////////////////////////
+// graph stuff
+
+void Hashtable::calc_connected_graph_size(Kmer start,
+        unsigned long long& count,
+        KmerSet& keeper,
+        const unsigned long long threshold,
+        bool break_on_circum)
+const
+{
+    const BoundedCounterType val = get_count(start);
+
+    if (val == 0) {
+        return;
+    }
+
+    KmerQueue node_q;
+    node_q.push(start);
+
+    // Avoid high-circumference k-mers
+    Traverser traverser(this);
+
+    KmerFilter filter = [&] (const Kmer& n) {
+        return break_on_circum && traverser.degree(n) > 4;
+    };
+    traverser.push_filter(filter);
+
+    while(!node_q.empty()) {
+        Kmer node = node_q.front();
+        node_q.pop();
+
+        // have we already seen me? don't count; exit.
+        if (set_contains(keeper, node)) {
+            continue;
+        }
+
+        // is this in stop_tags?
+        if (set_contains(stop_tags, node)) {
+            continue;
+        }
             name.clear();
             seq.clear();
         }
@@ -450,6 +490,19 @@ Hashtable::abundance_distribution(
 }
 
 
+        count += 1;
+
+        // are we past the threshold? truncate search.
+        if (threshold && count >= threshold) {
+            return;
+        }
+
+        // otherwise, explore in all directions.
+        traverser.traverse(node, node_q);
+    }
+}
+
+unsigned int Hashtable::kmer_degree(HashIntoType kmer_f, HashIntoType kmer_r)
 uint64_t * Hashtable::abundance_distribution(
     std::string filename,
     Hashtable *  tracking)
@@ -479,14 +532,75 @@ const
     }
     kmer = kmers.next();
 
+unsigned int Hashtable::traverse_from_kmer(Kmer start,
+        unsigned int radius,
+        KmerSet &keeper,
+        unsigned int max_count)
+const
+{
+
+    KmerQueue node_q;
+    std::queue<unsigned int> breadth_q;
+    unsigned int cur_breadth = 0;
+    unsigned int total = 0;
+    unsigned int nfound = 0;
+
+    KmerFilter filter = [&] (const Kmer& n) {
+        return set_contains(keeper, n);
+    };
+    Traverser traverser(this, filter);
+
+    node_q.push(start);
+    breadth_q.push(0);
+
+    while(!node_q.empty()) {
+        Kmer node = node_q.front();
+        node_q.pop();
+
+        unsigned int breadth = breadth_q.front();
+        breadth_q.pop();
+
+        if (breadth > radius) {
+            break;
+        }
+
+        if (max_count && total > max_count) {
+            break;
+        }
+
+        if (set_contains(keeper, node)) {
+            continue;
+        }
+
+        if (set_contains(stop_tags, node)) {
+            continue;
+        }
+
+        // keep track of seen kmers
+        keeper.insert(node);
+        total++;
+
+        if (!(breadth >= cur_breadth)) { // keep track of watermark, for debugging.
+            throw khmer_exception();
+        }
+        if (breadth > cur_breadth) {
+            cur_breadth = breadth;
+        }
     if (kmers.done() || get_count(kmer) < min_abund) {
         return 0;
     }
 
+        nfound = traverser.traverse_right(node, node_q);
+        for (unsigned int i = 0; i<nfound; ++i) {
+            breadth_q.push(breadth + 1);
+        }
     unsigned long i = _ksize;
     while (!kmers.done()) {
         kmer = kmers.next();
 
+        nfound = traverser.traverse_left(node, node_q);
+        for (unsigned int i = 0; i<nfound; ++i) {
+            breadth_q.push(breadth + 1);
         if (get_count(kmer) < min_abund) {
             return i;
         }

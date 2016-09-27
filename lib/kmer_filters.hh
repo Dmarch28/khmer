@@ -52,6 +52,7 @@ class Hashtable;
 class LabelHash;
 
 
+bool apply_kmer_filters(const Kmer& node, const KmerFilterList& filters);
 bool apply_kmer_filters(Kmer& node, KmerFilterList& filters);
 bool apply_kmer_filters(const Kmer& node, const KmerFilterList& filters);
 
@@ -72,6 +73,9 @@ KmerFilter get_stop_bf_filter(const Hashtable * stop_bf);
 KmerFilter get_simple_label_intersect_filter(const LabelSet& src_labels,
         const LabelHash * lh,
         const unsigned int min_cov = 5);
+
+KmerFilter get_label_intersect_filter(const LabelSet * src_labels, 
+                                      const LabelHash * lh);
 
 KmerFilter get_visited_filter(const SeenSet * visited);
     return false;

@@ -47,7 +47,14 @@ using namespace std;
 namespace khmer
 {
 
+/******************************************
+ * NodeGatherer
+ ******************************************/
 
+template <bool direction>
+NodeGatherer<direction>::NodeGatherer(const Hashtable * ht,
+                                KmerFilterList filters) :
+    KmerFactory(ht->ksize()), graph(ht), filters(filters)
 Traverser::Traverser(const Hashtable * ht) :
 namespace khmer
 Traverser::Traverser(const Hashgraph * ht) :
@@ -70,7 +77,25 @@ NodeGatherer<direction>::NodeGatherer(const Hashtable * ht,
     rc_left_shift = _ksize * 2 - 2;
 }
 
-Kmer Traverser::get_left(const Kmer& node, const char ch)
+
+template <bool direction>
+NodeGatherer<direction>::NodeGatherer(const Hashtable * ht) : 
+    NodeGatherer(ht, KmerFilterList())
+{
+}
+
+
+template <bool direction>
+NodeGatherer<direction>::NodeGatherer(const Hashtable * ht, 
+                                      KmerFilter filter) : 
+    NodeGatherer(ht, KmerFilterList())
+{
+    filters.push_back(filter);
+}
+
+
+template<>
+Kmer NodeGatherer<LEFT>::get_neighbor(const Kmer& node, const char ch)
 const
     const
 
@@ -103,7 +128,9 @@ const
 }
 
 
-Kmer Traverser::get_right(const Kmer& node, const char ch)
+template<>
+Kmer NodeGatherer<RIGHT>::get_neighbor(const Kmer& node,
+                                       const char ch)
 const
     const
 template<>
@@ -120,10 +147,9 @@ const
 }
 
 
-unsigned int Traverser::traverse_left(Kmer& node,
-                                      KmerQueue & node_q,
-                                      std::function<bool (Kmer&)> filter,
-                                      unsigned short max_neighbors)
+template<bool direction>
+unsigned int NodeGatherer<direction>::neighbors(const Kmer& node,
+                                                KmerQueue & node_q)
 const
     const
 
@@ -136,6 +162,9 @@ const
     char * base = alphabets::DNA_SIMPLE;
 
     while(*base != '\0') {
+        Kmer neighbor = get_neighbor(node, *base);
+        if (graph->get_count(neighbor) && !(apply_kmer_filters(neighbor, filters))) {
+            node_q.push(neighbor);
         Kmer prev_node = get_left(node, *base);
         if (graph->get_count(prev_node) && (!filter || filter(prev_node))) {
             node_q.push(prev_node);
@@ -146,9 +175,6 @@ const
         if (graph->get_count(neighbor) && !(apply_kmer_filters(neighbor, filters))) {
             node_q.push(neighbor);
             ++found;
-            if (found > max_neighbors) {
-                return found;
-            }
         }
         ++base;
     }
@@ -156,10 +182,9 @@ const
     return found;
 }
 
-unsigned int Traverser::traverse_right(Kmer& node,
-                                       KmerQueue & node_q,
-                                       std::function<bool (Kmer&)> filter,
-                                       unsigned short max_neighbors)
+
+template<bool direction>
+unsigned int NodeGatherer<direction>::degree(const Kmer& node)
 const
     const
 
@@ -167,11 +192,14 @@ template<bool direction>
 unsigned int NodeGatherer<direction>::degree(const Kmer& node)
 const
 {
-    unsigned int found = 0;
+    unsigned int degree = 0;
     char * base = alphabets::DNA_SIMPLE;
     unsigned int degree = 0;
 
     while(*base != '\0') {
+        if (graph->get_count(get_neighbor(node, *base))) {
+            ++degree;
+        }
         Kmer next_node = get_right(node, *base);
         if (graph->get_count(next_node) && (!filter || filter(next_node))) {
             node_q.push(next_node);
@@ -186,6 +214,7 @@ const
         ++base;
     }
 
+    return degree;
     return degree;
 }
 
@@ -259,6 +288,15 @@ void Traverser::push_filter(KmerFilter filter)
     right_gatherer.push_filter(filter);
 }
 
+/******************************************
+ * NodeCursor
+ ******************************************/
+
+template<bool direction>
+NodeCursor<direction>::NodeCursor(const Hashtable * ht,
+                                Kmer start_kmer,
+                                KmerFilterList filters) :
+    NodeGatherer<direction>(ht, filters)
 unsigned int Traverser::degree_left(const Kmer& node)
 const
     const
@@ -266,26 +304,60 @@ const
 unsigned int Traverser::traverse(const Kmer& node,
                                  KmerQueue& node_q) const
 {
+    cursor = start_kmer;
+}
     unsigned int degree = 0;
     char * base = alphabets::DNA_SIMPLE;
     return left_gatherer.neighbors(node, node_q) +
            right_gatherer.neighbors(node, node_q);
 }
 
-    while(*base != '\0') {
-        Kmer prev_node = get_left(node, *base);
-        if (graph->get_count(prev_node)) {
-            ++degree;
-        }
-        ++base;
-    }
 
+template<bool direction>
+NodeCursor<direction>::NodeCursor(const Hashtable * ht,
+                                Kmer start_kmer) :
+    NodeCursor<direction>(ht, start_kmer, KmerFilterList())
+{
+}
+
+
+template<bool direction>
+NodeCursor<direction>::NodeCursor(const Hashtable * ht,
+                                  Kmer start_kmer,
+                                  KmerFilter filter) :
+    NodeCursor<direction>(ht, start_kmer)
+{
+    push_filter(filter);
+}
+
+
+template<bool direction>
+bool NodeCursor<direction>::set_cursor(Kmer& node)
+{
+    if(!apply_kmer_filters(node, this->filters)) {
+        cursor = node;
+        return true;
+    }
+    return false;
+}
 unsigned int Traverser::traverse_left(const Kmer& node,
                                       KmerQueue& node_q) const
 {
     return left_gatherer.neighbors(node, node_q);
 }
 
+
+
+/******************************************
+ * Traverser
+ ******************************************/
+
+Traverser::Traverser(const Hashtable * ht,
+                     KmerFilterList filters) :
+    KmerFactory(ht->ksize()), 
+    graph(ht), 
+    left_gatherer(ht, filters),
+    right_gatherer(ht, filters)
 unsigned int Traverser::degree_right(const Kmer& node)
 const
     const
@@ -305,6 +377,7 @@ unsigned int Traverser::degree(const Kmer& node) const
 
 unsigned int Traverser::degree_left(const Kmer& node) const
 {
+}
     return left_gatherer.degree(node);
 }
 
@@ -343,6 +416,14 @@ char AssemblerTraverser<direction>::next_symbol()
     unsigned int degree = 0;
     char * base = alphabets::DNA_SIMPLE;
 
+Traverser::Traverser(const Hashtable * ht, 
+                     KmerFilter filter) : 
+    KmerFactory(ht->ksize()), 
+    graph(ht), 
+    left_gatherer(ht, filter),
+    right_gatherer(ht, filter)
+{
+}
     while(*base != '\0') {
         Kmer next_node = get_right(node, *base);
         if (graph->get_count(next_node)) {
@@ -385,6 +466,11 @@ char AssemblerTraverser<direction>::next_symbol()
  * NonLoopingAT
  ******************************************/
 
+
+void Traverser::push_filter(KmerFilter filter)
+{
+    left_gatherer.push_filter(filter);
+    right_gatherer.push_filter(filter);
 template<bool direction>
 NonLoopingAT<direction>::NonLoopingAT(const Hashgraph * ht,
                                       Kmer start_kmer,
@@ -395,12 +481,17 @@ NonLoopingAT<direction>::NonLoopingAT(const Hashgraph * ht,
     AssemblerTraverser<direction>::push_filter(get_visited_filter(visited));
 }
 
+
+unsigned int Traverser::traverse(const Kmer& node,
+                                 KmerQueue& node_q) const
 unsigned int Traverser::degree(const Kmer& node)
 const
     const
 template<bool direction>
 char NonLoopingAT<direction>::next_symbol()
 {
+    return left_gatherer.neighbors(node, node_q) + 
+           right_gatherer.neighbors(node, node_q);
 #if DEBUG_TRAVERSAL
     std::cout << "Insert cursor to visited filter" << std::endl;
 #endif
@@ -409,43 +500,51 @@ char NonLoopingAT<direction>::next_symbol()
 }
 
 
+unsigned int Traverser::traverse_left(const Kmer& node,
+                                 KmerQueue& node_q) const
+{
+    return left_gatherer.neighbors(node, node_q);
+}
+
+
+unsigned int Traverser::traverse_right(const Kmer& node,
+                                 KmerQueue& node_q) const
+{
+    return right_gatherer.neighbors(node, node_q);
+}
+
+
+unsigned int Traverser::degree(const Kmer& node) const
+{
+    return left_gatherer.degree(node) + right_gatherer.degree(node);
+}
+
+
+unsigned int Traverser::degree_left(const Kmer& node) const
+{
+    return left_gatherer.degree(node);
+}
+
+
+unsigned int Traverser::degree_right(const Kmer& node) const
+{
+    return right_gatherer.degree(node);
+}
+
+
+
+
+/******************************************
+ * AssemblerTraverser
+ ******************************************/
 
 template<bool direction>
-AssemblerTraverser<direction>::AssemblerTraverser(const Hashtable * ht,
-        Kmer start_kmer,
-        KmerFilterList filters) :
-    Traverser(ht), filters(filters)
-{
-    cursor = start_kmer;
-}
-
-template<>
-Kmer AssemblerTraverser<LEFT>::get_neighbor(Kmer& node,
-        const char symbol)
-{
-    return get_left(node, symbol);
-}
-
-template<>
-Kmer AssemblerTraverser<RIGHT>::get_neighbor(Kmer& node,
-        const char symbol)
-{
-    return get_right(node, symbol);
-}
-
-template<>
-unsigned int AssemblerTraverser<LEFT>::cursor_degree()
+unsigned int AssemblerTraverser<direction>::cursor_degree()
 const
 {
-    return degree_left(cursor);
+    return this->degree(this->cursor);
 }
 
-template<>
-unsigned int AssemblerTraverser<RIGHT>::cursor_degree()
-const
-{
-    return degree_right(cursor);
-}
 
 template <>
 std::string AssemblerTraverser<RIGHT>::join_contigs(std::string& contig_a,
@@ -473,10 +572,10 @@ char AssemblerTraverser<direction>::next_symbol()
     Kmer cursor_next;
 
     while(*symbol_ptr != '\0') {
-        neighbor = get_neighbor(cursor, *symbol_ptr);
+        neighbor = this->get_neighbor(this->cursor, *symbol_ptr);
 
-        if (graph->get_count(neighbor) &&
-                !apply_kmer_filters(neighbor, filters)) {
+        if (this->graph->get_count(neighbor) &&
+                !apply_kmer_filters(neighbor, this->filters)) {
 
             found++;
             if (found > 1) {
@@ -491,35 +590,14 @@ char AssemblerTraverser<direction>::next_symbol()
     if (!found) {
         return '\0';
     } else {
-        cursor = cursor_next;
+        this->cursor = cursor_next;
         return base;
     }
 }
 
-
-template<bool direction>
-bool AssemblerTraverser<direction>::set_cursor(Kmer& node)
-{
-    if(!apply_kmer_filters(node, filters)) {
-        cursor = node;
-        return true;
-    }
-    return false;
-}
-
-template<bool direction>
-void AssemblerTraverser<direction>::push_filter(KmerFilter filter)
-{
-    filters.push_back(filter);
-}
-
-template<bool direction>
-KmerFilter AssemblerTraverser<direction>::pop_filter()
-{
-    KmerFilter back = filters.back();
-    filters.pop_back();
-    return back;
-}
+/******************************************
+ * NonLoopingAT
+ ******************************************/
 
 template<bool direction>
 NonLoopingAT<direction>::NonLoopingAT(const Hashtable * ht,
@@ -538,6 +616,10 @@ char NonLoopingAT<direction>::next_symbol()
     return AssemblerTraverser<direction>::next_symbol();
 }
 
+template class NodeGatherer<LEFT>;
+template class NodeGatherer<RIGHT>;
+template class NodeCursor<LEFT>;
+template class NodeCursor<RIGHT>;
 
 template class AssemblerTraverser<RIGHT>;
 template class AssemblerTraverser<LEFT>;

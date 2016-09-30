@@ -240,12 +240,10 @@ public:
 // The explicit specializations need to be declared in the same translation unit
 // as their unspecialized declaration.
 template<>
-std::string LinearAssembler::_assemble_directed<LEFT>(AssemblerTraverser<LEFT>&
-        cursor) const;
+std::string LinearAssembler::_assemble_directed<LEFT>(AssemblerTraverser<LEFT> &cursor) const;
 
 template<>
-std::string LinearAssembler::_assemble_directed<RIGHT>
-(AssemblerTraverser<RIGHT>& cursor) const;
+std::string LinearAssembler::_assemble_directed<RIGHT>(AssemblerTraverser<RIGHT> &cursor) const;
 
 
 /**
@@ -264,7 +262,7 @@ std::string LinearAssembler::_assemble_directed<RIGHT>
  * Contact: camille.scott.w@gmail.com
  *
  */
-class LabeledLinearAssembler
+class NaiveLabeledAssembler
 {
     friend class Hashtable;
     const LinearAssembler * linear_asm;
@@ -274,7 +272,7 @@ class LabeledLinearAssembler
 
 public:
 
-    explicit LabeledLinearAssembler(const LabelHash * lh);
+    explicit NaiveLabeledAssembler(const LabelHash * lh);
 
     StringVector assemble(const Kmer seed_kmer,
                           const Hashtable * stop_bf=0) const;
@@ -303,6 +301,20 @@ public:
                             StringVector& paths) const;
 
 };
+
+
+class LabelIntersectAssembler: public NaiveLabeledAssembler
+{
+
+public:
+    using NaiveLabeledAssembler::NaiveLabeledAssembler;
+
+    template <bool direction>
+    void _assemble_directed(NonLoopingAT<direction>& start_cursor,
+                                    StringVector& paths) const;
+
+};
+
 
 }
 #endif

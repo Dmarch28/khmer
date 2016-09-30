@@ -43,7 +43,7 @@ Contact: khmer-project@idyll.org
 #include "kmer_hash.hh"
 #include "labelhash.hh"
 
-#define DEBUG_FILTERS 0
+#define DEBUG_FILTERS 1
 
 namespace khmer
 {
@@ -74,8 +74,9 @@ KmerFilter get_simple_label_intersect_filter(const LabelSet& src_labels,
         const LabelHash * lh,
         const unsigned int min_cov = 5);
 
-KmerFilter get_label_intersect_filter(const LabelSet * src_labels, 
-                                      const LabelHash * lh);
+KmerFilter get_simple_label_intersect_filter(const LabelSet& src_labels, 
+                                             const LabelHash * lh,
+                                             const unsigned int min_cov = 5);
 
 KmerFilter get_visited_filter(const SeenSet * visited);
     return false;

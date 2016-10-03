@@ -247,7 +247,7 @@ std::string LinearAssembler::_assemble_directed<RIGHT>(AssemblerTraverser<RIGHT>
 
 
 /**
- * \class LabeledLinearAssembler
+ * \class SimpleLabeledAssembler
  *
  * \brief Assemble linear paths using labels to span high degree nodes.
  *
@@ -262,7 +262,7 @@ std::string LinearAssembler::_assemble_directed<RIGHT>(AssemblerTraverser<RIGHT>
  * Contact: camille.scott.w@gmail.com
  *
  */
-class NaiveLabeledAssembler
+class SimpleLabeledAssembler
 {
     friend class Hashtable;
     const LinearAssembler * linear_asm;
@@ -272,7 +272,7 @@ class NaiveLabeledAssembler
 
 public:
 
-    explicit NaiveLabeledAssembler(const LabelHash * lh);
+    explicit SimpleLabeledAssembler(const LabelHash * lh);
 
     StringVector assemble(const Kmer seed_kmer,
                           const Hashtable * stop_bf=0) const;
@@ -301,20 +301,6 @@ public:
                             StringVector& paths) const;
 
 };
-
-
-class LabelIntersectAssembler: public NaiveLabeledAssembler
-{
-
-public:
-    using NaiveLabeledAssembler::NaiveLabeledAssembler;
-
-    template <bool direction>
-    void _assemble_directed(NonLoopingAT<direction>& start_cursor,
-                                    StringVector& paths) const;
-
-};
-
 
 }
 #endif

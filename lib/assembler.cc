@@ -403,6 +403,9 @@ std::string LinearAssembler::assemble_right(const Kmer seed_kmer,
     const
 {
     std::string contig = cursor.cursor.get_string_rep(_ksize);
+    if (!cursor.cursor.is_forward()) {
+        contig = _revcomp(contig);
+    }
     char next_base;
     std::string kmer = start_kmer;
     std::string contig = kmer;

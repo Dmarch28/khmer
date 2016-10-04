@@ -51,6 +51,10 @@ from . import khmer_tst_utils as utils
 import pytest
 import screed
 
+import pytest
+
+from . import khmer_tst_utils as utils
+
 
 def teardown():
     utils.cleanup()
@@ -78,15 +82,15 @@ def mutate_base(base):
         return random.choice('AT')
     else:
         assert False, 'bad base'
-
+    
 
 def mutate_sequence(sequence, N=1):
     sequence = list(sequence)
     positions = random.sample(range(len(sequence)), N)
-
+    
     for i in positions:
         sequence[i] = mutate_base(sequence[i])
-
+        
     return ''.join(sequence)
 
 
@@ -96,50 +100,9 @@ def mutate_position(sequence, pos):
     return ''.join(sequence)
 
 
-def get_random_sequence(length, exclude=None):
-    '''Generate a random (non-looping) nucleotide sequence.
-
-    To be non-overlapping, the sequence should not include any repeated
-    length K-1 k-mers.
-
-    Args:
-        exclude (str): If not None, add the k-mers from this sequence to the
-        seen set.
-
-    Returns:
-        str: A random non-looping sequence.
-    '''
-
-    seen = set()
-
-    def add_seen(kmer):
-        seen.add(kmer)
-        seen.add(revcomp(kmer))
-
-    if exclude is not None:
-        for pos in range(0, len(exclude) - K):
-            add_seen(exclude[pos:pos + K - 1])
-
-    seq = [random.choice('ACGT') for _ in range(K - 1)]  # do first K-1 bases
-    add_seen(''.join(seq))
-
-    while(len(seq) < length):
-        next_base = random.choice('ACGT')
-        next_kmer = ''.join(seq[-K + 2:] + [next_base])
-        assert len(next_kmer) == K - 1
-        if (next_kmer) not in seen:
-            seq.append(next_base)
-            add_seen(next_kmer)
-        else:
-            continue
-    return ''.join(seq)
-
-
-def reads(sequence, L=100, N=100):
     positions = list(range(len(sequence) - L))
     for i in range(N):
         start = random.choice(positions)
-        yield sequence[start:start + L]
 
 
 def kmers(sequence):
@@ -162,67 +125,39 @@ def test_mutate_position():
     assert mutate_position('GGGG', 2) in ['GGAG', 'GGTG']
 
 
-def test_reads():
     contigfile = utils.get_test_data('simple-genome.fa')
     contig = list(screed.open(contigfile))[0].sequence
 
-    for read in reads(contig):
         assert read in contig
-
-    for read in reads(contig):
+        
         assert mutate_sequence(read) not in contig
 
 
-'''
-# GRAPH STRUCTURE FIXTURES
-
-These fixtures emit various graph structures with their corresponding
-sequences and important nodes. They take a random sequence fixture and
-a graph fixture, then consume sequence and generate k-mers accordingly.
-
-We're using a bespoke but simple language to describe graph structures in the
-docstrings of these tests. It is as follows:
-
-    o: Node
-    [x:y]: Node at position in sequence
-    [x:y]+S: Node at position in sequence with extra base (where S in ACGT)
-    (Name), ([x:y] Name): Named node, named node at position
-    → : Edge
-    ~~: Tandem →o→ repeats
-'''
 
 
-@pytest.fixture(params=['simple-genome.fa'])
-def known_sequence(request):
-    fn = utils.get_test_data(request.param)
-    return list(screed.open(fn))[0].sequence
 
 
-@pytest.fixture(params=list(range(500, 1600, 500)),
-                ids=lambda val: '(L={0})'.format(val))
-def random_sequence(request):
+    degree_nodes = nodegraph.find_high_degree_nodes(contig)
 
-    def get(exclude=None):
-        return get_random_sequence(request.param, exclude=exclude)
+
+    stopgraph.count(contig[101:122])       # stop traversal - only adj to start
+
+
 
     return get
 
-
-@pytest.fixture(params=[khmer.Nodegraph, khmer.Countgraph],
-                ids=['(Type=Nodegraph)', '(Type=Countgraph)'])
-def graph(request):
-
-    num_kmers = 50000
-    des_fp = 0.00001
-    args = optimal_fp(num_kmers, des_fp)
-    print('Graph Params:', args)
-
-    return request.param(K, args.htable_size, args.num_htables)
+def test_assemble_linear_path_1():
+    # assemble from beginning of contig, up until branch point
+    contigfile = utils.get_test_data('simple-genome.fa')
+    contig = list(screed.open(contigfile))[0].sequence
+    print('contig len', len(contig))
 
 
-def hdn_counts(sequence, graph):
-    '''Get the degree distribution of nodes with degree more than 2.
-    '''
+
+
+    path = nodegraph.assemble_linear_path(contig[0:K])
+    len_path = len(path)
+
 
     hdns = {}
     for kmer in kmers(sequence):
@@ -230,62 +165,20 @@ def hdn_counts(sequence, graph):
         if d > 2:
             hdns[d] = hdns.get(d, 0) + 1
 
-    return hdns
+
+    K = 21
 
 
-@pytest.fixture
-def linear_structure(request, graph, random_sequence):
-    '''Sets up a simple linear path graph structure.
-
-    sequence
-    [0]→o→o~~o→o→[-1]
-    '''
-    sequence = random_sequence()
-    graph.consume(sequence)
-
-    # Check for false positive neighbors in our graph
-    # Mark as an expected failure if any are found
-    if hdn_counts(sequence, graph):
-        request.applymarker(pytest.mark.xfail)
-
-    return graph, sequence
 
 
-@pytest.fixture(params=[K * 2, -K * 2],
-                ids=['(Where={0})'.format(i) for i in ['Start', 'End']])
-def right_tip_structure(request, graph, random_sequence):
-    '''
-    Sets up a graph structure like so:
-                                 ([S+1:S+K]+B tip)
-    sequence                   ↗
-    [0]→o→o~~o→(L)→([S:S+K] HDN)→(R)→o→o→o~~o→[-1]
 
-    Where S is the start position of the high degreen node (HDN).
-    That is, it has a single branch at the Sth K-mer.
-    '''
-    sequence = random_sequence()
-    S = request.param
-    if S < 0:
-        S = len(sequence) + S
-    # the HDN
-    HDN = Kmer(sequence[S:S + K], pos=S)
-    # left of the HDN
-    L = Kmer(sequence[S - 1:S - 1 + K], pos=S - 1)
-    # right of the HDN
-    R = Kmer(sequence[S + 1:S + 1 + K], pos=S + 1)
-    # the branch kmer
-    tip = Kmer(mutate_position(R, -1),
-               pos=R.pos)
 
-    graph.consume(sequence)
-    graph.count(tip)
 
-    # Check for false positive neighbors and mark as expected failure if found
-    if hdn_counts(sequence, graph) != {3: 1}:
-        request.applymarker(pytest.mark.xfail)
 
-    return graph, sequence, L, HDN, R, tip
 
+
+
+    assert utils._equals_rc(path, contig[:len_path])
 
 @pytest.fixture(params=[K * 2, -K * 2],
                 ids=['(Where={0})'.format(i) for i in ['Start', 'End']])
@@ -297,255 +190,89 @@ def right_double_fork_structure(request, linear_structure, random_sequence):
     core_sequence               ↗
     [0]→o→o~~o→(L)→([S:S+K] HDN)→(R)→o→o→o~~o→[-1]
 
-    Where S is the start position of the high degreen node (HDN)
-    and B is the mutated base starting the branch.
-    '''
 
-    graph, core_sequence = linear_structure
-    print('\nCore Len:', len(core_sequence))
-    branch_sequence = random_sequence(exclude=core_sequence)
-    print('Branch len:', len(branch_sequence))
 
-    # start position of the HDN
-    S = request.param
-    if S < 0:
-        S = len(core_sequence) + S
-    # the HDN
-    HDN = Kmer(core_sequence[S:S + K], pos=S)
-    # left of the HDN
-    L = Kmer(core_sequence[S - 1:S - 1 + K], pos=S - 1)
-    # right of the HDN
-    R = Kmer(core_sequence[S + 1:S + 1 + K], pos=S + 1)
-    # the branch sequence, mutated at position S+1
-    branch_start = core_sequence[:R.pos] + mutate_position(R, -1)
-    branch_sequence = branch_start + branch_sequence
 
-    graph.consume(core_sequence)
-    graph.consume(branch_sequence)
 
-    # Check for false positive neighbors and mark as expected failure if found
-    core_hdns = hdn_counts(core_sequence, graph)
-    branch_hdns = hdn_counts(branch_sequence, graph)
 
-    # the core and branch sequences should each have exactly
-    # ONE node of degree 3 (HDN)
-    if core_hdns != {3: 1} or branch_hdns != {3: 1}:
-        print(core_hdns, branch_hdns)
-        request.applymarker(pytest.mark.xfail)
 
     return graph, core_sequence, L, HDN, R, branch_sequence
 
+def test_assemble_linear_path_3():
+    # assemble entire contig, starting from wherever
+    contigfile = utils.get_test_data('simple-genome.fa')
+    contig = list(screed.open(contigfile))[0].sequence
+    print('contig len', len(contig))
 
-@pytest.fixture
-def right_triple_fork_structure(request, right_double_fork_structure,
-                                random_sequence):
-    '''
-    Sets up a graph structure like so:
 
-                                       top_branch
-                                ([:S+1]+B)→o~~o→o
-    core_sequence              ↗
-    [0]→o→o~~o→(L)→([S:S+K] HDN)→(R)→o→o→o~~o→[-1]
-                               ↘
-                                ([:S+1]+B)→o~~o→o
-                                     bottom_branch
 
-    Where S is the start position of the high degreen node (HDN).
-    '''
 
-    graph, core_sequence, L, HDN, R, top_sequence = right_double_fork_structure
-    bottom_branch = random_sequence(exclude=core_sequence + top_sequence)
-    print(len(core_sequence), len(top_sequence), len(bottom_branch))
 
     # the branch sequence, mutated at position S+1
     # choose a base not already represented at that position
     bases = {'A', 'C', 'G', 'T'}
     mutated = random.choice(list(bases - {R[-1], top_sequence[R.pos + K - 1]}))
 
-    bottom_sequence = core_sequence[:HDN.pos + K] + mutated + bottom_branch
-
-    graph.consume(bottom_sequence)
-
-    # Check for false positive neighbors and mark as expected failure if found
-    core_hdns = hdn_counts(core_sequence, graph)
-    top_hdns = hdn_counts(top_sequence, graph)
-    bottom_hdns = hdn_counts(bottom_sequence, graph)
-
-    # the core, top, and bottom sequences should each have exactly
-    # ONE node of degree 4 (HDN)
-    if not (core_hdns == top_hdns == bottom_hdns == {4: 1}):
-        print(core_hdns, top_hdns, bottom_hdns)
-        request.applymarker(pytest.mark.xfail)
-
-    return graph, core_sequence, L, HDN, R, top_sequence, bottom_sequence
 
 
-@pytest.fixture(params=[K * 2, -K * 2],
-                ids=['(Where={0})'.format(i) for i in ['Start', 'End']])
-def left_tip_structure(request, graph, random_sequence):
-    '''
-    Sets up a graph structure like so:
+
+
+
+    print('len path:', len_path)
+
 
     branch
     (B+[S:S+K-1] tip)
                      ↘                    sequence
         [0]→o~~o→(L)→([S:S+K] HDN)→(R)→o→o~~o→[-1]
 
-    Where S is the start position of the HDN.
-    '''
-    sequence = random_sequence()
-    S = request.param
-    if S < 0:
-        S = len(sequence) + S
-    tip = Kmer(mutate_position(sequence[S - 1:S - 1 + K], 0),
-               pos=S - 1 + K)
-    HDN = Kmer(sequence[S:S + K], pos=S)
-    L = Kmer(sequence[S - 1:S - 1 + K], pos=S - 1)
-    R = Kmer(sequence[S + 1:S + 1 + K], pos=S + 1)
-
-    graph.consume(sequence)
-    graph.count(tip)
-
-    # Check for false positive neighbors and mark as expected failure if found
-    if hdn_counts(sequence, graph) != {3: 1}:
-        request.applymarker(pytest.mark.xfail)
-
-    return graph, sequence, L, HDN, R, tip
 
 
-@pytest.fixture(params=[K * 2, -K * 2],
-                ids=['(Where={0})'.format(i) for i in ['Start', 'End']])
-def left_double_fork_structure(request, linear_structure, random_sequence):
-    '''
-    Sets up a graph structure like so:
 
-    o→o~~o→(B+[S:S+K-1])
-                        ↘                  core_sequence
-          [0]→o→o~~o→(L)→([S:S+K] HDN)→(R)→o→o→o~~o→[-1]
+
+    path = nodegraph.assemble_linear_path(contig[-K:])
+    len_path = len(path)
+
+
 
     Where S is the start position of the high degreen node (HDN).
     '''
 
-    graph, core_sequence = linear_structure
-    branch_sequence = random_sequence(exclude=core_sequence)
-
-    # start position of the HDN
-    S = request.param
-    if S < 0:
-        S = len(core_sequence) + S
-    # the HDN
-    HDN = Kmer(core_sequence[S:S + K], pos=S)
-    # left of the HDN
-    L = Kmer(core_sequence[S - 1:S - 1 + K], pos=S - 1)
-    # right of the HDN
-    R = Kmer(core_sequence[S + 1:S + 1 + K], pos=S + 1)
-    # the branch sequence, mutated at position 0 in L,
-    # whih is equivalent to the K-1 prefix of HDN prepended with a new base
-    branch_start = mutate_position(L, 0)
-    branch_sequence = branch_sequence + \
-        branch_start + core_sequence[L.pos + K:]
-
-    graph.consume(core_sequence)
-    graph.consume(branch_sequence)
-
-    # Check for false positive neighbors and mark as expected failure if found
-    core_hdns = hdn_counts(core_sequence, graph)
-    branch_hdns = hdn_counts(branch_sequence, graph)
-
-    # the core and branch sequences should each have exactly
-    # ONE node of degree 3 (HDN)
-    if not (core_hdns == branch_hdns == {3: 1}):
-        request.applymarker(pytest.mark.xfail)
-
-    return graph, core_sequence, L, HDN, R, branch_sequence
 
 
-@pytest.fixture(params=[K * 2, (-K * 2) - 2],
-                ids=['(Where={0})'.format(i) for i in ['Start', 'End']])
-def snp_bubble_structure(request, linear_structure):
-    '''
-    Sets up a graph structure resulting from a SNP (Single Nucleotide
-    Polymorphism).
 
-                        (HDN_L[1:]+SNP)→o~~o→(SNP+)
-                      ↗                            ↘
-    o~~([S:S+K] HDN_L)                             ([S+K+1:S+2K+1] HDN_R)~~o
-                      ↘                           ↗
-                        (HDN_L[1:]+W)→o~~o~~o→(W+)
 
-    Where S is the start position of HDN directly left of the SNP (HDN_L),
-    SNP is the mutated base, and W is the wildtype (original) base.
-    Of course, W and SNP could be interchanged here, we don't actually
-    know which is which ;)
 
-    Note our parameterization: we need a bit more room from the ends,
-    so we bring the rightmost SNP a tad left.
-    '''
 
-    graph, wildtype_sequence = linear_structure
-    S = request.param
-    if S < 0:
-        S = len(wildtype_sequence) + S
-    snp_sequence = mutate_position(wildtype_sequence, S + K)
-    HDN_L = Kmer(wildtype_sequence[S:S + K], pos=S)
-    HDN_R = Kmer(wildtype_sequence[S + K + 1:S + 2 * K + 1], pos=S + K + 1)
-
-    graph.consume(wildtype_sequence)
-    graph.consume(snp_sequence)
-
-    # Check for false positive neighbors and mark as expected failure if found
-    w_hdns = hdn_counts(wildtype_sequence, graph)
-    snp_hdns = hdn_counts(snp_sequence, graph)
-    if not (w_hdns == snp_hdns == {3: 2}):
-        print(w_hdns, snp_hdns)
-        print(HDN_L, HDN_R)
-        print(wildtype_sequence[HDN_L.pos + K + 1])
-        print(snp_sequence[HDN_L.pos + K + 1])
-        request.applymarker(pytest.mark.xfail)
-
-    return graph, wildtype_sequence, snp_sequence, HDN_L, HDN_R
-
+    assert utils._equals_rc(path, contig[101:])
 
 @pytest.fixture(params=[2, 3, 4, 5, 6, 7, 8])
 def tandem_repeat_structure(request, linear_structure):
 
-    graph, sequence = linear_structure
-
-    tandem_repeats = sequence * request.param
-    graph.consume(tandem_repeats)
-
-    if hdn_counts(tandem_repeats, graph):
-        request.applymarker(pytest.mark.xfail)
-
-    return graph, sequence, tandem_repeats
 
 
-class TestNonBranching:
 
-    def test_all_start_positions(self, linear_structure):
-        # assemble entire contig, starting from wherever
-        nodegraph, contig = linear_structure
+
+    path = nodegraph.assemble_linear_path(contig[101:101 + K])
+    len_path = len(path)
+
+
 
         for start in range(0, len(contig), 150):
             path = nodegraph.assemble_linear_path(contig[start:start + K])
             assert utils._equals_rc(path, contig), start
 
+def test_assemble_linear_path_8():
+    # assemble from branch point until end
+    contigfile = utils.get_test_data('simple-genome.fa')
+    contig = list(screed.open(contigfile))[0].sequence
+    print('contig len', len(contig))
 
-class TestLinearAssembler_RightBranching:
 
-    def test_branch_point(self, right_tip_structure):
-        graph, contig, L, HDN, R, tip = right_tip_structure
 
-        assert graph.kmer_degree(HDN) == 3
 
-    def test_beginning_to_branch(self, right_tip_structure):
-        # assemble from beginning of contig, up until branch point
-        graph, contig, L, HDN, R, tip = right_tip_structure
 
-        path = graph.assemble_linear_path(contig[0:K])
 
-        assert len(path) == HDN.pos + K
-        assert utils._equals_rc(path, contig[:len(path)])
 
     def test_beginning_to_branch_revcomp(self, right_tip_structure):
         # assemble from beginning of contig, up until branch point
@@ -553,35 +280,14 @@ class TestLinearAssembler_RightBranching:
         graph, contig, L, HDN, R, tip = right_tip_structure
         path = graph.assemble_linear_path(revcomp(contig[0:K]))
 
-        assert len(path) == HDN.pos + K
-        assert utils._equals_rc(path, contig[:len(path)])
 
-    def test_left_of_branch_to_beginning(self, right_tip_structure):
-        # start from HDN (left of branch)
-        graph, contig, L, HDN, R, tip = right_tip_structure
-        path = graph.assemble_linear_path(L)
 
-        assert len(path) == HDN.pos + K
-        assert utils._equals_rc(path, contig[:len(path)])
 
-    def test_left_of_branch_to_beginning_revcomp(self, right_tip_structure):
-        # start from revcomp of HDN (left of branch)
-        graph, contig, L, HDN, R, tip = right_tip_structure
-        path = graph.assemble_linear_path(revcomp(L))
 
-        assert len(path) == HDN.pos + K
-        assert utils._equals_rc(path, contig[:len(path)])
 
-    def test_right_of_branch_outwards_to_ends(self, right_tip_structure):
-        # assemble from right of branch point (at R)
-        # Should get the *entire* original contig, as the assembler
-        # will move left relative to the branch, and not consider it
-        # as a high degree node
-        graph, contig, L, HDN, R, tip = right_tip_structure
-        path = graph.assemble_linear_path(R)
 
         assert len(path) == len(contig)
-        assert utils._equals_rc(path, contig)
+    assert utils._equals_rc(path, contig)
 
     def test_end_to_beginning(self, right_tip_structure):
         # should have exact same behavior as right_of_branch_outwards
@@ -591,237 +297,126 @@ class TestLinearAssembler_RightBranching:
         assert len(path) == len(contig)
         assert utils._equals_rc(path, contig)
 
+def test_assemble_linear_path_10():
+    # assemble up to branch point, and include introduced branch b/c
+    # of stop bf
+    contigfile = utils.get_test_data('simple-genome.fa')
+    contig = list(screed.open(contigfile))[0].sequence
+    print('contig len', len(contig))
 
-class TestLinearAssembler_LeftBranching:
 
-    def test_branch_point(self, left_tip_structure):
-        graph, contig, L, HDN, R, tip = left_tip_structure
 
-        assert graph.kmer_degree(HDN) == 3
 
-    def test_end_to_branch(self, left_tip_structure):
-        # assemble from end until branch point
-        # should include HDN
-        graph, contig, L, HDN, R, tip = left_tip_structure
 
-        path = graph.assemble_linear_path(contig[-K:])
 
-        assert len(path) == len(contig) - HDN.pos
-        assert utils._equals_rc(path, contig[HDN.pos:])
 
     def test_branch_to_end(self, left_tip_structure):
         # assemble from branch point until end
         graph, contig, L, HDN, R, tip = left_tip_structure
 
-        path = graph.assemble_linear_path(HDN)
 
-        assert len(path) == len(contig) - HDN.pos
-        assert utils._equals_rc(path, contig[HDN.pos:])
 
-    def test_from_branch_to_ends_with_stopbf(self, left_tip_structure):
-        # block the tip with the stop_bf. should return a full length contig.
-        graph, contig, L, HDN, R, tip = left_tip_structure
+
+
+
+
 
         stop_bf = khmer.Nodegraph(K, 1e5, 4)
         stop_bf.count(tip)
 
-        path = graph.assemble_linear_path(HDN, stop_bf)
 
-        assert len(path) == len(contig)
-        assert utils._equals_rc(path, contig)
 
-    def test_from_branch_to_ends_with_stopbf_revcomp(self, left_tip_structure):
-        # block the tip with the stop_bf. should return a full length contig.
-        graph, contig, L, HDN, R, tip = left_tip_structure
 
-        stop_bf = khmer.Nodegraph(K, 1e5, 4)
-        stop_bf.count(tip)
 
-        path = graph.assemble_linear_path(revcomp(HDN), stop_bf)
 
-        assert len(path) == len(contig)
-        assert utils._equals_rc(path, contig)
 
-    def test_end_thru_tip_with_stopbf(self, left_tip_structure):
-        # assemble up to branch point, and include introduced branch b/c
-        # of stop bf
-        graph, contig, L, HDN, R, tip = left_tip_structure
-
-        stop_bf = khmer.Nodegraph(K, 1e5, 4)
-        stop_bf.count(L)          # ...and block original path
-        path = graph.assemble_linear_path(contig[-K:], stop_bf)
-
-        assert len(path) == len(contig) - HDN.pos + 1
-
-        # should be the tip k-kmer, plus the last base of the HDN thru
-        # the end of the contig
-        assert utils._equals_rc(path, tip + contig[HDN.pos + K - 1:])
-
-    def test_single_node_flanked_by_hdns(self, left_tip_structure):
-        # assemble single node flanked by high-degree nodes
-        # we'll copy the main nodegraph before mutating it
-        graph, contig, L, HDN, R, tip = left_tip_structure
 
         graph.consume(mutate_position(contig, HDN.pos + K))
 
-        path = graph.assemble_linear_path(HDN)
-
-        assert len(path) == K
-        assert utils._equals_rc(path, HDN)
 
 
-class TestLabeledAssembler:
+    nodegraph = khmer.Nodegraph(K, 1e5, 4)
+    lh = khmer._GraphLabels(nodegraph)
 
-    def test_beginning_to_end_across_tip(self, right_tip_structure):
-        # assemble entire contig, ignoring branch point b/c of labels
-        graph, contig, L, HDN, R, tip = right_tip_structure
-        lh = khmer._GraphLabels(graph)
 
-        hdn = graph.find_high_degree_nodes(contig)
-        # L, HDN, and R will be labeled with 1
-        lh.label_across_high_degree_nodes(contig, hdn, 1)
 
-        path = lh.assemble_labeled_path(contig[:K])
+    lh.label_across_high_degree_nodes(contig, hdn, 1)
+
+    path = lh.assemble_labeled_path(contig[:K])
         assert len(path) == 1, "there should only be one path"
-        path = path[0]  # @CTB
+    path = path[0]  # @CTB
+    len_path = len(path)
+
+    print('len path:', len_path)
 
         assert len(path) == len(contig)
-        assert utils._equals_rc(path, contig)
+    assert utils._equals_rc(path, contig)
 
-    def test_assemble_right_double_fork(self, right_double_fork_structure):
-        # assemble two contigs from a double forked structure
-        graph, contig, L, HDN, R, branch = right_double_fork_structure
-        lh = khmer._GraphLabels(graph)
 
-        hdn = graph.find_high_degree_nodes(contig)
-        hdn += graph.find_high_degree_nodes(branch)
-        print(list(hdn))
-        lh.label_across_high_degree_nodes(contig, hdn, 1)
-        lh.label_across_high_degree_nodes(branch, hdn, 2)
-        print(lh.get_tag_labels(list(hdn)[0]))
+    print(list(hdn))
+    lh.label_across_high_degree_nodes(contig, hdn, 1)
+    lh.label_across_high_degree_nodes(branch, hdn, 2)
+    print(lh.get_tag_labels(list(hdn)[0]))
 
-        paths = lh.assemble_labeled_path(contig[:K])
-        print('Path lengths', [len(x) for x in paths])
+    paths = lh.assemble_labeled_path(contig[:K])
 
-        assert len(paths) == 2
 
-        assert any(utils._equals_rc(path, contig) for path in paths)
-        assert any(utils._equals_rc(path, branch) for path in paths)
 
-    def test_assemble_right_triple_fork(self, right_triple_fork_structure):
-        # assemble three contigs from a trip fork
-        (graph, contig, L, HDN, R,
-         top_sequence, bottom_sequence) = right_triple_fork_structure
-        lh = khmer._GraphLabels(graph)
 
-        hdn = graph.find_high_degree_nodes(contig)
-        hdn += graph.find_high_degree_nodes(top_sequence)
-        hdn += graph.find_high_degree_nodes(bottom_sequence)
-        print(list(hdn))
-        lh.label_across_high_degree_nodes(contig, hdn, 1)
-        lh.label_across_high_degree_nodes(top_sequence, hdn, 2)
-        lh.label_across_high_degree_nodes(bottom_sequence, hdn, 3)
-        print(lh.get_tag_labels(list(hdn)[0]))
+    print(list(hdn))
+    lh.label_across_high_degree_nodes(contig, hdn, 1)
+    print(lh.get_tag_labels(list(hdn)[0]))
 
-        paths = lh.assemble_labeled_path(contig[:K])
-        print([len(x) for x in paths])
+    paths = lh.assemble_labeled_path(contig[:K])
+    print([len(x) for x in paths])
+    len_path = len(paths)
 
-        assert len(paths) == 3
+    print('len path:', len_path)
+
+    found = False
+    for path in paths:
+        if utils._equals_rc(path, contig):
+            found = True
+            break
+    assert found
+
+    found = False
+    for path in paths:
+        if utils._equals_rc(path, branch):
+            found = True
+            break
+    assert found
+
 
         assert any(utils._equals_rc(path, contig) for path in paths)
         assert any(utils._equals_rc(path, top_sequence) for path in paths)
         assert any(utils._equals_rc(path, bottom_sequence) for path in paths)
 
-    def test_assemble_left_double_fork(self, left_double_fork_structure):
-        # assemble entire contig + branch points b/c of labels; start from end
-        graph, contig, L, HDN, R, branch = left_double_fork_structure
-        lh = khmer._GraphLabels(graph)
+    # assemble entire contig + branch points b/c of labels; start from end
 
-        # first try without the labels
-        paths = lh.assemble_labeled_path(contig[-K:])
-        assert len(paths) == 1
-        # without labels, should get the beginning of the HDN thru the end
-        assert paths[0] == contig[HDN.pos:]
 
-        # now add labels and check that we get two full length paths
-        hdn = graph.find_high_degree_nodes(contig)
-        hdn += graph.find_high_degree_nodes(branch)
-        print(list(hdn))
-        lh.label_across_high_degree_nodes(contig, hdn, 1)
-        lh.label_across_high_degree_nodes(branch, hdn, 2)
-        print(lh.get_tag_labels(list(hdn)[0]))
+    print(list(hdn))
+    lh.label_across_high_degree_nodes(contig, hdn, 1)
+    lh.label_across_high_degree_nodes(branch, hdn, 2)
+    lh.label_across_high_degree_nodes(branch2, hdn, 3)
+    print(lh.get_tag_labels(list(hdn)[0]))
 
-        paths = lh.assemble_labeled_path(contig[-K:])
-        assert len(paths) == 2
+    paths = lh.assemble_labeled_path(contig[-K:])
 
-        assert any(utils._equals_rc(path, contig) for path in paths)
-        assert any(utils._equals_rc(path, branch) for path in paths)
 
-    def test_assemble_snp_bubble_single(self, snp_bubble_structure):
-        # assemble entire contig + one of two paths through a bubble
-        graph, wildtype, mutant, HDN_L, HDN_R = snp_bubble_structure
-        lh = khmer._GraphLabels(graph)
 
-        hdn = graph.find_high_degree_nodes(wildtype)
-        assert len(hdn) == 2
-        lh.label_across_high_degree_nodes(wildtype, hdn, 1)
 
-        paths = lh.assemble_labeled_path(wildtype[:K])
-        assert len(paths) == 1
-
-        assert utils._equals_rc(paths[0], wildtype)
 
     def test_assemble_snp_bubble_both(self, snp_bubble_structure):
         # assemble entire contig + both paths
         graph, wildtype, mutant, HDN_L, HDN_R = snp_bubble_structure
         lh = khmer._GraphLabels(graph)
 
-        hdn = graph.find_high_degree_nodes(wildtype)
-        hdn += graph.find_high_degree_nodes(mutant)
-        assert len(hdn) == 2
-        lh.label_across_high_degree_nodes(wildtype, hdn, 1)
-        lh.label_across_high_degree_nodes(mutant, hdn, 2)
 
-        paths = lh.assemble_labeled_path(wildtype[:K])
-        assert len(paths) == 2
 
-        assert any(utils._contains_rc(wildtype, path) for path in paths)
-        assert any(utils._contains_rc(mutant, path) for path in paths)
-        # assert all(path[:HDN_L.pos+K][-K:] == HDN_L for path in paths)
-        # assert all(path[HDN_R.pos:][:K] == HDN_R for path in paths)
-        # assert paths[0][:HDN_L.pos+K] == paths[1][:HDN_L.pos+K]
-        # assert paths[0][HDN_R.pos:] == paths[1][HDN_R.pos:]
 
-    def test_assemble_snp_bubble_stopbf(self, snp_bubble_structure):
-        # assemble one side of bubble, blocked with stop_bf,
-        # when labels on both branches
-        # stop_bf should trip a filter failure, negating the label spanning
-        graph, wildtype, mutant, HDN_L, HDN_R = snp_bubble_structure
-        stop_bf = khmer.Nodegraph(K, 1e5, 4)
-        lh = khmer._GraphLabels(graph)
 
-        hdn = graph.find_high_degree_nodes(wildtype)
-        hdn += graph.find_high_degree_nodes(mutant)
-        assert len(hdn) == 2
-        lh.label_across_high_degree_nodes(wildtype, hdn, 1)
-        lh.label_across_high_degree_nodes(mutant, hdn, 2)
+    assert len(hdn) == 2
 
-        # do the labeling, but block the mutant with stop_bf
-        stop_bf.count(mutant[HDN_L.pos + 1:HDN_L.pos + K + 1])
-        paths = lh.assemble_labeled_path(wildtype[:K], stop_bf)
-        assert len(paths) == 1
 
-        assert any(utils._equals_rc(path, wildtype) for path in paths)
 
-    # @pytest.mark.skip(reason='destroys your computer and then the world')
-    def test_assemble_tandem_repeats(self, tandem_repeat_structure):
-        # assemble one copy of a tandem repeat
-        graph, repeat, tandem_repeats = tandem_repeat_structure
-
-        lh = khmer._GraphLabels(graph)
-
-        paths = lh.assemble_labeled_path(repeat[:K])
-        assert len(paths) == 1
-        # There are K-1 k-mers spanning the junction between
-        # the beginning and end of the repeat
-        assert len(paths[0]) == len(repeat) + K - 1

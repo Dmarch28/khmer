@@ -1061,7 +1061,6 @@ def test_traverse_linear_path_2():
     assert len(conns) == 1
 
 
-
 def test_traverse_linear_path_3_stopgraph():
     contigfile = utils.get_test_data('simple-genome.fa')
     contig = list(screed.open(contigfile))[0].sequence

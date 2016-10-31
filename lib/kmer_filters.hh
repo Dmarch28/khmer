@@ -74,9 +74,9 @@ KmerFilter get_simple_label_intersect_filter(const LabelSet& src_labels,
         const LabelHash * lh,
         const unsigned int min_cov = 5);
 
-KmerFilter get_simple_label_intersect_filter(const LabelSet& src_labels, 
-                                             const LabelHash * lh,
-                                             const unsigned int min_cov = 5);
+KmerFilter get_simple_label_intersect_filter(const LabelSet& src_labels,
+        const LabelHash * lh,
+        const unsigned int min_cov = 5);
 
 KmerFilter get_visited_filter(const SeenSet * visited);
     return false;

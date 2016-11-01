@@ -192,6 +192,8 @@ public:
     explicit Hashbits(WordLength ksize, std::vector<uint64_t> sizes)
         : Hashgraph(ksize, new BitStorage(sizes)) { } ;
 
+    void update_from(const Hashbits &other);
+
 };
 }
 

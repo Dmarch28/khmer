@@ -62,20 +62,8 @@ struct IParser;
 
 namespace khmer
 {
-class CountingHashFile;
-class CountingHashFileReader;
-class CountingHashFileWriter;
-class CountingHashGzFileReader;
-class CountingHashGzFileWriter;
-
 class CountingHash : public khmer::Hashgraph
 {
-    friend class CountingHashFile;
-    friend class CountingHashFileReader;
-    friend class CountingHashFileWriter;
-    friend class CountingHashGzFileReader;
-    friend class CountingHashGzFileWriter;
-
 public:
     explicit CountingHash(WordLength ksize, std::vector<uint64_t> sizes)
         : Hashgraph(ksize, new ByteStorage(sizes)) { } ;

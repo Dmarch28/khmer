@@ -1344,7 +1344,7 @@ const
     return posns;
 }
 
-void Hashbits::update_from(const Hashbits &otherBASE)
+void Nodegraph::update_from(const Nodegraph &otherBASE)
 {
     if (_ksize != otherBASE._ksize) {
         throw khmer_exception("both nodegraphs must have same k size");

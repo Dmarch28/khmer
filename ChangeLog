@@ -1,11 +1,54 @@
-2016-09-26  Camille Scott  <camille.scott.w@gmail.com>
+2016-11-10  Camille Scott  <camille.scott.w@gmail.com>
 
-   * khmer/__init__.py, khmer/_khmer.cc, tests/test_functions.py: Expose reverse_complement to Python.
-   * lib/{traversal.cc, traversal.hh}: Add two new Traverser classes, 
+  * lib/assembler.{hh,cc}: add JunctionCountAssembler implementation.
+  * lib/kmer_filters.{hh,cc}: add get junction_count_filter function.
+  * khmer/{__init__.py,_khmer.cc}: add LinearAssembler,
+  SimpleLabeledAssembler, and JunctionCountAssembler to CPython interface.
+  * tests/test_assembly.py: minor refactoring, & tests for
+  JunctionCountAssembler and newly exposed C++ functions.
+  * sandbox/streaming-assembly-simple.py: demo script for streaming assembly.
+  * Makefile: update debug flags.
+  * lib/{counting.hh,hashtable.{hh,cc},hllcounter.hh,labelhash.hh,
+  read_aligner.hh,subset.{hh,cc}}: minor cleanup.
+  * tests/test_sandbox_scripts.py: minor cleanup.
+
+2016-11-07  Luiz Irber  <khmer@luizirber.org>
+
+   * Makefile: add --ignore-installed flag to pip install (fix installation
+   on conda environments.
+   * doc/requirements.txt: change hard requirement to 'newer than', avoid
+   installing a quite old setuptools version.
+
+2016-11-04  Tim Head  <betatim@gmail.com>
+
+   * Make khmer's Read type accessible from the python API.
+
+2016-11-03  Titus Brown  <titus@idyll.org>
+
+   * lib/{counting.cc,counting.hh,hashbits.cc,hashbits.hh,hashtable.cc,
+   hashtable.hh,storage.cc,storage.hh}: extracted in-memory storage details
+   into Storage/Bitstorage/ByteStorage classes.
+   * khmer/_khmer.cc,lib/{assembler.cc,assembler.hh,subset.cc,
+   subset.hh,labelhash.cc,labelhash.hh,traversal.cc,traversal.hh}: renamed
+   Hashtable to Hashgraph.
+   * setup.py,lib/Makefile: added storage.{cc,hh} to build.
+
+2016-10-31  Titus Brown  <titus@idyll.org>
+
+   * lib/{counting.hh,hashbits.hh,hashtable.hh}: factor out global functions
+   _hash and _revhash into Hashtable methods hash_dna and unhash_dna.
+   * khmer/_khmer.cc, lib/{hashtable.cc,read_aligner.cc,subset.cc}: update
+   Hashtable code to use new hash_dna and unhash_dna methods.
+
+2016-10-31  Camille Scott  <camille.scott.w@gmail.com>
+
+   * khmer/__init__.py, khmer/_khmer.cc, tests/test_functions.py: Expose
+   reverse_complement to Python.
+   * lib/{traversal.cc, traversal.hh}: Add two new Traverser classes,
    AssemblerTraverser and NonloopingAT, to do the traversal portions of
    assembly.
-   * lib/{assembler.cc, assembler.hh}, khmer/_khmer.cc: New code files containing the
-   LinearAssembler and LabeledLinearAssembler classes which wrap
+   * lib/{assembler.cc, assembler.hh}, khmer/_khmer.cc: New code files
+   containing the LinearAssembler and LabeledLinearAssembler classes which wrap
    AssemblerTraverser and NonloopingAT, respectively, and expose a contig
    assembly interface.
    * lib/{hashtable.cc, hashtable.hh, labelhash.cc, labelhash.hh}: Move
@@ -13,8 +56,132 @@
    * lib/{kmer_filters.hh, kmer_filters.cc}: Helper filter-functions for the
    AssemblerTraversers.
    * lib/kmer_hash.hh: Helper functions for the Kmer class.
-   * lib/{symbols.hh, symbols.cc}: Global DNA alphabets.
-   * tests/test_nodegraph.py: Additional tests for the assembler API.
+   * lib/{alphabets.hh, alphabets.cc}: Global DNA alphabets.
+   * tests/test_assembly.py: Tests for the assembler API.
+
+2016-10-28  Daniel Standage  <daniel.standage@gmail.com>
+
+   * lib/hashtable.cc,tests/test_nodegraph.py: fix bug in assemble_linear_path
+     that returns seed k-mer even if it is not present in the DBG.
+
+2016-10-13  Camille Scott  <camille.scott.w@gmail.com>
+
+   * Wrap IO functions in with an extra catch to handle the gcc
+     basic_ios_failure bug.
+
+2016-10-03  Tim Head  <betatim@gmail.com>
+
+   * .travis.yml: adjust setup for exclusive use of travis (jenkins is retiring)
+
+2016-10-02  Titus Brown  <titus@idyll.org>
+
+   * khmer/{utils.py,thread_utils.py,trimming.py}: introduce new function,
+   clean_input_reads, that does consistent read cleaning; update ReadBundle
+   and trimming to make use of new cleaned_seq attribute.
+   * scripts/{normalize-by-median.py,trim-low-abund.py}: refactor to use
+   cleaned_seq attribute properly; this fixed a bug in normalize-by-median.py
+   that led to ignoring lowercase 'actgn'.
+   * doc/dev/development.rst: update developer documentation for new
+   cleaned_seq attribute and ReadBundle behavior.
+   * tests/test_script_output.py: update md5 signatures for output to reflect
+   corrected behavior.
+   * tests/test_functions.py: add test for broken_paired_iter uppercase
+   behavior.
+   * tests/test_read_handling.py: update tests for ReadBundle.
+
+2016-10-01  Titus Brown  <titus@idyll.org>
+
+   * khmer/trimming.py,scripts/{filter-abund-single.py,filter-abund.py,
+   trim-low-abund.py}: extracted similar trimming code and refactored.
+   * khmer/utils.py,tests/test_read_handling.py: change ReadBundle.trimmed_reads
+   to trimmed_seqs; fix associated tests.
+   * tests/test_functions.py: updated tests to use screed.Record instead of
+   namedtuple classes.
+
+2016-10-01  Titus Brown  <titus@idyll.org>
+
+   * lib/hashtable.{cc,hh}: added assemble_linear_path function & helpers.
+   * khmer/_khmer.cc: CPython API for assemble_linear_path.
+   * tests/test_nodegraph.py: tests for new assemble_linear_path behavior.
+   * khmer/khmer_args.py, tests/test_script_arguments.py: fix some lingering
+   PEP 8 errors.
+   * lib/kmer_hash.hh: added string -> string _revcomp function.
+
+2016-09-30  Daniel Standage  <daniel.standage@gmail.com>
+
+   * scripts/trim-low-abund.py, khmer/utils.py, doc/dev/development.rst: moved
+   ReadBundle class to utils
+   * tests/test_read_handling.py, tests/test-data/unclean-reads.fastq: tests
+   related to ReadBundle
+
+2016-09-29  Tim Head  <betatim@gmail.com>
+
+   * khmer/khmer_args.py, tests/test_functions.py,
+   tests/test_script_arguments.py: fix up formatting
+
+2016-09-26 Ali Aliyari <aaliyari@ucdavis.edu>
+
+   * khmer/khmer_args.py: prevent -N from being set to more than 20 (override by -f)
+   * tests/test_script_arguments.py added test functions for the above change
+
+2016-09-26  Luiz Irber  <khmer@luizirber.org>
+
+   * khmer/khmer_args.py: Update HLL citation to point to preprint.
+
+2016-09-23  Tim Head  <betatim@gmail.com>
+
+   * khmer/_khmer.cc, lib/counting.{cc,hh}, lib/hashbits.{cc,hh},
+     lib/hashtable.hh, lib/hllcounter.{cc,hh}, lib/kmer_hash.cc,
+     tests/khmer_tst_utils.py, tests/test_functions.py: move away from using
+     HashIntoType as synonym to uint64.
+
+2016-09-21  Tim Head  <betatim@gmail.com>
+
+   * .travis.yml: add python 3.5 to the build matrix and allow fast finishing
+
+2016-09-20  Titus Brown  <titus@idyll.org>
+
+   * khmer/utils.py: fixed bug in broken_paired_reader when short reads
+   are discarded and require_paired is set; improved read pair error reporting.
+   * tests/test_functions.py: added tests for broken_paired_reader fix.
+   * tests/khmer_tst_utils.py: de-nested exceptions for better error reporting
+   from tests.
+
+2016-09-09  Daniel Standage  <daniel.standage@gmail.com>
+
+   * lib/read_parsers.{cc,hh}: rename SeqAnParser to FastxParser.
+
+2016-09-09  Tim Head  <betatim@gmail.com>
+
+   * tests/test_filter_abund.py: remove for loops introduce to the test suite.
+
+2016-09-01  Tim Head  <betatim@gmail.com>
+
+   * khmer/khmer_args.py: added check_argument_range to check an integer
+   command-line argument is within a given range.
+   * scripts/{normalize-by-median.py, filter-abund.py, filter-abund-single.py}
+   now use check_argument_range for the cutoff parameter.
+   * tests/test_normalize_by_median.py: modified
+   test_normalize_by_median_no_bigcount.
+
+2016-09-01  Tim Head  <betatim@gmail.com>
+
+   * scripts/filter-abund-single.py: Add support for variable coverage trimming
+
+2016-08-31  Tim Head  <betatim@gmail.com>
+
+   * Fixed several source code style issues in python and cpp.
+   * Makefile: removed setup.py from the list of files passed to astyle
+
+2016-08-30  Tim Head  <betatim@gmail.com>
+
+   * Fix coverage reporting on OSX and rename nosetests.xml to pytests.xml
+
+2016-08-29  Daniel Standage  <daniel.standage@gmail.com>
+
+   * doc/dev/getting-started.rst: updated dev environment setup instructions to
+   include installation of 'enchant' library, and dropped Arch linux install
+   instructions.
 
 2016-08-26  Daniel Standage  <daniel.standage@gmail.com>
 
@@ -30,11 +197,6 @@
    test_sandbox_scripts.py, test_scripts.py}: updated to use
    copy_test_data function
 
-2016-08-26  Daniel Standage  <daniel.standage@gmail.com>
-
-   * doc/dev/getting-started.rst: updated dev environment setup instructions to
-   include installation of 'enchant' library.
-
 2016-07-18  Titus Brown  <titus@idyll.org>
 
    * khmer/_khmer.cc: fixed ReadPairIterator exception return error messages.
@@ -46,17 +208,23 @@
    * khmer/_khmer.cc: updated CPython API to add get_kmer_hashes_as_hashset.
    * tests/test_countgraph.py: added test for get_kmer_hashes_as_hashset.
 
-2015-10-19  Michael R. Crusoe  <crusoe@ucdavis.edu>
-
-   * versioneer.py,khmer/_version.py,setup.py,setup.cfg: upgrade Versioneer to
-   version 0.15+dev, Mon Jun 29 2015 99d5d9341830945f7080537ddd3bbd79c4aa1732
-   * doc/conf.py, lib/Makefile: update method of retrieving current version
-   * lib/get_version.py: no longer needed, removed
-
 2016-06-27  Titus Brown  <titus@idyll.org>
 
    * doc/requirements.txt: updated sphinx-autoprogram requirement for building
    documentation, to point at released version.
+
+2016-06-26  Titus Brown  <titus@idyll.org>
+
+   * khmer/_khmer.cc, tests/test_nodegraph.py: 'add' is now a synonym for
+   graph.count(kmer).
+   * khmer/thread_utils.py: update verbose_loader function to take 'verbose'
+   argument.
+   * scripts/{abundance-dist-single.py, abundance-dist.py,
+   filter-abund-single.py, filter-abund.py, load-into-counting.py,
+   normalize-by-median.py,trim-low-abund.py}: updated to
+   respect -q/--quiet.
+   * tests/test_filter_abund.py: tests for '-q'.
+   * scripts/partition-graph.py: fix typo in args help message.
 
 2016-06-26  Titus Brown  <titus@idyll.org>
 
@@ -82,8 +250,8 @@
 2016-06-17  Daniel Standage <daniel.standage@gmail.com>
 
    * scripts/filter-abund-single.py: add -o/--outfile option.
-   * tests/test_script_output.py: move `_calc_md5` function for calculating file
-   MD5 hashes to test utils module (tests/khmer_tst_utils.py).
+   * tests/test_script_output.py: move `_calc_md5` function for calculating
+   file MD5 hashes to test utils module (tests/khmer_tst_utils.py).
    * tests/{test_filter_abund.py,test_scripts.py): move filter_abund tests to
    dedicated test script, add minimal test for new -o option.
    * tests/test-data/paired-mixed-witherror.fa.pe: add data file in support of
@@ -91,18 +259,17 @@
    * .gitignore: add .cache/ directory, which appears to be an artifact of the
    py.test framework.
 
-2016-06-26  Titus Brown  <titus@idyll.org>
+2016-06-17  Daniel Standage <daniel.standage@gmail.com>
 
-   * khmer/_khmer.cc, tests/test_nodegraph.py: 'add' is now a synonym for
-   graph.count(kmer).
-   * khmer/thread_utils.py: update verbose_loader function to take 'verbose'
-   argument.
-   * scripts/{abundance-dist-single.py, abundance-dist.py,
-   filter-abund-single.py, filter-abund.py, load-into-counting.py,
-   normalize-by-median.py,trim-low-abund.py}: updated to
-   respect -q/--quiet.
-   * tests/test_scripts.py: tests for '-q'.
-   * scripts/partition-graph.py: fix typo in args help message.
+  * scripts/filter-abund-single.py: add -o/--outfile option.
+  * tests/test_script_output.py: move `_calc_md5` function for calculating file
+  MD5 hashes to test utils module (tests/khmer_tst_utils.py).
+  * tests/{test_filter_abund.py,test_scripts.py): move filter_abund tests to
+  dedicated test script, add minimal test for new -o option.
+  * tests/test-data/paired-mixed-witherror.fa.pe: add data file in support of
+  new test.
+  * .gitignore: add .cache/ directory, which appears to be an artifact of the
+  py.test framework.
 
 2016-05-25  Titus Brown  <titus@idyll.org>
 
@@ -111,19 +278,6 @@
    * tests/test_scripts.py: added a test for basic reporting functionality.
 
 2016-05-16  Titus Brown  <titus@idyll.org>
-2016-05-16  Luiz Irber  <khmer@luizirber.org>
-
-   * Makefile,jenkins-build.sh,setup.cfg,tests/khmer_tst_utils.py,
-   tests/test_{countgraph,counting_single,hll,labelhash,nodegraph,
-   normalize_by_median,read_aligner,read_handling,read_parsers,sandbox_scripts,
-   scripts,version}.py: replace nose with pytest, update configuration.
-
-2016-05-16  Luiz Irber  <khmer@luizirber.org>
-
-   * lib/hashtable.cc: fix bug with substr
-   * tests/test_countgraph.py: add test to trigger the substr bug.
-
-2016-05-12  Titus Brown  <titus@idyll.org>
 
    * khmer/_khmer.cc: define new khmer_HashSet_Type and khmer_HashSet_Object;
    lots of associated cleanup of k-mer <-> C++ interface; added
@@ -146,13 +300,18 @@
    refactor existing code to use HashSet object.
    * tests/test_counting_single.py: add printout to assert.
 
-2015-08-13  Jacob Fenton  <bocajnotnef@gmail.com>
+2016-05-16  Luiz Irber  <khmer@luizirber.org>
 
-   * scripts/extract-partitions.py: refactored much of the processing into
-   generators
-   * tests/test_scripts.py: added test
+   * Makefile,jenkins-build.sh,setup.cfg,tests/khmer_tst_utils.py,
+   tests/test_{countgraph,counting_single,hll,labelhash,nodegraph,
+   normalize_by_median,read_aligner,read_handling,read_parsers,sandbox_scripts,
+   scripts,version}.py: replace nose with pytest, update configuration.
 
-2015-02-16  Titus Brown  <titus@idyll.org>
+2016-05-16  Luiz Irber  <khmer@luizirber.org>
+
+   * lib/hashtable.cc: fix bug with substr
+   * tests/test_countgraph.py: add test to trigger the substr bug.
+
 2016-05-11  Titus Brown  <titus@idyll.org>
 
    * scripts/trim-low-abund.py: refactor to use generators; add --diginorm
@@ -259,6 +418,13 @@
 
    * scripts/normalize-by-median.py,tests/test_normalize_by_median.py: test
    and fix for close of --output file after first input file.
+
+2015-10-19  Michael R. Crusoe  <crusoe@ucdavis.edu>
+
+   * versioneer.py,khmer/_version.py,setup.py,setup.cfg: upgrade Versioneer to
+   version 0.15+dev, Mon Jun 29 2015 99d5d9341830945f7080537ddd3bbd79c4aa1732
+   * doc/conf.py, lib/Makefile: update method of retrieving current version
+   * lib/get_version.py: no longer needed, removed
 
 2015-10-05  Michael R. Crusoe  <crusoe@ucdavis.edu>
 
@@ -437,6 +603,12 @@
    * scripts/unique-kmers.py: Rename option --stream-out to --stream-records.
    * tests/test_streaming_io.py: Fix unique-kmers tests, use new option.
    * khmer/_khmer.cc, lib/hllcounter.cc: Rename some variables for consistency.
+
+2015-08-13  Jacob Fenton  <bocajnotnef@gmail.com>
+
+      * scripts/extract-partitions.py: refactored much of the processing into
+      generators
+      * tests/test_scripts.py: added test
 
 2015-08-12  Jacob Fenton  <bocajnotnef@gmail.com>
 
@@ -1805,8 +1977,6 @@
 
    * khmer/utils.py: added 'check_is_pair', 'broken_paired_reader', and
    'write_record_pair' functions.
-   * tests/test_functions.py: added unit tests for 'check_is_pair' and
-   'broken_paired_reader'.
    * khmer/khmer_args.py: added streaming reference for future algorithms
    citation.
    * tests/test_functions.py: added unit tests for 'check_is_pair' and

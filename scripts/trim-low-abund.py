@@ -53,8 +53,8 @@ import shutil
 import textwrap
 import argparse
 
-from screed import Record
 from khmer import khmer_args
+from khmer import ReadParser
 
 from khmer.khmer_args import (build_counting_args, info, add_loadgraph_args,
                               report_on_config, calculate_graphsize,
@@ -125,9 +125,6 @@ def get_parser():
                         help='Only trim low-abundance k-mers from sequences '
                         'that have high coverage.')
 
-    # expert options
-    parser.add_argument('--ignore-pairs', default=False, action='store_true')
-    parser.add_argument('--ignore-pairs', type=bool, default=False)
     add_loadgraph_args(parser)
     parser.add_argument('-s', '--savegraph', metavar="filename", default='',
                         help='save the k-mer countgraph to disk after all'
@@ -368,17 +365,7 @@ def main():
         pass2list.append((filename, pass2filename, trimfp))
 
         # input file stuff: get a broken_paired reader.
-        screed_iter = screed.open(filename)
-        pass2fp = open(pass2filename, 'w')
-
-        save_pass2 = 0
-
-        iter = broken_paired_reader(screed_iter, min_length=K,
-                                    force_single=args.ignore_pairs)
-        for n, is_pair, read1, read2 in iter:
-        n = 0
-
-        paired_iter = broken_paired_reader(screed_iter, min_length=K,
+        paired_iter = broken_paired_reader(ReadParser(filename), min_length=K,
                                            force_single=args.ignore_pairs)
 
         # main loop through the file.
@@ -432,8 +419,8 @@ def main():
         # so pairs will stay together if not orphaned.  This is in contrast
         # to the first loop.  Hence, force_single=True below.
 
-        screed_iter = screed.open(pass2filename, parse_description=False)
-        paired_iter = broken_paired_reader(screed_iter, min_length=K,
+        paired_iter = broken_paired_reader(ReadParser(pass2filename),
+                                           min_length=K,
                                            force_single=True)
 
         watermark = REPORT_EVERY_N_READS
@@ -466,18 +453,6 @@ def main():
     percent_reads_trimmed = float(trimmed_reads + (n_reads - written_reads)) /\
         n_reads * 100.0
 
-    print 'read %d reads, %d bp' % (n_reads, n_bp,)
-    print 'wrote %d reads, %d bp' % (written_reads, written_bp,)
-    print 'looked at %d reads twice (%.2f passes)' % (save_pass2_total,
-                                                      n_passes)
-    print 'removed %d reads and trimmed %d reads (%.2f%%)' % \
-        (n_reads - written_reads, trimmed_reads, percent_reads_trimmed)
-    print 'trimmed or removed %.2f%% of bases (%d total)' % \
-        ((1 - (written_bp / float(n_bp))) * 100.0, n_bp - written_bp)
-    n_passes = 1.0 + (float(save_pass2_total) / n_reads)
-    percent_reads_trimmed = float(trimmed_reads + (n_reads - written_reads)) /\
-        n_reads * 100.0
-
     log_info('read {read} reads, {bp} bp', read=n_reads, bp=n_bp)
     log_info('wrote {wr} reads, {wbp} bp', wr=written_reads, wbp=written_bp)
     log_info('looked at {st} reads twice ({np:.2f} passes)',
@@ -494,18 +469,6 @@ def main():
                  n=n_reads - n_skipped, p=percent_reads_hicov)
         log_info('skipped {r} reads/{bp} bases because of low coverage',
                  r=n_skipped, bp=bp_skipped)
-        print('%d reads were high coverage (%.2f%%);' % (n_reads - n_skipped,
-        percent_reads_hicov = 100.0 * float(n_reads - skipped_n) / n_reads
-        print '%d reads were high coverage;' % (n_reads - skipped_n)
-        print 'skipped %d reads/%d bases because of low coverage' % \
-              (skipped_n, skipped_bp)
-        percent_reads_hicov = 100.0 * float(n_reads - skipped_n) / n_reads
-        print('%d reads were high coverage (%.2f%%);' % (n_reads - skipped_n,
-                                                         percent_reads_hicov),
-              file=sys.stderr)
-        print('skipped %d reads/%d bases because of low coverage' %
-              (n_skipped, bp_skipped),
-              file=sys.stderr)
 
     fp_rate = \
         khmer.calc_expected_collisions(ct, args.force, max_false_pos=.8)

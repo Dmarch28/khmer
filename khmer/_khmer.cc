@@ -1267,6 +1267,12 @@ hashtable_reverse_hash(khmer_KHashtable_Object * me, PyObject * args)
         return NULL;
     }
 
+    try {
+        return PyUnicode_FromString(hashtable->unhash_dna(val).c_str());
+    } catch (khmer_exception &e) {
+        PyErr_SetString(PyExc_ValueError, e.what());
+        return NULL;
+    }
     return PyUnicode_FromString(_revhash(val, hashtable->ksize()).c_str());
 }
 

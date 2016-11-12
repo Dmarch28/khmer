@@ -156,18 +156,18 @@ consume_fasta(
 
 unsigned int Hashtable::consume_string(const std::string &s)
 {
-    const char * sp = s.c_str();
     unsigned int n_consumed = 0;
 
-    KmerIterator kmers(sp, _ksize);
+    KmerIterator * kmers = new_kmer_iterator(s);
 
-    while(!kmers.done()) {
-        HashIntoType kmer = kmers.next();
+    while(!kmers->done()) {
+        HashIntoType kmer = kmers->next();
 
         count(kmer);
         n_consumed++;
     }
 
+    delete kmers;
     return n_consumed;
 }
 
@@ -211,7 +211,7 @@ void Hashtable::get_median_count(const std::string &s,
 bool Hashtable::median_at_least(const std::string &s,
                                 unsigned int cutoff)
 {
-    KmerIterator kmers(s.c_str(), _ksize);
+    KmerIterator * kmers = new_kmer_iterator(s);
     unsigned int min_req = 0.5 + float(s.size() - _ksize + 1) / 2;
     unsigned int num_cutoff_kmers = 0;
 
@@ -219,7 +219,7 @@ bool Hashtable::median_at_least(const std::string &s,
     // accumulate at least min_req worth of counts before checking to see
     // if we have enough high-abundance k-mers to indicate success.
     for (unsigned int i = 0; i < min_req; ++i) {
-        HashIntoType kmer = kmers.next();
+        HashIntoType kmer = kmers->next();
         if (this->get_count(kmer) >= cutoff) {
             ++num_cutoff_kmers;
         }
@@ -227,17 +227,20 @@ bool Hashtable::median_at_least(const std::string &s,
 
     // second loop: now check to see if we pass the threshold for each k-mer.
     if (num_cutoff_kmers >= min_req) {
+        delete kmers;
         return true;
     }
-    while(!kmers.done()) {
-        HashIntoType kmer = kmers.next();
+    while(!kmers->done()) {
+        HashIntoType kmer = kmers->next();
         if (this->get_count(kmer) >= cutoff) {
             ++num_cutoff_kmers;
             if (num_cutoff_kmers >= min_req) {
+                delete kmers;
                 return true;
             }
         }
     }
+    delete kmers;
     return false;
 }
 
@@ -257,119 +260,50 @@ void Hashtable::get_kmers(const std::string &s,
 void Hashtable::get_kmer_hashes(const std::string &s,
                                 std::vector<HashIntoType> &kmers_vec) const
 {
-    KmerIterator kmers(s.c_str(), _ksize);
+    KmerIterator * kmers = new_kmer_iterator(s);
 
-    while(!kmers.done()) {
-        HashIntoType kmer = kmers.next();
+    while(!kmers->done()) {
+        HashIntoType kmer = kmers->next();
         kmers_vec.push_back(kmer);
     }
+    delete kmers;
 }
 
 
 void Hashtable::get_kmer_hashes_as_hashset(const std::string &s,
         SeenSet& hashes) const
 {
-    KmerIterator kmers(s.c_str(), _ksize);
+    KmerIterator * kmers = new_kmer_iterator(s);
 
-    while(!kmers.done()) {
-        HashIntoType kmer = kmers.next();
+    while(!kmers->done()) {
+        HashIntoType kmer = kmers->next();
         hashes.insert(kmer);
     }
+    delete kmers;
 }
 
 
 void Hashtable::get_kmer_counts(const std::string &s,
                                 std::vector<BoundedCounterType> &counts) const
 {
-    KmerIterator kmers(s.c_str(), _ksize);
+    KmerIterator * kmers = new_kmer_iterator(s);
 
-    while(!kmers.done()) {
-        HashIntoType kmer = kmers.next();
+    while(!kmers->done()) {
+        HashIntoType kmer = kmers->next();
         BoundedCounterType c = this->get_count(kmer);
         counts.push_back(c);
     }
-}
-
-void Hashgraph::find_high_degree_nodes(const char * s,
-                                       SeenSet& high_degree_nodes)
-const
-{
-    Traverser traverser(this);
-    KmerIterator kmers(s, _ksize);
-
-    unsigned long n = 0;
-    while(!kmers.done()) {
-        n++;
-        if (n % 10000 == 0) {
-            std::cout << "... find_high_degree_nodes: " << n << "\n";
-            std::cout << std::flush;
-        }
-        Kmer kmer = kmers.next();
-        if ((traverser.degree(kmer)) > 2) {
-            high_degree_nodes.insert(kmer);
-        }
-    }
-}
-
-
-unsigned int Hashtable::traverse_linear_path(const Kmer seed_kmer,
-unsigned int Hashgraph::traverse_linear_path(const Kmer seed_kmer,
-        SeenSet &adjacencies,
-        SeenSet &visited, Hashtable &bf,
-        SeenSet &high_degree_nodes)
-const
-{
-    unsigned int size = 0;
-
-    Traverser traverser(this);
-
-    // if this k-mer is in the Bloom filter, truncate search.
-    // This prevents paths from being traversed in two directions.
-    if (bf.get_count(seed_kmer)) {
-        return 0;
-    }
-
-    std::vector<Kmer> to_be_visited;
-    to_be_visited.push_back(seed_kmer);
-
-    while (to_be_visited.size()) {
-        Kmer kmer = to_be_visited.back();
-        to_be_visited.pop_back();
-
-        visited.insert(kmer);
-        size += 1;
-
-        KmerQueue node_q;
-        traverser.traverse(kmer, node_q);
-
-        while (node_q.size()) {
-            Kmer node = node_q.front();
-            node_q.pop();
-
-            if (set_contains(high_degree_nodes, node)) {
-                // if there are any adjacent high degree nodes, record;
-                adjacencies.insert(node);
-                // also, add this to the stop Bloom filter.
-                bf.count(kmer);
-            } else if (set_contains(visited, node)) {
-                // do nothing - already visited
-                ;
-            } else {
-                to_be_visited.push_back(node);
-            }
-        }
-    }
-    return size;
+    delete kmers;
 }
 
 BoundedCounterType Hashtable::get_min_count(const std::string &s)
 {
-    KmerIterator kmers(s.c_str(), _ksize);
+    KmerIterator * kmers = new_kmer_iterator(s);
 
     BoundedCounterType min_count = MAX_KCOUNT;
 
-    while(!kmers.done()) {
-        HashIntoType kmer = kmers.next();
+    while(!kmers->done()) {
+        HashIntoType kmer = kmers->next();
 
         BoundedCounterType count = this->get_count(kmer);
 
@@ -377,17 +311,18 @@ BoundedCounterType Hashtable::get_min_count(const std::string &s)
             min_count = count;
         }
     }
+    delete kmers;
     return min_count;
 }
 
 BoundedCounterType Hashtable::get_max_count(const std::string &s)
 {
-    KmerIterator kmers(s.c_str(), _ksize);
+    KmerIterator * kmers = new_kmer_iterator(s);
 
     BoundedCounterType max_count = 0;
 
-    while(!kmers.done()) {
-        HashIntoType kmer = kmers.next();
+    while(!kmers->done()) {
+        HashIntoType kmer = kmers->next();
 
         BoundedCounterType count = this->get_count(kmer);
 
@@ -395,6 +330,7 @@ BoundedCounterType Hashtable::get_max_count(const std::string &s)
             max_count = count;
         }
     }
+    delete kmers;
     return max_count;
 }
 
@@ -430,10 +366,10 @@ Hashtable::abundance_distribution(
         seq = read.sequence;
 
         if (check_and_normalize_read(seq)) {
-            KmerIterator kmers(seq.c_str(), _ksize);
+            KmerIterator * kmers = new_kmer_iterator(seq);
 
-            while(!kmers.done()) {
-                HashIntoType kmer = kmers.next();
+            while(!kmers->done()) {
+                HashIntoType kmer = kmers->next();
 
                 if (!tracking->get_count(kmer)) {
                     tracking->count(kmer);
@@ -443,67 +379,16 @@ Hashtable::abundance_distribution(
                 }
             }
 
-//////////////////////////////////////////////////////////////////////
-// graph stuff
-
-void Hashtable::calc_connected_graph_size(Kmer start,
-        unsigned long long& count,
-        KmerSet& keeper,
-        const unsigned long long threshold,
-        bool break_on_circum)
-const
-{
-    const BoundedCounterType val = get_count(start);
-
-    if (val == 0) {
-        return;
-    }
-
-    KmerQueue node_q;
-    node_q.push(start);
-
-    // Avoid high-circumference k-mers
-    Traverser traverser(this);
-
-    KmerFilter filter = [&] (const Kmer& n) {
-        return break_on_circum && traverser.degree(n) > 4;
-    };
-    traverser.push_filter(filter);
-
-    while(!node_q.empty()) {
-        Kmer node = node_q.front();
-        node_q.pop();
-
-        // have we already seen me? don't count; exit.
-        if (set_contains(keeper, node)) {
-            continue;
-        }
-
-        // is this in stop_tags?
-        if (set_contains(stop_tags, node)) {
-            continue;
-        }
             name.clear();
             seq.clear();
+
+            delete kmers;
         }
     }
     return dist;
 }
 
 
-        count += 1;
-
-        // are we past the threshold? truncate search.
-        if (threshold && count >= threshold) {
-            return;
-        }
-
-        // otherwise, explore in all directions.
-        traverser.traverse(node, node_q);
-    }
-}
-
-unsigned int Hashtable::kmer_degree(HashIntoType kmer_f, HashIntoType kmer_r)
 uint64_t * Hashtable::abundance_distribution(
     std::string filename,
     Hashtable *  tracking)
@@ -524,90 +409,33 @@ const
         return 0;
     }
 
-    KmerIterator kmers(seq.c_str(), _ksize);
+    KmerIterator * kmers = new_kmer_iterator(seq);
 
     HashIntoType kmer;
 
-    if (kmers.done()) {
+    if (kmers->done()) {
+        delete kmers;
         return 0;
     }
-    kmer = kmers.next();
+    kmer = kmers->next();
 
-unsigned int Hashtable::traverse_from_kmer(Kmer start,
-        unsigned int radius,
-        KmerSet &keeper,
-        unsigned int max_count)
-const
-{
-
-    KmerQueue node_q;
-    std::queue<unsigned int> breadth_q;
-    unsigned int cur_breadth = 0;
-    unsigned int total = 0;
-    unsigned int nfound = 0;
-
-    KmerFilter filter = [&] (const Kmer& n) {
-        return set_contains(keeper, n);
-    };
-    Traverser traverser(this, filter);
-
-    node_q.push(start);
-    breadth_q.push(0);
-
-    while(!node_q.empty()) {
-        Kmer node = node_q.front();
-        node_q.pop();
-
-        unsigned int breadth = breadth_q.front();
-        breadth_q.pop();
-
-        if (breadth > radius) {
-            break;
-        }
-
-        if (max_count && total > max_count) {
-            break;
-        }
-
-        if (set_contains(keeper, node)) {
-            continue;
-        }
-
-        if (set_contains(stop_tags, node)) {
-            continue;
-        }
-
-        // keep track of seen kmers
-        keeper.insert(node);
-        total++;
-
-        if (!(breadth >= cur_breadth)) { // keep track of watermark, for debugging.
-            throw khmer_exception();
-        }
-        if (breadth > cur_breadth) {
-            cur_breadth = breadth;
-        }
-    if (kmers.done() || get_count(kmer) < min_abund) {
+    if (kmers->done() || get_count(kmer) < min_abund) {
+        delete kmers;
         return 0;
     }
 
-        nfound = traverser.traverse_right(node, node_q);
-        for (unsigned int i = 0; i<nfound; ++i) {
-            breadth_q.push(breadth + 1);
-        }
     unsigned long i = _ksize;
-    while (!kmers.done()) {
-        kmer = kmers.next();
+    while (!kmers->done()) {
+        kmer = kmers->next();
 
-        nfound = traverser.traverse_left(node, node_q);
-        for (unsigned int i = 0; i<nfound; ++i) {
-            breadth_q.push(breadth + 1);
         if (get_count(kmer) < min_abund) {
+            delete kmers;
             return i;
         }
         i++;
     }
 
+    delete kmers;
     return seq.length();
 }
 
@@ -620,29 +448,33 @@ const
         return 0;
     }
 
-    KmerIterator kmers(seq.c_str(), _ksize);
+    KmerIterator * kmers = new_kmer_iterator(seq);
 
     HashIntoType kmer;
 
-    if (kmers.done()) {
+    if (kmers->done()) {
+        delete kmers;
         return 0;
     }
-    kmer = kmers.next();
+    kmer = kmers->next();
 
-    if (kmers.done() || get_count(kmer) > max_abund) {
+    if (kmers->done() || get_count(kmer) > max_abund) {
+        delete kmers;
         return 0;
     }
 
     unsigned long i = _ksize;
-    while (!kmers.done()) {
-        kmer = kmers.next();
+    while (!kmers->done()) {
+        kmer = kmers->next();
 
         if (get_count(kmer) > max_abund) {
+            delete kmers;
             return i;
         }
         i++;
     }
 
+    delete kmers;
     return seq.length();
 }
 
@@ -656,42 +488,44 @@ const
         throw khmer_exception("invalid read");
     }
 
-    KmerIterator kmers(seq.c_str(), _ksize);
+    KmerIterator * kmers = new_kmer_iterator(seq);
 
-    HashIntoType kmer = kmers.next();
-    if (kmers.done()) {
+    HashIntoType kmer = kmers->next();
+    if (kmers->done()) {
         return posns;
     }
 
     // find the first trusted k-mer
-    while (!kmers.done()) {
+    while (!kmers->done()) {
         if (get_count(kmer) > max_abund) {
             break;
         }
-        kmer = kmers.next();
+        kmer = kmers->next();
     }
 
-    if (kmers.done()) {
+    if (kmers->done()) {
+        delete kmers;
         return posns;
     }
 
     // did we bypass some erroneous k-mers? call the last one.
-    if (kmers.get_start_pos() > 0) {
+    if (kmers->get_start_pos() > 0) {
         // if we are well past the first k, forget the whole thing (!? @CTB)
-        if (kmers.get_start_pos() >= _ksize && 0) {
+        if (kmers->get_start_pos() >= _ksize && 0) {
+            delete kmers;
             return posns;
         }
-        posns.push_back(kmers.get_start_pos() - 1);
+        posns.push_back(kmers->get_start_pos() - 1);
     }
 
-    while (!kmers.done()) {
-        kmer = kmers.next();
+    while (!kmers->done()) {
+        kmer = kmers->next();
         if (get_count(kmer) <= max_abund) { // error!
-            posns.push_back(kmers.get_end_pos() - 1);
+            posns.push_back(kmers->get_end_pos() - 1);
 
             // find next good
-            while (!kmers.done()) {
-                kmer = kmers.next();
+            while (!kmers->done()) {
+                kmer = kmers->next();
                 if (get_count(kmer) > max_abund) { // a good stretch again.
                     break;
                 }
@@ -699,129 +533,8 @@ const
         }
     }
 
+    delete kmers;
     return posns;
-}
-
-
-unsigned int Hashtable::traverse_linear_path(const Kmer seed_kmer,
-                                             SeenSet &adjacencies,
-                                             SeenSet &visited, Hashtable &bf,
-                                             SeenSet &high_degree_nodes)
-    const
-void Nodegraph::update_from(const Nodegraph &otherBASE)
-{
-    if (_ksize != otherBASE._ksize) {
-        throw khmer_exception("both nodegraphs must have same k size");
-    }
-
-    std::vector<Kmer> to_be_visited;
-    to_be_visited.push_back(seed_kmer);
-
-    while (to_be_visited.size()) {
-        Kmer kmer = to_be_visited.back();
-        to_be_visited.pop_back();
-
-        visited.insert(kmer);
-        size += 1;
-
-        KmerQueue node_q;
-        traverser.traverse(kmer, node_q);
-
-        while (node_q.size()) {
-            Kmer node = node_q.front();
-            node_q.pop();
-    BitStorage * myself = dynamic_cast<BitStorage *>(this->store);
-    const BitStorage * other;
-    other = dynamic_cast<const BitStorage*>(otherBASE.store);
-
-    // if dynamic_cast worked, then the pointers will be not null.
-    if (myself && other) {
-        myself->update_from(*other);
-    } else {
-        throw khmer_exception("update_from failed with incompatible objects");
-    }
-}
-
-// Starting from the given seed k-mer, assemble the maximal linear path in
-// both directions.
-//
-// No guarantees on direction, of course - this may return the reverse
-// complement of the input sequence.
-//
-// Note: as written, will ignore branches to the left and continue
-// past them; this probably needs to be fixed.  For now, this means
-// that assembling from two different directions may yield different
-// results.
-
-std::string Hashgraph::assemble_linear_path(const Kmer seed_kmer,
-        const Hashtable * stop_bf)
-const
-{
-    if (get_count(seed_kmer) == 0) {
-        // If the seed k-mer is not in the de Bruijn graph, stop trying to make
-        // something happen. It's not going to happen!
-        return "";
-    }
-
-    std::string start_kmer = seed_kmer.get_string_rep(_ksize);
-    std::string right = _assemble_right(start_kmer.c_str(), stop_bf);
-
-    start_kmer = _revcomp(start_kmer);
-    std::string left = _assemble_right(start_kmer.c_str(), stop_bf);
-
-    left = left.substr(_ksize);
-    return _revcomp(left) + right;
-}
-
-std::string Hashgraph::_assemble_right(const char * start_kmer,
-                                       const Hashtable * stop_bf)
-const
-{
-    const char bases[] = "ACGT";
-    std::string kmer = start_kmer;
-    std::string contig = kmer;
-
-    // This loop extends the starting k-mer to the right as long as it can
-    // do so unambiguously (or not at all).  This involves checking each
-    // possible nucleotide suffix for presence; extension is continued until
-    // either more than one such k-mer is present ('found2' is true), or no
-    // such k-mer is present ('found' is false).
-
-    while (1) {
-        const char * base = &bases[0];
-        bool found = false;
-        char found_base;
-        bool found2 = false;
-
-        // check all four suffixes for presence.
-        while(*base != 0) {
-            std::string try_kmer = kmer.substr(1) + (char) *base;
-
-            // a hit!
-            if (this->get_count(try_kmer.c_str()) &&
-                    (!stop_bf || !stop_bf->get_count(try_kmer.c_str()))) {
-                if (found) {
-                    found2 = true;
-                    break;
-                }
-                found_base = (char) *base;
-                found = true;
-            }
-            base++;
-        }
-        if (!found || found2) {
-
-        // exit condition: no suffix k-mer, or more than one.
-        if (!found or found2) {
-            break;
-        }
-
-        // extend assembly!
-        contig += found_base;
-        kmer = kmer.substr(1) + found_base;
-        found = true;
-    }
-    return contig;
 }
 
 // vim: set sts=2 sw=2:

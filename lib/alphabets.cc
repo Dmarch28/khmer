@@ -1,5 +1,6 @@
 /*
 This file is part of khmer, https://github.com/dib-lab/khmer/, and is
+Copyright (C) 2010-2015, Michigan State University.
 Copyright (C) 2015-2016, The Regents of the University of California.
 
 Redistribution and use in source and binary forms, with or without
@@ -34,18 +35,36 @@ LICENSE (END)
 
 Contact: khmer-project@idyll.org
 */
+#ifndef HASHBITS_HH
+#define HASHBITS_HH
 
+#include <stddef.h>
+#include <string.h>
 #include <string>
+#include <vector>
+
+#include "hashtable.hh"
+#include "khmer.hh"
+#include "kmer_hash.hh"
 
 namespace khmer
 {
-namespace alphabets
+
+class CountingHash;
+class LabelHash;
+
+class Hashbits : public Hashgraph
 {
+public:
+    explicit Hashbits(WordLength ksize, std::vector<uint64_t> sizes)
+        : Hashgraph(ksize, new BitStorage(sizes)) { } ;
 
-std::string DNA_SIMPLE = "ACGT";
-std::string DNAN_SIMPLE = "ACGTN";
-std::string IUPAC_NUCL = "ACGTURYSWKMBDHVN.-";
-std::string IUPAC_AA = "ACDEFGHIKLMNPQRSTVWY";
+    void update_from(const Hashbits &other);
+};
+}
 
-}
-}
+#include "counting.hh"
+#include "labelhash.hh"
+#endif // HASHBITS_HH
+
+// vim: set sts=2 sw=2:

@@ -156,18 +156,18 @@ consume_fasta(
 
 unsigned int Hashtable::consume_string(const std::string &s)
 {
+    const char * sp = s.c_str();
     unsigned int n_consumed = 0;
 
-    KmerHashIterator * kmers = new_kmer_iterator(s);
+    KmerIterator kmers(sp, _ksize);
 
-    while(!kmers->done()) {
-        HashIntoType kmer = kmers->next();
+    while(!kmers.done()) {
+        HashIntoType kmer = kmers.next();
 
         count(kmer);
         n_consumed++;
     }
 
-    delete kmers;
     return n_consumed;
 }
 
@@ -211,7 +211,7 @@ void Hashtable::get_median_count(const std::string &s,
 bool Hashtable::median_at_least(const std::string &s,
                                 unsigned int cutoff)
 {
-    KmerHashIterator * kmers = new_kmer_iterator(s);
+    KmerIterator kmers(s.c_str(), _ksize);
     unsigned int min_req = 0.5 + float(s.size() - _ksize + 1) / 2;
     unsigned int num_cutoff_kmers = 0;
 
@@ -219,7 +219,7 @@ bool Hashtable::median_at_least(const std::string &s,
     // accumulate at least min_req worth of counts before checking to see
     // if we have enough high-abundance k-mers to indicate success.
     for (unsigned int i = 0; i < min_req; ++i) {
-        HashIntoType kmer = kmers->next();
+        HashIntoType kmer = kmers.next();
         if (this->get_count(kmer) >= cutoff) {
             ++num_cutoff_kmers;
         }
@@ -227,20 +227,17 @@ bool Hashtable::median_at_least(const std::string &s,
 
     // second loop: now check to see if we pass the threshold for each k-mer.
     if (num_cutoff_kmers >= min_req) {
-        delete kmers;
         return true;
     }
-    while(!kmers->done()) {
-        HashIntoType kmer = kmers->next();
+    while(!kmers.done()) {
+        HashIntoType kmer = kmers.next();
         if (this->get_count(kmer) >= cutoff) {
             ++num_cutoff_kmers;
             if (num_cutoff_kmers >= min_req) {
-                delete kmers;
                 return true;
             }
         }
     }
-    delete kmers;
     return false;
 }
 
@@ -260,50 +257,47 @@ void Hashtable::get_kmers(const std::string &s,
 void Hashtable::get_kmer_hashes(const std::string &s,
                                 std::vector<HashIntoType> &kmers_vec) const
 {
-    KmerHashIterator * kmers = new_kmer_iterator(s);
+    KmerIterator kmers(s.c_str(), _ksize);
 
-    while(!kmers->done()) {
-        HashIntoType kmer = kmers->next();
+    while(!kmers.done()) {
+        HashIntoType kmer = kmers.next();
         kmers_vec.push_back(kmer);
     }
-    delete kmers;
 }
 
 
 void Hashtable::get_kmer_hashes_as_hashset(const std::string &s,
         SeenSet& hashes) const
 {
-    KmerHashIterator * kmers = new_kmer_iterator(s);
+    KmerIterator kmers(s.c_str(), _ksize);
 
-    while(!kmers->done()) {
-        HashIntoType kmer = kmers->next();
+    while(!kmers.done()) {
+        HashIntoType kmer = kmers.next();
         hashes.insert(kmer);
     }
-    delete kmers;
 }
 
 
 void Hashtable::get_kmer_counts(const std::string &s,
                                 std::vector<BoundedCounterType> &counts) const
 {
-    KmerHashIterator * kmers = new_kmer_iterator(s);
+    KmerIterator kmers(s.c_str(), _ksize);
 
-    while(!kmers->done()) {
-        HashIntoType kmer = kmers->next();
+    while(!kmers.done()) {
+        HashIntoType kmer = kmers.next();
         BoundedCounterType c = this->get_count(kmer);
         counts.push_back(c);
     }
-    delete kmers;
 }
 
 BoundedCounterType Hashtable::get_min_count(const std::string &s)
 {
-    KmerHashIterator * kmers = new_kmer_iterator(s);
+    KmerIterator kmers(s.c_str(), _ksize);
 
     BoundedCounterType min_count = MAX_KCOUNT;
 
-    while(!kmers->done()) {
-        HashIntoType kmer = kmers->next();
+    while(!kmers.done()) {
+        HashIntoType kmer = kmers.next();
 
         BoundedCounterType count = this->get_count(kmer);
 
@@ -311,18 +305,17 @@ BoundedCounterType Hashtable::get_min_count(const std::string &s)
             min_count = count;
         }
     }
-    delete kmers;
     return min_count;
 }
 
 BoundedCounterType Hashtable::get_max_count(const std::string &s)
 {
-    KmerHashIterator * kmers = new_kmer_iterator(s);
-
     BoundedCounterType max_count = 0;
 
-    while(!kmers->done()) {
-        HashIntoType kmer = kmers->next();
+    KmerIterator kmers(s.c_str(), _ksize);
+
+    while(!kmers.done()) {
+        HashIntoType kmer = kmers.next();
 
         BoundedCounterType count = this->get_count(kmer);
 
@@ -330,7 +323,6 @@ BoundedCounterType Hashtable::get_max_count(const std::string &s)
             max_count = count;
         }
     }
-    delete kmers;
     return max_count;
 }
 
@@ -366,10 +358,10 @@ Hashtable::abundance_distribution(
         seq = read.sequence;
 
         if (check_and_normalize_read(seq)) {
-            KmerHashIterator * kmers = new_kmer_iterator(seq);
+            KmerIterator kmers(seq.c_str(), _ksize);
 
-            while(!kmers->done()) {
-                HashIntoType kmer = kmers->next();
+            while(!kmers.done()) {
+                HashIntoType kmer = kmers.next();
 
                 if (!tracking->get_count(kmer)) {
                     tracking->count(kmer);
@@ -381,8 +373,6 @@ Hashtable::abundance_distribution(
 
             name.clear();
             seq.clear();
-
-            delete kmers;
         }
     }
     return dist;
@@ -409,33 +399,29 @@ const
         return 0;
     }
 
-    KmerHashIterator * kmers = new_kmer_iterator(seq);
+    KmerIterator kmers(seq.c_str(), _ksize);
 
     HashIntoType kmer;
 
-    if (kmers->done()) {
-        delete kmers;
+    if (kmers.done()) {
         return 0;
     }
-    kmer = kmers->next();
+    kmer = kmers.next();
 
-    if (kmers->done() || get_count(kmer) < min_abund) {
-        delete kmers;
+    if (kmers.done() || get_count(kmer) < min_abund) {
         return 0;
     }
 
     unsigned long i = _ksize;
-    while (!kmers->done()) {
-        kmer = kmers->next();
+    while (!kmers.done()) {
+        kmer = kmers.next();
 
         if (get_count(kmer) < min_abund) {
-            delete kmers;
             return i;
         }
         i++;
     }
 
-    delete kmers;
     return seq.length();
 }
 
@@ -448,33 +434,29 @@ const
         return 0;
     }
 
-    KmerHashIterator * kmers = new_kmer_iterator(seq);
+    KmerIterator kmers(seq.c_str(), _ksize);
 
     HashIntoType kmer;
 
-    if (kmers->done()) {
-        delete kmers;
+    if (kmers.done()) {
         return 0;
     }
-    kmer = kmers->next();
+    kmer = kmers.next();
 
-    if (kmers->done() || get_count(kmer) > max_abund) {
-        delete kmers;
+    if (kmers.done() || get_count(kmer) > max_abund) {
         return 0;
     }
 
     unsigned long i = _ksize;
-    while (!kmers->done()) {
-        kmer = kmers->next();
+    while (!kmers.done()) {
+        kmer = kmers.next();
 
         if (get_count(kmer) > max_abund) {
-            delete kmers;
             return i;
         }
         i++;
     }
 
-    delete kmers;
     return seq.length();
 }
 
@@ -488,44 +470,42 @@ const
         throw khmer_exception("invalid read");
     }
 
-    KmerHashIterator * kmers = new_kmer_iterator(seq);
+    KmerIterator kmers(seq.c_str(), _ksize);
 
-    HashIntoType kmer = kmers->next();
-    if (kmers->done()) {
+    HashIntoType kmer = kmers.next();
+    if (kmers.done()) {
         return posns;
     }
 
     // find the first trusted k-mer
-    while (!kmers->done()) {
+    while (!kmers.done()) {
         if (get_count(kmer) > max_abund) {
             break;
         }
-        kmer = kmers->next();
+        kmer = kmers.next();
     }
 
-    if (kmers->done()) {
-        delete kmers;
+    if (kmers.done()) {
         return posns;
     }
 
     // did we bypass some erroneous k-mers? call the last one.
-    if (kmers->get_start_pos() > 0) {
+    if (kmers.get_start_pos() > 0) {
         // if we are well past the first k, forget the whole thing (!? @CTB)
-        if (kmers->get_start_pos() >= _ksize && 0) {
-            delete kmers;
+        if (kmers.get_start_pos() >= _ksize && 0) {
             return posns;
         }
-        posns.push_back(kmers->get_start_pos() - 1);
+        posns.push_back(kmers.get_start_pos() - 1);
     }
 
-    while (!kmers->done()) {
-        kmer = kmers->next();
+    while (!kmers.done()) {
+        kmer = kmers.next();
         if (get_count(kmer) <= max_abund) { // error!
-            posns.push_back(kmers->get_end_pos() - 1);
+            posns.push_back(kmers.get_end_pos() - 1);
 
             // find next good
-            while (!kmers->done()) {
-                kmer = kmers->next();
+            while (!kmers.done()) {
+                kmer = kmers.next();
                 if (get_count(kmer) > max_abund) { // a good stretch again.
                     break;
                 }
@@ -533,49 +513,7 @@ const
         }
     }
 
-    delete kmers;
     return posns;
-}
-
-class MurmurKmerHashIterator : public KmerHashIterator
-{
-    const char * _seq;
-    const char _ksize;
-    unsigned int index;
-    unsigned int length;
-public:
-    MurmurKmerHashIterator(const char * seq, unsigned char k) :
-        _seq(seq), _ksize(k) {
-        index = 0;
-        length = strlen(_seq);
-    };
-
-    HashIntoType first() { return next(); }
-
-    HashIntoType next() {
-        if (done()) {
-            throw khmer_exception("past end of iterator");
-        }
-        uint64_t out[2];
-        uint32_t seed = 0;
-        MurmurHash3_x64_128((void *)(_seq + index), _ksize, seed, &out);
-
-        index += 1;
-
-        return out[0];
-    }
-
-    bool done() const {
-        return (index + _ksize >= length);
-    }
-
-    unsigned int get_start_pos() const { return index; }
-    unsigned int get_end_pos() const { return index + _ksize; }
-};
-
-KmerHashIterator * Counttable::new_kmer_iterator(const char * sp) const {
-    KmerHashIterator * ki = new MurmurKmerHashIterator(sp, _ksize);
-    return ki;
 }
 
 // vim: set sts=2 sw=2:

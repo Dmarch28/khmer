@@ -45,8 +45,6 @@ import sys
 import traceback
 import subprocess
 from io import open  # pylint: disable=redefined-builtin
-from io import open	 # pylint: disable=redefined-builtin
-from io import open  # pylint: disable=redefined-builtin
 from hashlib import md5
 
 from khmer import reverse_complement as revcomp
@@ -57,14 +55,6 @@ try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
-
-
-def _equals_rc(query, match):
-    return (query == match) or (revcomp(query) == match)
-
-
-def _contains_rc(match, query):
-    return (query in match) or (revcomp(query) in match)
 
 
 def _equals_rc(query, match):
@@ -250,7 +240,10 @@ def longify(listofints):
     return listofints
 
 
-def copy_test_data(testfile):
-    infile = get_temp_filename(os.path.basename(testfile))
+def copy_test_data(testfile, newfilename=None):
+    basename = os.path.basename(testfile)
+    if newfilename is not None:
+        basename = newfilename
+    infile = get_temp_filename(basename)
     shutil.copyfile(get_test_data(testfile), infile)
     return infile

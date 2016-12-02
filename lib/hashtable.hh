@@ -315,7 +315,7 @@ public:
         : Hashtable(ksize, new ByteStorage(sizes)) { } ;
 };
 
-// Hashtable-derived class with NibbleStorage.
+// Hashtable-derived class with ByteStorage.
 class SmallCounttable : public khmer::Hashtable
 {
 public:
@@ -324,8 +324,7 @@ public:
 };
 
 // Hashtable-derived class with BitStorage.
-class Nodetable : public Hashtable
-{
+class Nodetable : public Hashtable {
 public:
     explicit Nodetable(WordLength ksize, std::vector<uint64_t> sizes)
         : Hashtable(ksize, new BitStorage(sizes)) { } ;

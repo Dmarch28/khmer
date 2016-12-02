@@ -361,6 +361,14 @@ public:
         new_kmer_iterator(const char * sp) const;
 };
 
+// Hashtable-derived class with ByteStorage.
+class SmallCounttable : public khmer::Hashtable
+{
+public:
+    explicit SmallCounttable(WordLength ksize, std::vector<uint64_t> sizes)
+        : Hashtable(ksize, new NibbleStorage(sizes)) { } ;
+};
+
 // Hashtable-derived class with BitStorage.
 class Nodetable : public Hashtable {
 public:

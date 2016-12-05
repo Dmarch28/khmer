@@ -1,6 +1,7 @@
 /*
 This file is part of khmer, https://github.com/dib-lab/khmer/, and is
-Copyright (C) 2016, The Regents of the University of California.
+Copyright (C) 2010-2015, Michigan State University.
+Copyright (C) 2015-2016, The Regents of the University of California.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -84,7 +85,7 @@ static PyMethodDef khmer_smallcountgraph_methods[] = {
 };
 
 static PyObject* khmer_smallcountgraph_new(PyTypeObject * type, PyObject * args,
-        PyObject * kwds);
+                                           PyObject * kwds);
 
 static PyTypeObject khmer_KSmallCountgraph_Type
 CPYCHECKER_TYPE_OBJECT_FOR_TYPEDEF("khmer_KSmallCountgraph_Object")
@@ -145,7 +146,7 @@ static void khmer_smallcountgraph_dealloc(khmer_KSmallCountgraph_Object * obj)
 //
 
 static PyObject* khmer_smallcountgraph_new(PyTypeObject * type, PyObject * args,
-        PyObject * kwds)
+                                           PyObject * kwds)
 {
     khmer_KSmallCountgraph_Object * self;
 

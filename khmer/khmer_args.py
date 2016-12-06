@@ -80,7 +80,6 @@ ALGORITHMS = {
 class CitationAction(argparse.Action):
     # pylint: disable=too-few-public-methods
     """Output citation information and exit."""
-
     def __init__(self, *args, **kwargs):
         self.citations = kwargs.pop('citations')
         super(CitationAction, self).__init__(*args, nargs=0, **kwargs)
@@ -127,7 +126,6 @@ class KhmerArgumentParser(argparse.ArgumentParser):
 
     Take care of common arguments and setup printing of citation information.
     """
-
     def __init__(self, citations=None, formatter_class=ComboFormatter,
                  **kwargs):
         super(KhmerArgumentParser, self).__init__(
@@ -258,17 +256,15 @@ def check_conflicting_args(args, hashtype):
                 break  # no repeat warnings
 
         infoset = None
-        if hashtype in ('countgraph', 'smallcountgraph'):
+        if hashtype == 'countgraph':
             infoset = extract_countgraph_info(args.loadgraph)
-        if infoset is not None:
-            ksize = infoset.ksize
-            max_tablesize = infoset.table_size
-            n_tables = infoset.n_tables
+        if info:
+            ksize = infoset[0]
+            max_tablesize = infoset[1]
+            n_tables = infoset[2]
             args.ksize = ksize
             args.n_tables = n_tables
             args.max_tablesize = max_tablesize
-            if infoset.ht_type == khmer.FILETYPES['SMALLCOUNT']:
-                args.small_count = True
 
 
 def check_argument_range(low, high, parameter_name):
@@ -464,10 +460,6 @@ def build_counting_args(descr=None, epilog=None, citations=None):
     """Build an ArgumentParser with args for countgraph based scripts."""
     parser = build_graph_args(descr=descr, epilog=epilog, citations=citations)
 
-    parser.add_argument('--small-count', default=False, action='store_true',
-                        help='Reduce memory usage by using a smaller counter'
-                        ' for individual kmers.')
-
     return parser
 
 
@@ -509,19 +501,17 @@ def calculate_graphsize(args, graphtype, multiplier=1.0):
 def create_nodegraph(args, ksize=None, multiplier=1.0, fp_rate=0.01):
     """Create and return a nodegraph."""
     args = _check_fp_rate(args, fp_rate)
-    
+
     if hasattr(args, 'force'):
         if args.n_tables > 20:
             if not args.force:
                 print_error(
                     "\n** ERROR: khmer only supports number "
                     "of tables <= 20.\n")
-                    "\n** ERROR: khmer only supports number "
-                    "of tables <= 20.\n")
-                print_error("\n** ERROR: khmer only supports number of tables <= 20.\n")
                 sys.exit(1)
             else:
-                log_warn("\n*** Warning: Maximum recommended number of tables is 20, discarded by force nonetheless!\n")
+                log_warn("\n*** Warning: Maximum recommended number of "
+                         "tables is 20, discarded by force nonetheless!\n")
 
     if ksize is None:
         ksize = args.ksize
@@ -536,20 +526,18 @@ def create_nodegraph(args, ksize=None, multiplier=1.0, fp_rate=0.01):
 def create_countgraph(args, ksize=None, multiplier=1.0, fp_rate=0.1):
     """Create and return a countgraph."""
     args = _check_fp_rate(args, fp_rate)
-    
+
     if hasattr(args, 'force'):
         if args.n_tables > 20:
             if not args.force:
                 print_error(
                     "\n** ERROR: khmer only supports number "
                     "of tables <= 20.\n")
-                    "\n** ERROR: khmer only supports number "
-                    "of tables <= 20.\n")
-                print_error("\n** ERROR: khmer only supports number of tables <= 20.\n")
                 sys.exit(1)
             else:
                 if args.n_tables > 20:
-                    log_warn("\n*** Warning: Maximum recommended number of tables is 20, discarded by force nonetheless!\n")
+                    log_warn("\n*** Warning: Maximum recommended number of "
+                             "tables is 20, discarded by force nonetheless!\n")
 
     if ksize is None:
         ksize = args.ksize
@@ -557,13 +545,10 @@ def create_countgraph(args, ksize=None, multiplier=1.0, fp_rate=0.1):
         print_error("\n** ERROR: khmer only supports k-mer sizes <= 32.\n")
         sys.exit(1)
 
+    tablesize = calculate_graphsize(args, 'countgraph', multiplier=multiplier)
     if args.small_count:
-        tablesize = calculate_graphsize(args, 'smallcountgraph',
-                                        multiplier=multiplier)
         return khmer.SmallCountgraph(ksize, tablesize, args.n_tables)
     else:
-        tablesize = calculate_graphsize(args, 'countgraph',
-                                        multiplier=multiplier)
         return khmer.Countgraph(ksize, tablesize, args.n_tables)
 
 

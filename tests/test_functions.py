@@ -40,7 +40,6 @@ import screed
 import khmer
 import os
 import sys
-import collections
 import pytest
 from khmer.utils import check_is_pair, broken_paired_reader
 from . import khmer_tst_utils as utils
@@ -51,8 +50,6 @@ try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
-
-import pytest
 
 
 def test_forward_hash():
@@ -230,7 +227,7 @@ def test_extract_countgraph_info():
             info = khmer.extract_countgraph_info(fn)
         except ValueError as err:
             assert 0, 'Should not throw a ValueErorr: ' + str(err)
-        ksize, table_size, n_tables, _, _, _, _ = info
+        ksize, n_tables, table_size, _, _, _, _ = info
         print(ksize, table_size, n_tables)
 
         assert(ksize) == 25

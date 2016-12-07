@@ -37,7 +37,6 @@
 
 
 from __future__ import print_function
-from collections import namedtuple
 from math import log
 import json
 
@@ -74,8 +73,6 @@ from khmer._khmer import get_version_cpp as __version_cpp__
 from khmer._khmer import ReadParser  # sandbox/to-casava-1.8-fastq.py
 # tests/test_read_parsers.py,scripts/{filter-abund-single,load-graph}.py
 # scripts/{abundance-dist-single,load-into-counting}.py
-
-from khmer._khmer import FILETYPES
 
 import sys
 
@@ -164,9 +161,6 @@ def extract_countgraph_info(filename):
     Keyword argument:
     filename -- the name of the countgraph file to inspect
     """
-    CgInfo = namedtuple("CgInfo", ['ksize', 'n_tables', 'table_size',
-                                   'use_bigcount', 'version', 'ht_type',
-                                   'n_occupied'])
     ksize = None
     n_tables = None
     table_size = None
@@ -184,7 +178,8 @@ def extract_countgraph_info(filename):
             signature, = unpack('4s', countgraph.read(4))
             version, = unpack('B', countgraph.read(1))
             ht_type, = unpack('B', countgraph.read(1))
-            if ht_type != FILETYPES['SMALLCOUNT']:
+            # XXX 7 is the magic value of SAVED_SMALLCOUNT
+            if ht_type != 7:
                 use_bigcount, = unpack('B', countgraph.read(1))
             else:
                 use_bigcount = None
@@ -198,8 +193,8 @@ def extract_countgraph_info(filename):
     except:
         raise ValueError("Count graph file '{}' is corrupt ".format(filename))
 
-    return CgInfo(ksize, n_tables, round(table_size, -2), use_bigcount,
-                  version, ht_type, occupied)
+    return ksize, round(table_size, -2), n_tables, use_bigcount, version, \
+        ht_type, occupied
 
 
 def calc_expected_collisions(graph, force=False, max_false_pos=.2):

@@ -2202,10 +2202,7 @@ static PyMethodDef khmer_hashtable_methods[] = {
         (PyCFunction)hashtable_reverse_hash, METH_VARARGS,
         "Turns a k-mer hash back into a DNA k-mer, if possible."
     },
-    {
-        "hashsizes",
-        (PyCFunction)hashtable_get_hashsizes, METH_VARARGS,
-        "" },
+    { "hashsizes", (PyCFunction)hashtable_get_hashsizes, METH_VARARGS, "" },
     {
         "n_unique_kmers",
         (PyCFunction)hashtable_n_unique_kmers, METH_VARARGS,
@@ -2255,6 +2252,12 @@ static PyMethodDef khmer_hashtable_methods[] = {
         "save",
         (PyCFunction)hashtable_save, METH_VARARGS,
         "Save the graph to the specified file."
+    },
+    {
+        "get_median_count",
+        (PyCFunction)hashtable_get_median_count, METH_VARARGS,
+        "Get the median, average, and stddev of the k-mer counts "
+        " in the string"
     },
     {
         "get_kmers",
@@ -4831,18 +4834,6 @@ MOD_INIT(_khmer)
                                "SUBSET", SAVED_SUBSET,
                                "LABELSET", SAVED_LABELSET,
                                "SMALLCOUNT", SAVED_SMALLCOUNT);
-    if (PyModule_AddObject( m, "FILETYPES", filetype_dict ) < 0) {
-        return MOD_ERROR_VAL;
-    }
-
-    PyObject * filetype_dict = Py_BuildValue("{s,i,s,i,s,i,s,i,s,i,s,i,s,i}",
-      "COUNTING_HT", SAVED_COUNTING_HT,
-      "HASHBITS", SAVED_HASHBITS,
-      "TAGS", SAVED_TAGS,
-      "STOPTAGS", SAVED_STOPTAGS,
-      "SUBSET", SAVED_SUBSET,
-      "LABELSET", SAVED_LABELSET,
-      "SMALLCOUNT", SAVED_SMALLCOUNT);
     if (PyModule_AddObject( m, "FILETYPES", filetype_dict ) < 0) {
         return MOD_ERROR_VAL;
     }

@@ -41,8 +41,6 @@ Contact: khmer-project@idyll.org
 namespace khmer
 {
 typedef std::map<HashIntoType, BoundedCounterType> KmerCountMap;
-class Hashbits;
-class CountingHash;
 
 //
 // base Storage class for hashtable-related storage of information in memory.
@@ -87,7 +85,6 @@ public:
 
 class BitStorage : public Storage
 {
-    friend class Hashbits;
 protected:
     std::vector<uint64_t> _tablesizes;
     size_t _n_tables;
@@ -95,6 +92,7 @@ protected:
     uint64_t _n_unique_kmers;
     Byte ** _counts;
 
+public:
     BitStorage(std::vector<uint64_t>& tablesizes) :
         _tablesizes(tablesizes)
     {
@@ -248,22 +246,25 @@ protected:
 
     // Compute index into the table, this retrieves the correct byte
     // which you then need to select the correct nibble from
-    uint64_t _table_index(const HashIntoType k, const uint64_t tablesize) const {
+    uint64_t _table_index(const HashIntoType k, const uint64_t tablesize) const
+    {
         const uint64_t bins = tablesize / 2 + 1;
         return (k / 2) % bins;
     }
     // Compute which half of the byte to use for this hash value
-    uint8_t _mask(const HashIntoType k) const {
+    uint8_t _mask(const HashIntoType k) const
+    {
         return k%2 ? 15 : 240;
     }
     // Compute which half of the byte to use for this hash value
-    uint8_t _shift(const HashIntoType k) const {
+    uint8_t _shift(const HashIntoType k) const
+    {
         return k%2 ? 0 : 4;
     }
 
 public:
     NibbleStorage(std::vector<uint64_t>& tablesizes) :
-      _tablesizes{tablesizes}, _occupied_bins{0}, _n_unique_kmers{0}
+        _tablesizes{tablesizes}, _occupied_bins{0}, _n_unique_kmers{0}
     {
         _allocate_counters();
     }
@@ -297,13 +298,15 @@ public:
     }
 
 
-    BoundedCounterType test_and_set_bits(HashIntoType khash) {
+    BoundedCounterType test_and_set_bits(HashIntoType khash)
+    {
         BoundedCounterType x = get_count(khash);
         add(khash);
         return !x;
     }
 
-    void add(HashIntoType khash) {
+    void add(HashIntoType khash)
+    {
         bool is_new_kmer = false;
 
         const uint8_t mask = _mask(khash);
@@ -400,20 +403,20 @@ public:
  *
  */
 
-class CountingHashFile;
-class CountingHashFileReader;
-class CountingHashFileWriter;
-class CountingHashGzFileReader;
-class CountingHashGzFileWriter;
+class ByteStorageFile;
+class ByteStorageFileReader;
+class ByteStorageFileWriter;
+class ByteStorageGzFileReader;
+class ByteStorageGzFileWriter;
 
 class ByteStorage : public Storage
 {
-    friend class CountingHashFile;
-    friend class CountingHashFileReader;
-    friend class CountingHashFileWriter;
-    friend class CountingHashGzFileReader;
-    friend class CountingHashGzFileWriter;
-    friend class CountingHash;
+    friend class ByteStorageFile;
+    friend class ByteStorageFileReader;
+    friend class ByteStorageFileWriter;
+    friend class ByteStorageGzFileReader;
+    friend class ByteStorageGzFileWriter;
+    friend class CountGraph;
 protected:
     unsigned int    _max_count;
     unsigned int    _max_bigcount;
@@ -587,7 +590,7 @@ public:
 
 // Helper classes for saving ByteStorage objs to disk & loading them.
 
-class CountingHashFile
+class ByteStorageFile
 {
 public:
     static void load(const std::string &infilename,
@@ -598,37 +601,37 @@ public:
                      const ByteStorage &store);
 };
 
-class CountingHashFileReader : public CountingHashFile
+class ByteStorageFileReader : public ByteStorageFile
 {
 public:
-    CountingHashFileReader(const std::string &infilename,
-                           WordLength &ksize,
-                           ByteStorage &store);
+    ByteStorageFileReader(const std::string &infilename,
+                          WordLength &ksize,
+                          ByteStorage &store);
 };
 
-class CountingHashGzFileReader : public CountingHashFile
+class ByteStorageGzFileReader : public ByteStorageFile
 {
 public:
-    CountingHashGzFileReader(const std::string &infilename,
-                             WordLength &ksize,
-                             ByteStorage &store);
+    ByteStorageGzFileReader(const std::string &infilename,
+                            WordLength &ksize,
+                            ByteStorage &store);
 };
 
 
-class CountingHashFileWriter : public CountingHashFile
+class ByteStorageFileWriter : public ByteStorageFile
 {
 public:
-    CountingHashFileWriter(const std::string &outfilename,
-                           const WordLength ksize,
-                           const ByteStorage &store);
+    ByteStorageFileWriter(const std::string &outfilename,
+                          const WordLength ksize,
+                          const ByteStorage &store);
 };
 
-class CountingHashGzFileWriter : public CountingHashFile
+class ByteStorageGzFileWriter : public ByteStorageFile
 {
 public:
-    CountingHashGzFileWriter(const std::string &outfilename,
-                             const WordLength ksize,
-                             const ByteStorage &store);
+    ByteStorageGzFileWriter(const std::string &outfilename,
+                            const WordLength ksize,
+                            const ByteStorage &store);
 };
 }
 

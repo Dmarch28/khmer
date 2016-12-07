@@ -230,11 +230,11 @@ def test_get_raw_tables_view():
 
 
 def test_get_raw_tables_view_smallcountgraph():
-    ht = khmer.SmallCountgraph(4, 1e5, 4)
+    ht = khmer.SmallCountgraph(20, 1e5, 4)
     tables = ht.get_raw_tables()
     for tab in tables:
         assert sum(tab.tolist()) == 0
-    ht.consume('AAAA')
+    ht.consume('AAAATTTTCCCCGGGGAAAA')
     # the actual count is 1 but stored in the first 4bits of a Byte
     # and so becomes 16
     for tab in tables:
@@ -614,59 +614,47 @@ def test_get_kmers():
 
 
 @pytest.mark.huge
-@pytest.mark.parametrize("ctfile", ['temp.ct', 'temp.ct.gz'])
-def test_save_load_large(ctfile):
-    inpath = utils.get_test_data('random-20-a.fa')
-    savepath = utils.get_temp_filename(ctfile)
+def test_save_load_large():
+    def do_test(ctfile):
+        inpath = utils.get_test_data('random-20-a.fa')
+        savepath = utils.get_temp_filename(ctfile)
 
-    sizes = khmer.get_n_primes_near_x(1, 2 ** 31 + 1000)
+        sizes = khmer.get_n_primes_near_x(1, 2 ** 31 + 1000)
 
-    orig = khmer._Countgraph(12, sizes)
-    orig.consume_fasta(inpath)
-    orig.save(savepath)
+        orig = khmer._Countgraph(12, sizes)
+        orig.consume_fasta(inpath)
+        orig.save(savepath)
 
-    loaded = khmer.load_countgraph(savepath)
+        loaded = khmer.load_countgraph(savepath)
 
-    orig_count = orig.n_occupied()
-    loaded_count = loaded.n_occupied()
-    assert orig_count == 3966, orig_count
-    assert loaded_count == orig_count, loaded_count
+        orig_count = orig.n_occupied()
+        loaded_count = loaded.n_occupied()
+        assert orig_count == 3966, orig_count
+        assert loaded_count == orig_count, loaded_count
 
-
-@pytest.mark.parametrize("ctfile", ['temp.ct', 'temp.ct.gz'])
-def test_save_load_occupied(ctfile):
-    print('working with', ctfile)
-    inpath = utils.get_test_data('random-20-a.fa')
-    savepath = utils.get_temp_filename(ctfile)
-
-    orig = khmer.Countgraph(12, 1e5, 4)
-    orig.consume_fasta(inpath)
-    orig.save(savepath)
-
-    loaded = khmer.load_countgraph(savepath)
-
-    orig_count = orig.n_occupied()
-    loaded_count = loaded.n_occupied()
-    assert orig_count == 3886, orig_count
-    assert loaded_count == orig_count, loaded_count
+    for ctfile in ['temp.ct.gz', 'temp.ct']:
+        do_test(ctfile)
 
 
-@pytest.mark.parametrize("ctfile", ['temp.ct', 'temp.ct.gz'])
-def test_save_load_occupied_small(ctfile):
-    print('working with', ctfile)
-    inpath = utils.get_test_data('random-20-a.fa')
-    savepath = utils.get_temp_filename(ctfile)
+def test_save_load_occupied():
+    def do_test(ctfile):
+        print('working with', ctfile)
+        inpath = utils.get_test_data('random-20-a.fa')
+        savepath = utils.get_temp_filename(ctfile)
 
-    orig = khmer.SmallCountgraph(12, 1e5, 4)
-    orig.consume_fasta(inpath)
-    orig.save(savepath)
+        orig = khmer.Countgraph(12, 1e5, 4)
+        orig.consume_fasta(inpath)
+        orig.save(savepath)
 
-    loaded = khmer.load_countgraph(savepath, small=True)
+        loaded = khmer.load_countgraph(savepath)
 
-    orig_count = orig.n_occupied()
-    loaded_count = loaded.n_occupied()
-    assert orig_count == 3886, orig_count
-    assert loaded_count == orig_count, loaded_count
+        orig_count = orig.n_occupied()
+        loaded_count = loaded.n_occupied()
+        assert orig_count == 3886, orig_count
+        assert loaded_count == orig_count, loaded_count
+
+    for ctfile in ['temp.ct', 'temp.ct.gz']:
+        do_test(ctfile)
 
 
 def test_save_load_occupied_small():
@@ -803,12 +791,15 @@ def test_save_load_gz():
     assert x == y, (x, y)
 
 
-@pytest.mark.parametrize("ext", ['', '.gz'])
-def test_load_empty_files(ext):
+def test_load_empty_files():
+    def do_load_ct(fname):
+        with pytest.raises(OSError):
+            khmer.load_countgraph(fname)
+
     # Check empty files, compressed or not
-    fname = utils.get_test_data('empty-file' + ext)
-    with pytest.raises(OSError):
-        khmer.load_countgraph(fname)
+    for ext in ['', '.gz']:
+        fn = utils.get_test_data('empty-file' + ext)
+        do_load_ct(fn)
 
 
 def test_trim_full():

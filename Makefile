@@ -134,6 +134,8 @@ clean: FORCE
 	rm -f diff-cover.html
 	rm -Rf build dist
 	rm -rf __pycache__/ .eggs/ khmer.egg-info/
+	@find ./ -type d -name __pycache__ -exec rm -rf {} +
+	@find ./khmer/ -type f -name *$(MODEXT) -exec rm -f {} +
 	-rm -f *.gcov
 
 debug: FORCE

@@ -48,46 +48,6 @@ Contact: khmer-project@idyll.org
 using namespace khmer;
 using namespace read_parsers;
 
-//
-// Python 2/3 compatibility: PyInt and PyLong
-//
-
-#if (PY_MAJOR_VERSION >= 3)
-#define PyInt_Check(arg) PyLong_Check(arg)
-#define PyInt_AsLong(arg) PyLong_AsLong(arg)
-#define PyInt_FromLong(arg) PyLong_FromLong(arg)
-#define Py_TPFLAGS_HAVE_ITER 0
-#endif
-
-//
-// Python 2/3 compatibility: PyBytes and PyString
-// https://docs.python.org/2/howto/cporting.html#str-unicode-unification
-//
-
-#include "bytesobject.h"
-
-//
-// Python 2/3 compatibility: Module initialization
-// http://python3porting.com/cextensions.html#module-initialization
-//
-
-#if PY_MAJOR_VERSION >= 3
-#define MOD_ERROR_VAL NULL
-#define MOD_SUCCESS_VAL(val) val
-#define MOD_INIT(name) PyMODINIT_FUNC PyInit_##name(void)
-#define MOD_DEF(ob, name, doc, methods) \
-          static struct PyModuleDef moduledef = { \
-            PyModuleDef_HEAD_INIT, name, doc, -1, methods, }; \
-          ob = PyModule_Create(&moduledef);
-#else
-#define MOD_ERROR_VAL
-#define MOD_SUCCESS_VAL(val)
-#define MOD_INIT(name) void init##name(void)
-#define MOD_DEF(ob, name, doc, methods) \
-          ob = Py_InitModule3(name, methods, doc);
-#endif
-
-using namespace khmer;
 
 //
 // Function necessary for Python loading:
@@ -3221,43 +3181,7 @@ static PyTypeObject khmer_KGraphLabels_Type = {
     khmer_graphlabels_new,      /* tp_new */
 };
 
-static
-PyObject *
-hashgraph_repartition_largest_partition(khmer_KHashgraph_Object * me,
-                                        PyObject * args)
-{
-    Hashgraph * hashgraph = me->hashgraph;
-    khmer_KCountgraph_Object * countgraph_o = NULL;
-    PyObject * subset_o = NULL;
-    SubsetPartition * subset_p;
-    unsigned int distance, threshold, frequency;
 
-    if (!PyArg_ParseTuple(args, "OO!III",
-                          &subset_o,
-                          &khmer_KCountgraph_Type, &countgraph_o,
-                          &distance, &threshold, &frequency)) {
-        return NULL;
-    }
-
-    if (PyObject_TypeCheck(subset_o, &khmer_KSubsetPartition_Type)) {
-        subset_p = ((khmer_KSubsetPartition_Object *) subset_o)->subset;
-    } else {
-        subset_p = hashgraph->partition;
-    }
-
-    Countgraph * countgraph = countgraph_o->countgraph;
-
-    unsigned long next_largest;
-    try {
-        next_largest = subset_p->repartition_largest_partition(distance,
-                       threshold, frequency, *countgraph);
-    } catch (khmer_exception &e) {
-        PyErr_SetString(PyExc_RuntimeError, e.what());
-        return NULL;
-    }
-
-    return PyLong_FromLong(next_largest);
-}
 
 static PyObject * readaligner_align(khmer_ReadAligner_Object * me,
                                     PyObject * args)

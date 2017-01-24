@@ -44,20 +44,15 @@ Contact: khmer-project@idyll.org
 #include <sstream> // IWYU pragma: keep
 #include <queue>
 #include <set>
-#include <memory>
 
 #include "hashtable.hh"
 #include "khmer.hh"
 #include "traversal.hh"
 #include "read_parsers.hh"
-#include "kmer_hash.hh"
 
 using namespace std;
 using namespace khmer;
-using namespace khmer::read_parsers;
-
-namespace khmer
-{
+using namespace khmer:: read_parsers;
 
 //
 // check_and_process_read: checks for non-ACGT characters before consuming
@@ -105,26 +100,33 @@ bool Hashtable::check_and_normalize_read(std::string &read) const
 }
 
 //
-// consume_seqfile: consume a file of reads
+// consume_fasta: consume a FASTA file of reads
 //
 
 // TODO? Inline in header.
-template<typename SeqIO>
-void Hashtable::consume_seqfile(
-    std::string const &filename,
-    unsigned int &total_reads,
-    unsigned long long &n_consumed
+void
+Hashtable::
+consume_fasta(
+    std:: string const  &filename,
+    unsigned int	      &total_reads, unsigned long long	&n_consumed
 )
 {
-    ReadParserPtr<SeqIO> parser = get_parser<SeqIO>(filename);
-    consume_seqfile<SeqIO>(parser, total_reads, n_consumed);
+    IParser *	  parser =
+        IParser::get_parser( filename );
+
+    consume_fasta(
+        parser,
+        total_reads, n_consumed
+    );
+
+    delete parser;
 }
 
-template<typename SeqIO>
-void Hashtable::consume_seqfile(
-    ReadParserPtr<SeqIO>& parser,
-    unsigned int &total_reads,
-    unsigned long long &n_consumed
+void
+Hashtable::
+consume_fasta(
+    read_parsers:: IParser *  parser,
+    unsigned int		    &total_reads, unsigned long long  &n_consumed
 )
 {
     Read			  read;
@@ -146,7 +148,7 @@ void Hashtable::consume_seqfile(
 
     } // while reads left for parser
 
-} // consume_seqfile
+} // consume_fasta
 
 //
 // consume_string: run through every k-mer in the given string, & hash it.
@@ -154,12 +156,13 @@ void Hashtable::consume_seqfile(
 
 unsigned int Hashtable::consume_string(const std::string &s)
 {
+    const char * sp = s.c_str();
     unsigned int n_consumed = 0;
 
-    KmerHashIteratorPtr kmers = new_kmer_iterator(s);
+    KmerIterator kmers(sp, _ksize);
 
-    while(!kmers->done()) {
-        HashIntoType kmer = kmers->next();
+    while(!kmers.done()) {
+        HashIntoType kmer = kmers.next();
 
         count(kmer);
         n_consumed++;
@@ -208,7 +211,7 @@ void Hashtable::get_median_count(const std::string &s,
 bool Hashtable::median_at_least(const std::string &s,
                                 unsigned int cutoff)
 {
-    KmerHashIteratorPtr kmers = new_kmer_iterator(s);
+    KmerIterator kmers(s.c_str(), _ksize);
     unsigned int min_req = 0.5 + float(s.size() - _ksize + 1) / 2;
     unsigned int num_cutoff_kmers = 0;
 
@@ -216,7 +219,7 @@ bool Hashtable::median_at_least(const std::string &s,
     // accumulate at least min_req worth of counts before checking to see
     // if we have enough high-abundance k-mers to indicate success.
     for (unsigned int i = 0; i < min_req; ++i) {
-        HashIntoType kmer = kmers->next();
+        HashIntoType kmer = kmers.next();
         if (this->get_count(kmer) >= cutoff) {
             ++num_cutoff_kmers;
         }
@@ -226,8 +229,8 @@ bool Hashtable::median_at_least(const std::string &s,
     if (num_cutoff_kmers >= min_req) {
         return true;
     }
-    while(!kmers->done()) {
-        HashIntoType kmer = kmers->next();
+    while(!kmers.done()) {
+        HashIntoType kmer = kmers.next();
         if (this->get_count(kmer) >= cutoff) {
             ++num_cutoff_kmers;
             if (num_cutoff_kmers >= min_req) {
@@ -254,10 +257,10 @@ void Hashtable::get_kmers(const std::string &s,
 void Hashtable::get_kmer_hashes(const std::string &s,
                                 std::vector<HashIntoType> &kmers_vec) const
 {
-    KmerHashIteratorPtr kmers = new_kmer_iterator(s);
+    KmerIterator kmers(s.c_str(), _ksize);
 
-    while(!kmers->done()) {
-        HashIntoType kmer = kmers->next();
+    while(!kmers.done()) {
+        HashIntoType kmer = kmers.next();
         kmers_vec.push_back(kmer);
     }
 }
@@ -266,10 +269,10 @@ void Hashtable::get_kmer_hashes(const std::string &s,
 void Hashtable::get_kmer_hashes_as_hashset(const std::string &s,
         SeenSet& hashes) const
 {
-    KmerHashIteratorPtr kmers = new_kmer_iterator(s);
+    KmerIterator kmers(s.c_str(), _ksize);
 
-    while(!kmers->done()) {
-        HashIntoType kmer = kmers->next();
+    while(!kmers.done()) {
+        HashIntoType kmer = kmers.next();
         hashes.insert(kmer);
     }
 }
@@ -278,10 +281,10 @@ void Hashtable::get_kmer_hashes_as_hashset(const std::string &s,
 void Hashtable::get_kmer_counts(const std::string &s,
                                 std::vector<BoundedCounterType> &counts) const
 {
-    KmerHashIteratorPtr kmers = new_kmer_iterator(s);
+    KmerIterator kmers(s.c_str(), _ksize);
 
-    while(!kmers->done()) {
-        HashIntoType kmer = kmers->next();
+    while(!kmers.done()) {
+        HashIntoType kmer = kmers.next();
         BoundedCounterType c = this->get_count(kmer);
         counts.push_back(c);
     }
@@ -289,12 +292,12 @@ void Hashtable::get_kmer_counts(const std::string &s,
 
 BoundedCounterType Hashtable::get_min_count(const std::string &s)
 {
-    KmerHashIteratorPtr kmers = new_kmer_iterator(s);
+    KmerIterator kmers(s.c_str(), _ksize);
 
     BoundedCounterType min_count = MAX_KCOUNT;
 
-    while(!kmers->done()) {
-        HashIntoType kmer = kmers->next();
+    while(!kmers.done()) {
+        HashIntoType kmer = kmers.next();
 
         BoundedCounterType count = this->get_count(kmer);
 
@@ -309,10 +312,10 @@ BoundedCounterType Hashtable::get_max_count(const std::string &s)
 {
     BoundedCounterType max_count = 0;
 
-    KmerHashIteratorPtr kmers = new_kmer_iterator(s);
+    KmerIterator kmers(s.c_str(), _ksize);
 
-    while(!kmers->done()) {
-        HashIntoType kmer = kmers->next();
+    while(!kmers.done()) {
+        HashIntoType kmer = kmers.next();
 
         BoundedCounterType count = this->get_count(kmer);
 
@@ -323,9 +326,9 @@ BoundedCounterType Hashtable::get_max_count(const std::string &s)
     return max_count;
 }
 
-template<typename SeqIO>
-uint64_t * Hashtable::abundance_distribution(
-    ReadParserPtr<SeqIO>& parser,
+uint64_t *
+Hashtable::abundance_distribution(
+    read_parsers::IParser * parser,
     Hashtable *          tracking)
 {
     uint64_t * dist = new uint64_t[MAX_BIGCOUNT + 1];
@@ -355,10 +358,10 @@ uint64_t * Hashtable::abundance_distribution(
         seq = read.sequence;
 
         if (check_and_normalize_read(seq)) {
-            KmerHashIteratorPtr kmers = new_kmer_iterator(seq);
+            KmerIterator kmers(seq.c_str(), _ksize);
 
-            while(!kmers->done()) {
-                HashIntoType kmer = kmers->next();
+            while(!kmers.done()) {
+                HashIntoType kmer = kmers.next();
 
                 if (!tracking->get_count(kmer)) {
                     tracking->count(kmer);
@@ -375,13 +378,16 @@ uint64_t * Hashtable::abundance_distribution(
     return dist;
 }
 
-template<typename SeqIO>
+
 uint64_t * Hashtable::abundance_distribution(
     std::string filename,
     Hashtable *  tracking)
 {
-    ReadParserPtr<SeqIO> parser = get_parser<SeqIO>(filename);
-    return abundance_distribution(parser, tracking);
+    IParser* parser = IParser::get_parser(filename.c_str());
+
+    uint64_t * distribution = abundance_distribution(parser, tracking);
+    delete parser;
+    return distribution;
 }
 
 unsigned long Hashtable::trim_on_abundance(
@@ -389,26 +395,22 @@ unsigned long Hashtable::trim_on_abundance(
     BoundedCounterType  min_abund)
 const
 {
-    if (!check_and_normalize_read(seq)) {
-        return 0;
-    }
-
-    KmerHashIteratorPtr kmers = new_kmer_iterator(seq);
+    KmerIterator kmers(seq.c_str(), _ksize);
 
     HashIntoType kmer;
 
-    if (kmers->done()) {
+    if (kmers.done()) {
         return 0;
     }
-    kmer = kmers->next();
+    kmer = kmers.next();
 
-    if (kmers->done() || get_count(kmer) < min_abund) {
+    if (kmers.done() || get_count(kmer) < min_abund) {
         return 0;
     }
 
     unsigned long i = _ksize;
-    while (!kmers->done()) {
-        kmer = kmers->next();
+    while (!kmers.done()) {
+        kmer = kmers.next();
 
         if (get_count(kmer) < min_abund) {
             return i;
@@ -424,26 +426,22 @@ unsigned long Hashtable::trim_below_abundance(
     BoundedCounterType  max_abund)
 const
 {
-    if (!check_and_normalize_read(seq)) {
-        return 0;
-    }
-
-    KmerHashIteratorPtr kmers = new_kmer_iterator(seq);
+    KmerIterator kmers(seq.c_str(), _ksize);
 
     HashIntoType kmer;
 
-    if (kmers->done()) {
+    if (kmers.done()) {
         return 0;
     }
-    kmer = kmers->next();
+    kmer = kmers.next();
 
-    if (kmers->done() || get_count(kmer) > max_abund) {
+    if (kmers.done() || get_count(kmer) > max_abund) {
         return 0;
     }
 
     unsigned long i = _ksize;
-    while (!kmers->done()) {
-        kmer = kmers->next();
+    while (!kmers.done()) {
+        kmer = kmers.next();
 
         if (get_count(kmer) > max_abund) {
             return i;
@@ -460,43 +458,42 @@ std::vector<unsigned int> Hashtable::find_spectral_error_positions(
 const
 {
     std::vector<unsigned int> posns;
-    if (!check_and_normalize_read(seq)) {
-        throw khmer_exception("invalid read");
-    }
+    KmerIterator kmers(seq.c_str(), _ksize);
 
-    KmerHashIteratorPtr kmers = new_kmer_iterator(seq);
-
-    HashIntoType kmer = kmers->next();
-    if (kmers->done()) {
+    HashIntoType kmer = kmers.next();
+    if (kmers.done()) {
         return posns;
     }
 
     // find the first trusted k-mer
-    while (!kmers->done()) {
+    while (!kmers.done()) {
         if (get_count(kmer) > max_abund) {
             break;
         }
-        kmer = kmers->next();
+        kmer = kmers.next();
     }
 
-    if (kmers->done()) {
+    if (kmers.done()) {
         return posns;
     }
 
     // did we bypass some erroneous k-mers? call the last one.
-    if (kmers->get_start_pos() > 0) {
-        // if this is not the *first* k-mer, save.
-        posns.push_back(kmers->get_start_pos() - 1);
+    if (kmers.get_start_pos() > 0) {
+        // if we are well past the first k, forget the whole thing (!? @CTB)
+        if (kmers.get_start_pos() >= _ksize && 0) {
+            return posns;
+        }
+        posns.push_back(kmers.get_start_pos() - 1);
     }
 
-    while (!kmers->done()) {
-        kmer = kmers->next();
+    while (!kmers.done()) {
+        kmer = kmers.next();
         if (get_count(kmer) <= max_abund) { // error!
-            posns.push_back(kmers->get_end_pos() - 1);
+            posns.push_back(kmers.get_end_pos() - 1);
 
             // find next good
-            while (!kmers->done()) {
-                kmer = kmers->next();
+            while (!kmers.done()) {
+                kmer = kmers.next();
                 if (get_count(kmer) > max_abund) { // a good stretch again.
                     break;
                 }
@@ -507,24 +504,4 @@ const
     return posns;
 }
 
-
-template void Hashtable::consume_seqfile<FastxReader>(
-    std::string const &filename,
-    unsigned int &total_reads,
-    unsigned long long &n_consumed
-);
-template void Hashtable::consume_seqfile<FastxReader>(
-    ReadParserPtr<FastxReader>& parser,
-    unsigned int &total_reads,
-    unsigned long long &n_consumed
-);
-template uint64_t * Hashtable::abundance_distribution<FastxReader>(
-    ReadParserPtr<FastxReader>& parser,
-    Hashtable * tracking
-);
-template uint64_t * Hashtable::abundance_distribution<FastxReader>(
-    std::string filename,
-    Hashtable * tracking
-);
-
-} // namespace khmer
+// vim: set sts=2 sw=2:

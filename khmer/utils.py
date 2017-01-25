@@ -95,7 +95,6 @@ def check_is_pair(record1, record2):
     return False
 
 
-def broken_paired_reader(screed_iter, min_length=None, force_single=False):
 def check_is_left(name):
     """Check if the name belongs to a 'left' sequence (/1).
 
@@ -138,6 +137,14 @@ class UnpairedReadsError(ValueError):
     """ValueError with refs to the read pair in question."""
 
     def __init__(self, msg, r1, r2):
+        r1_name = "<no read>"
+        r2_name = "<no read>"
+        if r1:
+            r1_name = r1.name
+        if r2:
+            r2_name = r2.name
+
+        msg = msg + '\n"{0}"\n"{1}"'.format(r1_name, r2_name)
         ValueError.__init__(self, msg)
         self.read1 = r1
         self.read2 = r2
@@ -159,13 +166,6 @@ def broken_paired_reader(screed_iter, min_length=None,
        for n, is_pair, read1, read2 in broken_paired_reader(...):
           ...
 
-    Note that 'n' is the number of records read from the input stream, so
-    is incremented by 2 for a pair of reads.
-
-    If 'min_length' is set, all reads under this length are ignored (even
-    if they are pairs).
-
-    If 'force_single' is True, all reads are returned as singletons.
     Note that 'n' behaves like enumerate() and starts at 0, but tracks
     the number of records read from the input stream, so is
     incremented by 2 for a pair of reads.
@@ -183,59 +183,43 @@ def broken_paired_reader(screed_iter, min_length=None,
         raise ValueError("force_single and require_paired cannot both be set!")
 
     # handle the majority of the stream.
-    for record in clean_input_reads(screed_iter):
-    for n, record in enumerate(screed_iter):
-        # ignore short reads
-        if min_length and len(record.sequence) < min_length:
-            record = None
-            continue
-
     for record in screed_iter:
-        record.cleaned_seq = record.sequence.upper().replace('N', 'A')
-
-        # ignore short reads
-        if min_length and len(record.sequence) < min_length:
-            record = None
-            continue
-
         if prev_record:
             if check_is_pair(prev_record, record) and not force_single:
-                yield n, True, prev_record, record  # it's a pair!
-            if check_is_pair(prev_record, record) and not force_single:
-                yield num, True, prev_record, record  # it's a pair!
-                num += 2
-                record = None
+                if min_length and (len(prev_record.sequence) < min_length or
+                                   len(record.sequence) < min_length):
+                    if require_paired:
+                        record = None
+                else:
+                    yield num, True, prev_record, record  # it's a pair!
+                    num += 2
+                    record = None
             else:                                   # orphan.
                 if require_paired:
                     err = UnpairedReadsError(
                         "Unpaired reads when require_paired is set!",
                         prev_record, record)
                     raise err
-                yield num, False, prev_record, None
-                num += 1
+
+                # ignore short reads
+                if min_length and len(prev_record.sequence) < min_length:
+                    pass
+                else:
+                    yield num, False, prev_record, None
+                    num += 1
 
         prev_record = record
         record = None
 
-    # handle the last two records (which cannot be pairs)
     # handle the last record, if it exists (i.e. last two records not a pair)
     if prev_record:
-        # the only way into this if statement is if 'prev_record' and
-        # 'record' are both singletons.
-        if not force_single and record:
-            assert not check_is_pair(prev_record, record)
-
-        yield n, False, prev_record, None
-
-    if record:                     # guaranteed to be orphan
-        # ignore short reads
-        if not min_length or len(record.sequence) >= min_length:
-            n += 1
-            yield n, False, record, None
         if require_paired:
             raise UnpairedReadsError("Unpaired reads when require_paired "
                                      "is set!", prev_record, None)
-        yield num, False, prev_record, None
+        if min_length and len(prev_record.sequence) < min_length:
+            pass
+        else:
+            yield num, False, prev_record, None
 
 
 def write_record(record, fileobj):
@@ -274,12 +258,6 @@ def write_record_pair(read1, read2, fileobj):
         fileobj.write(bytes(recstr, 'ascii'))
     except TypeError:
         fileobj.write(recstr)
-
-
-def clean_input_reads(screed_iter):
-    for record in screed_iter:
-        record.cleaned_seq = record.sequence.upper().replace('N', 'A')
-        yield record
 
 
 class ReadBundle(object):

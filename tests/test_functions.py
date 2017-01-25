@@ -44,7 +44,7 @@ import pytest
 from khmer.utils import check_is_pair, broken_paired_reader
 from . import khmer_tst_utils as utils
 from khmer.utils import (check_is_pair, broken_paired_reader, check_is_left,
-                         check_is_right)
+                         check_is_right, clean_input_reads)
 from khmer.kfile import check_input_files, get_file_writer
 try:
     from StringIO import StringIO
@@ -606,6 +606,7 @@ def test_BrokenPairedReader_lowercase():
     stream = [screed.Record(name='seq1/1', sequence='acgtn'),
               screed.Record(name='seq1/2', sequence='AcGtN'),
               screed.Record(name='seq1/2', sequence='aCgTn')]
+    stream = clean_input_reads(stream)
 
     results = []
     for num, is_pair, read1, read2 in broken_paired_reader(stream):

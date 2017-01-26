@@ -38,17 +38,20 @@ Contact: khmer-project@idyll.org
 #ifndef _CPY_NODETABLE_HH
 #define _CPY_NODETABLE_HH
 
-#include "_khmer.hh"
+#include <Python.h>
+#include "_cpy_utils.hh"
+#include "_cpy_hashtable.hh"
+#include "hashtable.hh"
 
 namespace khmer {
 
-static PyMethodDef khmer_nodetable_methods[] = {
-    {NULL, NULL, 0, NULL}           /* sentinel */
-};
+typedef struct {
+    khmer_KHashtable_Object khashtable;
+    Nodetable * nodetable;
+} khmer_KNodetable_Object;
 
-static PyObject* khmer_nodetable_new(PyTypeObject * type, PyObject * args,
-                                     PyObject * kwds);
 
+extern PyMethodDef khmer_nodetable_methods[];
 static PyTypeObject khmer_KNodetable_Type
 CPYCHECKER_TYPE_OBJECT_FOR_TYPEDEF("khmer_KNodetable_Object")
 = {
@@ -107,28 +110,12 @@ static PyObject* khmer_nodetable_new(PyTypeObject * type, PyObject * args,
         WordLength k = 0;
         PyListObject * sizes_list_o = NULL;
 
-        if (!PyArg_ParseTuple(args, "bO!", &k, &PyList_Type, &sizes_list_o)) {
-            Py_DECREF(self);
-            return NULL;
-        }
+extern PyTypeObject khmer_KNodetable_Type
+CPYCHECKER_TYPE_OBJECT_FOR_TYPEDEF("khmer_KNodetable_Object");
 
-        std::vector<uint64_t> sizes;
-        if (!convert_Pytablesizes_to_vector(sizes_list_o, sizes)) {
-            Py_DECREF(self);
-            return NULL;
-        }
+PyObject* khmer_nodetable_new(PyTypeObject * type, PyObject * args,
+                                     PyObject * kwds);
 
-        try {
-            self->nodetable = new Nodetable(k, sizes);
-        } catch (std::bad_alloc &e) {
-            Py_DECREF(self);
-            return PyErr_NoMemory();
-        }
-        self->khashtable.hashtable =
-            dynamic_cast<Hashtable*>(self->nodetable);
-    }
-
-    return (PyObject *) self;
 }
-}
+
 #endif

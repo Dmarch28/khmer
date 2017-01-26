@@ -42,11 +42,10 @@ Contact: khmer-project@idyll.org
 
 // Must be first.
 #include <Python.h>
+#include <string>
 
 #include "_khmer.hh"
-
-using namespace khmer;
-using namespace read_parsers;
+#include "_cpy_utils.hh"
 
 
 //
@@ -57,8 +56,9 @@ extern "C" {
     MOD_INIT(_khmer);
 }
 
-/***********************************************************************/
+namespace khmer {
 
+PyObject * forward_hash(PyObject * self, PyObject * args)
 // Convert a hash to a python long object.
 static bool convert_HashIntoType_to_PyObject(const HashIntoType &hashval,
         PyObject **value)
@@ -4442,7 +4442,7 @@ static PyObject * forward_hash(PyObject * self, PyObject * args)
 
 }
 
-static PyObject * forward_hash_no_rc(PyObject * self, PyObject * args)
+PyObject * forward_hash_no_rc(PyObject * self, PyObject * args)
 {
     const char * kmer;
     WordLength ksize;
@@ -4468,7 +4468,7 @@ static PyObject * forward_hash_no_rc(PyObject * self, PyObject * args)
     return hash;
 }
 
-static PyObject * reverse_hash(PyObject * self, PyObject * args)
+PyObject * reverse_hash(PyObject * self, PyObject * args)
 {
     PyObject * val;
     HashIntoType hash;
@@ -4496,7 +4496,7 @@ static PyObject * reverse_hash(PyObject * self, PyObject * args)
     return PyUnicode_FromString(_revhash(hash, ksize).c_str());
 }
 
-static PyObject * murmur3_forward_hash(PyObject * self, PyObject * args)
+PyObject * murmur3_forward_hash(PyObject * self, PyObject * args)
 {
     const char * kmer;
 
@@ -4510,7 +4510,7 @@ static PyObject * murmur3_forward_hash(PyObject * self, PyObject * args)
     return hash;
 }
 
-static PyObject * murmur3_forward_hash_no_rc(PyObject * self, PyObject * args)
+PyObject * murmur3_forward_hash_no_rc(PyObject * self, PyObject * args)
 {
     const char * kmer;
 
@@ -4524,7 +4524,7 @@ static PyObject * murmur3_forward_hash_no_rc(PyObject * self, PyObject * args)
     return hash;
 }
 
-static PyObject * reverse_complement(PyObject * self, PyObject * args)
+PyObject * reverse_complement(PyObject * self, PyObject * args)
 {
     const char * sequence;
     if (!PyArg_ParseTuple(args, "s", &sequence)) {
@@ -4546,7 +4546,6 @@ static PyObject * reverse_complement(PyObject * self, PyObject * args)
 // https://gcc.gnu.org/onlinedocs/gcc-4.9.1/cpp/Stringification.html
 //
 
-static
 PyObject *
 get_version_cpp( PyObject * self, PyObject * args )
 {
@@ -4556,12 +4555,7 @@ get_version_cpp( PyObject * self, PyObject * args )
     return PyUnicode_FromString(dVersion.c_str());
 }
 
-
-//
-// Module machinery.
-//
-
-static PyMethodDef KhmerMethods[] = {
+PyMethodDef KhmerMethods[] = {
     {
         "forward_hash",     forward_hash,
         METH_VARARGS,       "",
@@ -4602,9 +4596,18 @@ static PyMethodDef KhmerMethods[] = {
     { NULL, NULL, 0, NULL } // sentinel
 };
 
+} // namespace khmer
+
+//
+// Module machinery.
+//
+
 MOD_INIT(_khmer)
 {
-    using namespace python;
+
+    using namespace khmer;
+    using namespace khmer::read_parsers;
+
 
     if (PyType_Ready(&khmer_KHashtable_Type) < 0) {
         return MOD_ERROR_VAL;
@@ -4656,9 +4659,6 @@ MOD_INIT(_khmer)
         return MOD_ERROR_VAL;
     }
 
-    if (PyType_Ready(&khmer_KLinearAssembler_Type) < 0) {
-        return MOD_ERROR_VAL;
-    }
     if (PyType_Ready(&khmer_KSimpleLabeledAssembler_Type) < 0) {
         return MOD_ERROR_VAL;
     }
@@ -4765,12 +4765,6 @@ MOD_INIT(_khmer)
     Py_INCREF(&khmer_KGraphLabels_Type);
     if (PyModule_AddObject(m, "GraphLabels",
                            (PyObject *)&khmer_KGraphLabels_Type) < 0) {
-        return MOD_ERROR_VAL;
-    }
-
-    Py_INCREF(&khmer_KLinearAssembler_Type);
-    if (PyModule_AddObject(m, "LinearAssembler",
-                           (PyObject *)&khmer_KLinearAssembler_Type) < 0) {
         return MOD_ERROR_VAL;
     }
 

@@ -56,7 +56,10 @@ Contact: khmer-project@idyll.org
 
 using namespace std;
 using namespace khmer;
-using namespace khmer:: read_parsers;
+using namespace khmer::read_parsers;
+
+namespace khmer
+{
 
 /*
  * @camillescott
@@ -64,18 +67,18 @@ using namespace khmer:: read_parsers;
  * function which accepts a consume_sequence function pointer as a parameter
  */
 
-void
-LabelHash::consume_fasta_and_tag_with_labels(
+template<typename ParseFunctor>
+void LabelHash::consume_fasta_and_tag_with_labels(
     std:: string const  &filename,
     unsigned int	      &total_reads, unsigned long long	&n_consumed,
     CallbackFn	      callback,	    void *		callback_data
 )
 {
-    IParser *	  parser =
-        IParser::get_parser( filename );
+    ParseFunctor pf((std::string&)filename);
+    ReadParser<ParseFunctor> parser(pf);
 
     consume_fasta_and_tag_with_labels(
-        parser,
+        &parser,
         total_reads, n_consumed,
         callback, callback_data
     );
@@ -83,9 +86,9 @@ LabelHash::consume_fasta_and_tag_with_labels(
     delete parser;
 }
 
-void
-LabelHash::consume_fasta_and_tag_with_labels(
-    read_parsers:: IParser *  parser,
+template<typename ParseFunctor>
+void LabelHash::consume_fasta_and_tag_with_labels(
+    read_parsers::ReadParser<ParseFunctor> * parser,
     unsigned int		    &total_reads,   unsigned long long	&n_consumed,
     CallbackFn		    callback,	    void *		callback_data
 )
@@ -146,6 +149,7 @@ LabelHash::consume_fasta_and_tag_with_labels(
 
 }
 
+template<typename ParseFunctor>
 void LabelHash::consume_partitioned_fasta_and_tag_with_labels(
     const std::string &filename,
     unsigned int &total_reads,
@@ -156,7 +160,8 @@ void LabelHash::consume_partitioned_fasta_and_tag_with_labels(
     total_reads = 0;
     n_consumed = 0;
 
-    IParser* parser = IParser::get_parser(filename.c_str());
+    ParseFunctor pf((std::string&)filename);
+    ReadParser<ParseFunctor> parser(pf);
     Read read;
 
     std::string seq = "";
@@ -169,8 +174,8 @@ void LabelHash::consume_partitioned_fasta_and_tag_with_labels(
     // iterate through the FASTA file & consume the reads.
     //
     PartitionID p;
-    while(!parser->is_complete())  {
-        read = parser->get_next_read();
+    while(!parser.is_complete())  {
+        read = parser.get_next_read();
         seq = read.sequence;
 
         if (graph->check_and_normalize_read(seq)) {
@@ -194,17 +199,11 @@ void LabelHash::consume_partitioned_fasta_and_tag_with_labels(
                 callback("consume_partitioned_fasta_and_tag_with_labels", callback_data,
                          total_reads, n_consumed);
             } catch (...) {
-                delete parser;
                 throw;
             }
         }
     }
     printdbg(done with while loop in consume_partitioned)
-
-        // @cswelcher TODO: check that deallocate LabelPtrMap is correct
-    {
-        delete parser;
-    }
     printdbg(deleted parser and exiting)
 }
 
@@ -337,23 +336,7 @@ unsigned int LabelHash::sweep_label_neighborhood(const std::string& seq,
 
 void LabelHash::get_tag_labels(const HashIntoType tag,
                                LabelSet& labels) const
-                                   LabelSet& labels) const
-LabelSet LabelHash::get_tag_labels(const HashIntoType tag) const
-void LabelHash::get_tag_labels(const HashIntoType tag,
-                               LabelSet& labels) const
 {
-    if (set_contains(graph->all_tags, tag)) {
-        _get_tag_labels(tag, tag_labels, labels);
-    }
-}
-
-void LabelHash::get_tags_from_label(const Label label,
-                                    TagSet& tags) const
-{
-    if(set_contains(all_labels, label)) {
-        _get_tags_from_label(label, label_tag, tags);
-    }
-    return labels;
     if (set_contains(graph->all_tags, tag)) {
         _get_tag_labels(tag, tag_labels, labels);
     }
@@ -625,46 +608,6 @@ void LabelHash::label_across_high_degree_nodes(const char * s,
             graph->add_tag(kmer);
             graph->add_tag(next_kmer);
             link_tag_and_label(prev_kmer, label);
-            link_tag_and_label(next_kmer, label);
-        }
-        prev_kmer = kmer;
-        kmer = next_kmer;
-        next_kmer = kmers.next();
-    }
-}
-
-// tag & label k-mers on either side of an HDN.
-
-void LabelHash::label_across_high_degree_nodes(const char * s,
-        SeenSet& high_degree_nodes,
-        const Label label)
-{
-    KmerIterator kmers(s, graph->_ksize);
-
-    unsigned long n = 0;
-
-    Kmer prev_kmer = kmers.next();
-    if (kmers.done()) {
-        return;
-    }
-    Kmer kmer = kmers.next();
-    if (kmers.done()) {
-        return;
-    }
-    Kmer next_kmer = kmers.next();
-
-    // ignore any situation where HDN is at beginning or end of sequence
-    // @CTB testme :)
-    while(!kmers.done()) {
-        n++;
-        if (n % 10000 == 0) {
-            std::cout << "... label_across_hdn: " << n << "\n";
-        }
-        if (set_contains(high_degree_nodes, kmer)) {
-            graph->add_tag(prev_kmer);
-            graph->add_tag(kmer);
-            graph->add_tag(next_kmer);
-            link_tag_and_label(prev_kmer, label);
             link_tag_and_label(kmer, label);
             link_tag_and_label(next_kmer, label);
         }
@@ -674,6 +617,19 @@ void LabelHash::label_across_high_degree_nodes(const char * s,
     }
 }
 
-// vim: set sts=2 sw=2:
+template void LabelHash::consume_fasta_and_tag_with_labels<read_parsers::FastxReader>(
+    std:: string const &filename,
+    unsigned int &total_reads,
+    unsigned long long &n_consumed,
+    CallbackFn callback,
+    void * callback_data
+);
+template void LabelHash::consume_fasta_and_tag_with_labels<read_parsers::FastxReader>(
+    read_parsers::ReadParser<read_parsers::FastxReader> * parser,
+    unsigned int &total_reads,
+    unsigned long long &n_consumed,
+    CallbackFn callback,
+    void * callback_data
+);
 
-// vim: set sts=2 sw=2:
+} // namespace khmer

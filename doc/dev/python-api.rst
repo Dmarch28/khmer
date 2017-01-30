@@ -1,3 +1,4 @@
+
 Types --
 
 Type names consist of two parts. The first part indicates how far the type
@@ -35,10 +36,13 @@ Python methods:
 * count (synonym for add)
 * get(dna_kmer or hashval) - retrieve the count associated with a DNA k-mer or a hashval.
 
-* save
 * get_kmers
 * get_kmer_hashes
 * get_kmer_hashes_as_hashset
+
+* save(filename) - save the data to a file on disk.
+* load(filename) - load the data from a file on disk.
+
 * get_kmer_counts
 * get_min_count
 * get_median_count
@@ -46,7 +50,6 @@ Python methods:
 * consume (should be consume string?)
 * consume_fasta
 * consume_fasta_with_reads_parser
-* load
 * set_use_bigcount
 * get_use_bigcount
 * abundance_distribution

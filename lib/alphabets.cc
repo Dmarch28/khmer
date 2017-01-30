@@ -63,6 +63,12 @@ public:
 };
 }
 
+std::string DNA_SIMPLE = "ACGT";
+std::string DNAN_SIMPLE = "ACGTN";
+std::string RNA_SIMPLE = "ACGUT";
+std::string RNAN_SIMPLE = "ACGUTN";
+std::string IUPAC_NUCL = "ACGTURYSWKMBDHVN.-";
+std::string IUPAC_AA = "ACDEFGHIKLMNPQRSTVWY";
 #include "counting.hh"
 #include "labelhash.hh"
 #endif // HASHBITS_HH

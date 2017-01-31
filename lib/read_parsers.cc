@@ -235,7 +235,7 @@ FastxReader::FastxReader()
     _init();
 }
 
-FastxReader::FastxReader(std::string& infile)
+FastxReader::FastxReader(const std::string& infile)
         : _filename(infile),
           _spin_lock(0),
           _num_reads(0),
@@ -314,7 +314,7 @@ Read FastxReader::get_next_read()
 }
 
 template<typename SeqIO>
-ReadParserPtr<SeqIO> get_parser(std::string& filename)
+ReadParserPtr<SeqIO> get_parser(const std::string& filename)
 {
     return ReadParserPtr<SeqIO>(
         new ReadParser<SeqIO>(
@@ -325,7 +325,7 @@ ReadParserPtr<SeqIO> get_parser(std::string& filename)
 
 // All template instantiations used in the codebase must be declared here.
 template class ReadParser<FastxReader>;
-template FastxParserPtr get_parser<FastxReader>(std::string& filename);
+template FastxParserPtr get_parser<FastxReader>(const std::string& filename);
 
 } // namespace read_parsers
 

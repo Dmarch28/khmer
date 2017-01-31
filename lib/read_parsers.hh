@@ -170,7 +170,7 @@ private:
 
 public:
     FastxReader();
-    FastxReader(std::string& infile);
+    FastxReader(const std::string& infile);
     FastxReader(FastxReader& other);
     ~FastxReader();
 
@@ -208,7 +208,7 @@ template<typename T> using ReadParserPtr = std::unique_ptr<ReadParser<T>>;
 
 // Convenience function
 template<typename SeqIO>
-ReadParserPtr<SeqIO> get_parser(std::string& filename);
+ReadParserPtr<SeqIO> get_parser(const std::string& filename);
 
 // Alias for instantiated ReadParsers
 typedef std::unique_ptr<ReadParser<FastxReader>> FastxParserPtr;

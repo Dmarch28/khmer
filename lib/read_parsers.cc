@@ -214,6 +214,12 @@ bool ReadParser<SeqIO>::is_complete()
     return _parser->is_complete();
 }
 
+template<typename SeqIO>
+void ReadParser<SeqIO>::close()
+{
+    _parser->close();
+}
+
 void FastxReader::_init()
 {
     seqan::open(_stream, _filename.c_str());
@@ -266,6 +272,10 @@ bool FastxReader::is_complete()
 size_t FastxReader::get_num_reads()
 {
     return _num_reads;
+}
+
+void FastxParser::close() {
+    seqan::close(_stream);
 }
 
 Read FastxReader::get_next_read()

@@ -43,6 +43,7 @@ import sys
 import pytest
 from khmer.utils import check_is_pair, broken_paired_reader
 from . import khmer_tst_utils as utils
+
 from khmer.utils import (check_is_pair, broken_paired_reader, check_is_left,
                          check_is_right, clean_input_reads)
 from khmer.kfile import check_input_files, get_file_writer

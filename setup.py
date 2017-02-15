@@ -144,8 +144,8 @@ def build_dir():
 ZLIBDIR = 'third-party/zlib'
 BZIP2DIR = 'third-party/bzip2'
 
-BUILD_DEPENDS = []
-BUILD_DEPENDS.extend(path_join("lib", bn + ".hh") for bn in [
+BUILD_DEPENDS = glob.glob(path_join("include", "khmer", "_cpy_*.hh"))
+BUILD_DEPENDS.extend(path_join("include", "oxli", bn + ".hh") for bn in [
     "khmer", "kmer_hash", "hashtable", "labelhash", "hashgraph",
     "hllcounter", "khmer_exception", "read_aligner", "subset", "read_parsers",
     "kmer_filters", "traversal", "assembler", "alphabets", "storage"])
@@ -158,13 +158,12 @@ BUILD_DEPENDS.extend(path_join("khmer", bn + ".hh") for bn in [
     "_cpy_counttable", "_cpy_hashgraph", "_cpy_nodetable",
     "_cpy_smallcounttable", "_cpy_smallcountgraph"])
 
-SOURCES = ["khmer/_khmer.cc"]
-SOURCES.extend(path_join("lib", bn + ".cc") for bn in [
+SOURCES = glob.glob(path_join("src", "khmer", "_cpy_*.cc"))
+SOURCES.extend(path_join("src", "oxli", bn + ".cc") for bn in [
     "read_parsers", "kmer_hash", "hashtable", "hashgraph",
     "labelhash", "subset", "read_aligner",
     "hllcounter", "traversal", "kmer_filters", "assembler", "alphabets",
     "storage"])
-SOURCES.extend(glob.glob(path_join("khmer", "_cpy_*.cc")))
 
 SOURCES.extend(path_join("third-party", "smhasher", bn + ".cc") for bn in [
     "MurmurHash3"])
@@ -191,6 +190,7 @@ CP_EXTENSION_MOD_DICT = \
         "extra_compile_args": EXTRA_COMPILE_ARGS,
         "extra_link_args": EXTRA_LINK_ARGS,
         "depends": BUILD_DEPENDS,
+        "include_dirs": ["include", "."],
         "language": "c++",
         "define_macros": [("VERSION", versioneer.get_version()), ],
     }
@@ -206,7 +206,7 @@ for cython_ext in glob.glob(os.path.join("khmer", "_oxli", "*.pyx")):
             "extra_link_args": EXTRA_LINK_ARGS,
             "extra_objects": [path_join(build_dir(), splitext(p)[0]+'.o')  for p in SOURCES],
             "depends": [],
-            "include_dirs": ["khmer", "lib", "."],
+            "include_dirs": ["include", "."],
             "language": "c++",
             "define_macros": [("VERSION", versioneer.get_version()), ],
         }

@@ -40,11 +40,11 @@ Contact: khmer-project@idyll.org
 #include <fstream>
 #include <iostream>
 
-#include "khmer_exception.hh"
-#include "hashtable.hh"
+#include "oxli/oxli_exception.hh"
+#include "oxli/hashtable.hh"
 #include "zlib.h"
 
-using namespace khmer;
+using namespace oxli;
 using namespace std;
 
 void Storage::set_use_bigcount(bool b)
@@ -63,7 +63,7 @@ bool Storage::get_use_bigcount()
 void BitStorage::update_from(const BitStorage& other)
 {
     if (_tablesizes != other._tablesizes) {
-        throw khmer_exception("both nodegraphs must have same table sizes");
+        throw oxli_exception("both nodegraphs must have same table sizes");
     }
 
     Byte tmp = 0;
@@ -99,7 +99,7 @@ void BitStorage::update_from(const BitStorage& other)
 void BitStorage::save(std::string outfilename, WordLength ksize)
 {
     if (!_counts[0]) {
-        throw khmer_exception();
+        throw oxli_exception();
     }
 
     unsigned int save_ksize = ksize;
@@ -130,7 +130,7 @@ void BitStorage::save(std::string outfilename, WordLength ksize)
         outfile.write((const char *) _counts[i], tablebytes);
     }
     if (outfile.fail()) {
-        throw khmer_file_exception(strerror(errno));
+        throw oxli_file_exception(strerror(errno));
     }
     outfile.close();
 }
@@ -156,13 +156,13 @@ void BitStorage::load(std::string infilename, WordLength &ksize)
         } else {
             err = "Unknown error in opening file: " + infilename;
         }
-        throw khmer_file_exception(err);
+        throw oxli_file_exception(err);
     } catch (const std::exception &e) {
         // Catching std::exception is a stopgap for
         // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66145
         std::string err = "Unknown error opening file: " + infilename + " "
                           + strerror(errno);
-        throw khmer_file_exception(err);
+        throw oxli_file_exception(err);
     }
 
     if (_counts) {
@@ -188,23 +188,23 @@ void BitStorage::load(std::string infilename, WordLength &ksize)
         infile.read((char *) &ht_type, 1);
         if (!(std::string(signature, 4) == SAVED_SIGNATURE)) {
             std::ostringstream err;
-            err << "Does not start with signature for a khmer file: 0x";
+            err << "Does not start with signature for a oxli file: 0x";
             for(size_t i=0; i < 4; ++i) {
                 err << std::hex << (int) signature[i];
             }
             err << " Should be: " << SAVED_SIGNATURE;
-            throw khmer_file_exception(err.str());
+            throw oxli_file_exception(err.str());
         } else if (!(version == SAVED_FORMAT_VERSION)) {
             std::ostringstream err;
             err << "Incorrect file format version " << (int) version
                 << " while reading k-mer graph from " << infilename
                 << "; should be " << (int) SAVED_FORMAT_VERSION;
-            throw khmer_file_exception(err.str());
+            throw oxli_file_exception(err.str());
         } else if (!(ht_type == SAVED_HASHBITS)) {
             std::ostringstream err;
             err << "Incorrect file format type " << (int) ht_type
                 << " while reading k-mer graph from " << infilename;
-            throw khmer_file_exception(err.str());
+            throw oxli_file_exception(err.str());
         }
 
         infile.read((char *) &save_ksize, sizeof(save_ksize));
@@ -242,13 +242,13 @@ void BitStorage::load(std::string infilename, WordLength &ksize)
         } else {
             err = "Error reading from k-mer graph file: " + infilename;
         }
-        throw khmer_file_exception(err);
+        throw oxli_file_exception(err);
     } catch (const std::exception &e) {
         // Catching std::exception is a stopgap for
         // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66145
         std::string err = "Unknown error opening file: " + infilename + " "
                           + strerror(errno);
-        throw khmer_file_exception(err);
+        throw oxli_file_exception(err);
     }
 }
 
@@ -288,11 +288,11 @@ ByteStorageFileReader::ByteStorageFileReader(
         } else {
             err = "Unknown error in opening file: " + infilename;
         }
-        throw khmer_file_exception(err + " " + strerror(errno));
+        throw oxli_file_exception(err + " " + strerror(errno));
     } catch (const std::exception &e) {
         std::string err = "Unknown error opening file: " + infilename + " "
                           + strerror(errno);
-        throw khmer_file_exception(err);
+        throw oxli_file_exception(err);
     }
 
     if (store._counts) {
@@ -318,23 +318,23 @@ ByteStorageFileReader::ByteStorageFileReader(
         infile.read((char *) &ht_type, 1);
         if (!(std::string(signature, 4) == SAVED_SIGNATURE)) {
             std::ostringstream err;
-            err << "Does not start with signature for a khmer file: 0x";
+            err << "Does not start with signature for a oxli file: 0x";
             for(size_t i=0; i < 4; ++i) {
                 err << std::hex << (int) signature[i];
             }
             err << " Should be: " << SAVED_SIGNATURE;
-            throw khmer_file_exception(err.str());
+            throw oxli_file_exception(err.str());
         } else if (!(version == SAVED_FORMAT_VERSION)) {
             std::ostringstream err;
             err << "Incorrect file format version " << (int) version
                 << " while reading k-mer count file from " << infilename
                 << "; should be " << (int) SAVED_FORMAT_VERSION;
-            throw khmer_file_exception(err.str());
+            throw oxli_file_exception(err.str());
         } else if (!(ht_type == SAVED_COUNTING_HT)) {
             std::ostringstream err;
             err << "Incorrect file format type " << (int) ht_type
                 << " while reading k-mer count file from " << infilename;
-            throw khmer_file_exception(err.str());
+            throw oxli_file_exception(err.str());
         }
 
         infile.read((char *) &use_bigcount, 1);
@@ -395,11 +395,11 @@ ByteStorageFileReader::ByteStorageFileReader(
             err = "Error reading from k-mer count file: " + infilename + " "
                   + strerror(errno);
         }
-        throw khmer_file_exception(err);
+        throw oxli_file_exception(err);
     } catch (const std::exception &e) {
         std::string err = "Error reading from k-mer count file: " + infilename + " "
                           + strerror(errno);
-        throw khmer_file_exception(err);
+        throw oxli_file_exception(err);
     }
 }
 
@@ -411,7 +411,7 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
     gzFile infile = gzopen(infilename.c_str(), "rb");
     if (infile == Z_NULL) {
         std::string err = "Cannot open k-mer count file: " + infilename;
-        throw khmer_file_exception(err);
+        throw oxli_file_exception(err);
     }
 
     if (store._counts) {
@@ -438,13 +438,13 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
         std::string err = "K-mer count file read error: " + infilename + " "
                           + strerror(errno);
         gzclose(infile);
-        throw khmer_file_exception(err);
+        throw oxli_file_exception(err);
     } else if (!(std::string(signature, 4) == SAVED_SIGNATURE)) {
         std::ostringstream err;
-        err << "Does not start with signature for a khmer " <<
+        err << "Does not start with signature for a oxli " <<
             "file: " << signature << " Should be: " <<
             SAVED_SIGNATURE;
-        throw khmer_file_exception(err.str());
+        throw oxli_file_exception(err.str());
     } else if (!(version == SAVED_FORMAT_VERSION)
                || !(ht_type == SAVED_COUNTING_HT)) {
         if (!(version == SAVED_FORMAT_VERSION)) {
@@ -453,13 +453,13 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
                 << " while reading k-mer count file from " << infilename
                 << "; should be " << (int) SAVED_FORMAT_VERSION;
             gzclose(infile);
-            throw khmer_file_exception(err.str());
+            throw oxli_file_exception(err.str());
         } else if (!(ht_type == SAVED_COUNTING_HT)) {
             std::ostringstream err;
             err << "Incorrect file format type " << (int) ht_type
                 << " while reading k-mer count file from " << infilename;
             gzclose(infile);
-            throw khmer_file_exception(err.str());
+            throw oxli_file_exception(err.str());
         }
     }
 
@@ -474,7 +474,7 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
         std::string err = "K-mer count file header read error: " + infilename
                           + " " + strerror(errno);
         gzclose(infile);
-        throw khmer_file_exception(err);
+        throw oxli_file_exception(err);
     }
 
     ksize = (WordLength) save_ksize;
@@ -500,7 +500,7 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
                 err = err + " " + gzerr;
             }
             gzclose(infile);
-            throw khmer_file_exception(err);
+            throw oxli_file_exception(err);
         }
 
         tablesize = save_tablesize;
@@ -529,7 +529,7 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
                     err = err + " " + gzerr;
                 }
                 gzclose(infile);
-                throw khmer_file_exception(err);
+                throw oxli_file_exception(err);
             }
 
             loaded += read_b;
@@ -547,7 +547,7 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
             err = err + " " + gzerr;
         }
         gzclose(infile);
-        throw khmer_file_exception(err);
+        throw oxli_file_exception(err);
     }
 
     if (n_counts) {
@@ -569,7 +569,7 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
                     err = err + " " + gzerr;
                 }
                 gzclose(infile);
-                throw khmer_file_exception(err);
+                throw oxli_file_exception(err);
             }
 
             store._bigcounts[kmer] = count;
@@ -585,7 +585,7 @@ ByteStorageFileWriter::ByteStorageFileWriter(
     const ByteStorage& store)
 {
     if (!store._counts[0]) {
-        throw khmer_exception();
+        throw oxli_exception();
     }
 
     unsigned int save_ksize = ksize;
@@ -632,7 +632,7 @@ ByteStorageFileWriter::ByteStorageFileWriter(
         }
     }
     if (outfile.fail()) {
-        throw khmer_file_exception(strerror(errno));
+        throw oxli_file_exception(strerror(errno));
     }
     outfile.close();
 }
@@ -643,7 +643,7 @@ ByteStorageGzFileWriter::ByteStorageGzFileWriter(
     const ByteStorage &store)
 {
     if (!store._counts[0]) {
-        throw khmer_exception();
+        throw oxli_exception();
     }
 
     int errnum = 0;
@@ -656,9 +656,9 @@ ByteStorageGzFileWriter::ByteStorageGzFileWriter(
     if (outfile == NULL) {
         const char * error = gzerror(outfile, &errnum);
         if (errnum == Z_ERRNO) {
-            throw khmer_file_exception(strerror(errno));
+            throw oxli_file_exception(strerror(errno));
         } else {
-            throw khmer_file_exception(error);
+            throw oxli_file_exception(error);
         }
     }
 
@@ -716,7 +716,7 @@ ByteStorageGzFileWriter::ByteStorageGzFileWriter(
                     msg << strerror(errno);
                 }
                 gzclose(outfile);
-                throw khmer_file_exception(msg.str());
+                throw oxli_file_exception(msg.str());
             }
             written += gz_result;
         }
@@ -735,9 +735,9 @@ ByteStorageGzFileWriter::ByteStorageGzFileWriter(
     }
     const char * error = gzerror(outfile, &errnum);
     if (errnum == Z_ERRNO) {
-        throw khmer_file_exception(strerror(errno));
+        throw oxli_file_exception(strerror(errno));
     } else if (errnum != Z_OK) {
-        throw khmer_file_exception(error);
+        throw oxli_file_exception(error);
     }
     gzclose(outfile);
 }

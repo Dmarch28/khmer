@@ -36,10 +36,13 @@ LICENSE (END)
 Contact: khmer-project@idyll.org
 */
 #include <fstream>
+
+#include "oxli/oxli_exception.hh"
+#include "oxli/read_parsers.hh"
 #include "khmer_exception.hh"
 #include "read_parsers.hh"
 
-namespace khmer
+namespace oxli
 {
 
 namespace read_parsers
@@ -56,7 +59,7 @@ void ReadParser<SeqIO>::_init()
             REG_EXTENDED | REG_NOSUB
         );
     if (regex_rc) {
-        throw khmer_exception("Could not compile R2 nosub regex");
+        throw oxli_exception("Could not compile R2 nosub regex");
     }
     regex_rc =
         regcomp(
@@ -64,7 +67,7 @@ void ReadParser<SeqIO>::_init()
             "^.+(/1| 1:[YN]:[[:digit:]]+:[[:alpha:]]+).{0}", REG_EXTENDED
         );
     if (regex_rc) {
-        throw khmer_exception("Could not compile R1 regex");
+        throw oxli_exception("Could not compile R1 regex");
     }
     regex_rc =
         regcomp(
@@ -72,7 +75,7 @@ void ReadParser<SeqIO>::_init()
             "^.+(/2| 2:[YN]:[[:digit:]]+:[[:alpha:]]+).{0}", REG_EXTENDED
         );
     if (regex_rc) {
-        throw khmer_exception("Could not compile R2 regex");
+        throw oxli_exception("Could not compile R2 regex");
     }
 }
 
@@ -339,4 +342,8 @@ template FastxParserPtr get_parser<FastxReader>(const std::string& filename);
 
 } // namespace read_parsers
 
+
+} // namespace oxli
+
+// vim: set ft=cpp sts=4 sw=4 tw=80:
 } // namespace khmer

@@ -52,41 +52,41 @@ Contact: khmer-project@idyll.org
 #include <utility>
 #include <memory>
 
-#include "khmer.hh"
-#include "khmer_exception.hh"
+#include "oxli.hh"
+#include "oxli_exception.hh"
 
-namespace khmer
+namespace oxli
 {
 
 namespace read_parsers
 {
 
-struct NoMoreReadsAvailable : public  khmer_file_exception {
+struct NoMoreReadsAvailable : public  oxli_file_exception {
     explicit NoMoreReadsAvailable(const std::string& msg) :
-        khmer_file_exception(msg) {}
+        oxli_file_exception(msg) {}
     NoMoreReadsAvailable() :
-        khmer_file_exception("No more reads available in this stream.") {}
+        oxli_file_exception("No more reads available in this stream.") {}
 };
 
-struct InvalidRead : public  khmer_value_exception {
+struct InvalidRead : public  oxli_value_exception {
     explicit InvalidRead(const std::string& msg) :
-        khmer_value_exception(msg) {}
+        oxli_value_exception(msg) {}
     InvalidRead() :
-        khmer_value_exception("Invalid FASTA/Q read") {}
+        oxli_value_exception("Invalid FASTA/Q read") {}
 };
 
-struct UnknownPairReadingMode : public  khmer_value_exception {
+struct UnknownPairReadingMode : public  oxli_value_exception {
     explicit UnknownPairReadingMode(const std::string& msg) :
-        khmer_value_exception(msg) {}
+        oxli_value_exception(msg) {}
     UnknownPairReadingMode() :
-        khmer_value_exception("Unknown pair reading mode supplied.") {}
+        oxli_value_exception("Unknown pair reading mode supplied.") {}
 };
 
-struct InvalidReadPair : public  khmer_value_exception {
+struct InvalidReadPair : public  oxli_value_exception {
     explicit InvalidReadPair(const std::string& msg) :
-        khmer_value_exception(msg) {}
+        oxli_value_exception(msg) {}
     InvalidReadPair() :
-        khmer_value_exception("Invalid read pair detected.") {}
+        oxli_value_exception("Invalid read pair detected.") {}
 };
 
 
@@ -198,7 +198,7 @@ inline PartitionID _parse_partition_id(std::string name)
     PartitionID p = 0;
     const char * s = name.c_str() + name.length() - 1;
     if (!(*(s + 1) == (unsigned int) NULL)) {
-        throw khmer_exception();
+        throw oxli_exception();
     }
 
     while(*s != '\t' && s >= name.c_str()) {
@@ -208,6 +208,9 @@ inline PartitionID _parse_partition_id(std::string name)
     if (*s == '\t') {
         p = (PartitionID) atoi(s + 1);
     } else {
+        std::cerr << "consume_partitioned_fasta barfed on read "
+                  << name << "\n";
+        throw oxli_exception();
         std::string err;
         err = "consume_partitioned_fasta cannot find partition ID for read ";
         err += name;
@@ -230,6 +233,6 @@ typedef std::unique_ptr<ReadParser<FastxReader>> FastxParserPtr;
 
 } // namespace read_parsers
 
-} // namespace khmer
+} // namespace oxli
 
 #endif // READ_PARSERS_HH

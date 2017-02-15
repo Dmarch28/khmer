@@ -46,6 +46,10 @@ Contact: khmer-project@idyll.org
 #include <set>
 #include <memory>
 
+#include "oxli/hashtable.hh"
+#include "oxli/oxli.hh"
+#include "oxli/traversal.hh"
+#include "oxli/read_parsers.hh"
 #include "hashtable.hh"
 #include "khmer.hh"
 #include "traversal.hh"
@@ -53,6 +57,8 @@ Contact: khmer-project@idyll.org
 #include "kmer_hash.hh"
 
 using namespace std;
+using namespace oxli;
+using namespace oxli:: read_parsers;
 using namespace khmer;
 using namespace khmer::read_parsers;
 
@@ -135,7 +141,7 @@ void Hashtable::get_median_count(const std::string &s,
     this->get_kmer_counts(s, counts);
 
     if (!counts.size()) {
-        throw khmer_exception("no k-mer counts for this string; too short?");
+        throw oxli_exception("no k-mer counts for this string; too short?");
     }
 
     average = 0;
@@ -298,7 +304,7 @@ uint64_t * Hashtable::abundance_distribution(
     // if not, could lead to overflow.
     if (sizeof(BoundedCounterType) != 2) {
         delete[] dist;
-        throw khmer_exception();
+        throw oxli_exception();
     }
 
     while(!parser->is_complete()) {
@@ -405,6 +411,11 @@ std::vector<unsigned int> Hashtable::find_spectral_error_positions(
 const
 {
     std::vector<unsigned int> posns;
+    if (!check_and_normalize_read(seq)) {
+        throw oxli_exception("invalid read");
+    }
+
+    KmerIterator kmers(seq.c_str(), _ksize);
     KmerHashIteratorPtr kmers = new_kmer_iterator(seq);
 
     HashIntoType kmer = kmers->next();

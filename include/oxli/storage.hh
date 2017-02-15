@@ -38,6 +38,7 @@ Contact: khmer-project@idyll.org
 #ifndef STORAGE_HH
 #define STORAGE_HH
 
+namespace oxli
 #include <cassert>
 #include <array>
 #include <mutex>

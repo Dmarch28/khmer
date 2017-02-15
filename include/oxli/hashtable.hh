@@ -52,17 +52,23 @@ Contact: khmer-project@idyll.org
 #include <memory>
 #include "MurmurHash3.h"
 
-#include "khmer.hh"
-#include "khmer_exception.hh"
+#include "oxli.hh"
+#include "oxli_exception.hh"
 #include "kmer_hash.hh"
 #include "read_parsers.hh"
 #include "storage.hh"
 #include "subset.hh"
 
+namespace oxli
 using namespace std;
 
 namespace khmer
 {
+namespace read_parsers
+{
+class IParser;
+}  // namespace read_parsers
+}  // namespace oxli
     namespace read_parsers
     {
         template<typename SeqIO> class ReadParser;
@@ -72,7 +78,7 @@ namespace khmer
 
 #define CALLBACK_PERIOD 100000
 
-namespace khmer
+namespace oxli
 {
 
 typedef std::unique_ptr<KmerHashIterator> KmerHashIteratorPtr;
@@ -320,7 +326,7 @@ public:
 };
 
 // Hashtable-derived class with ByteStorage.
-class Counttable : public khmer::Hashtable
+class Counttable : public oxli::Hashtable
 {
 public:
     explicit Counttable(WordLength ksize, std::vector<uint64_t> sizes)

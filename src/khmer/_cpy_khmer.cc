@@ -44,8 +44,10 @@ Contact: khmer-project@idyll.org
 #include <Python.h>
 #include <string>
 
-#include "_khmer.hh"
-#include "_cpy_utils.hh"
+#include "khmer/_cpy_khmer.hh"
+#include "khmer/_cpy_utils.hh"
+
+using namespace oxli;
 
 
 //
@@ -4435,6 +4437,8 @@ static PyObject * forward_hash(PyObject * self, PyObject * args)
         const HashIntoType h(_hash(kmer, ksize));
         convert_HashIntoType_to_PyObject(h, &hash);
         return hash;
+    } catch (oxli_exception &e) {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
     } catch (khmer_exception &e) {
         PyErr_SetString(PyExc_ValueError, e.what());
         return NULL;
@@ -4534,7 +4538,7 @@ PyObject * reverse_complement(PyObject * self, PyObject * args)
     std::string s(sequence);
     try {
         s = _revcomp(s);
-    } catch (khmer_exception &e) {
+    } catch (oxli_exception &e) {
         PyErr_SetString(PyExc_RuntimeError, e.what());
         return NULL;
     }
@@ -4606,7 +4610,8 @@ MOD_INIT(_khmer)
 {
 
     using namespace khmer;
-    using namespace khmer::read_parsers;
+    using namespace oxli;
+    using namespace oxli::read_parsers;
 
 
     if (PyType_Ready(&khmer_KHashtable_Type) < 0) {

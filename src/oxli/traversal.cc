@@ -34,15 +34,15 @@ LICENSE (END)
 
 Contact: khmer-project@idyll.org
 */
-#include "khmer.hh"
-#include "hashtable.hh"
-#include "traversal.hh"
-#include "alphabets.hh"
-#include "kmer_hash.hh"
+#include "oxli/oxli.hh"
+#include "oxli/hashtable.hh"
+#include "oxli/traversal.hh"
+#include "oxli/alphabets.hh"
+#include "oxli/kmer_hash.hh"
 
 using namespace std;
 
-namespace khmer
+namespace oxli
 {
 
 /******************************************
@@ -363,4 +363,4 @@ template class AssemblerTraverser<TRAVERSAL_RIGHT>;
 template class AssemblerTraverser<TRAVERSAL_LEFT>;
 
 
-} // namespace khmer
+} // namespace oxli

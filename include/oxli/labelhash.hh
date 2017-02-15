@@ -46,10 +46,10 @@ Contact: khmer-project@idyll.org
 
 #include "hashtable.hh"
 #include "hashgraph.hh"
-#include "khmer.hh"
+#include "oxli.hh"
 #include "read_parsers.hh"
 
-namespace khmer
+namespace oxli
 {
     class Hashgraph;
 
@@ -124,7 +124,7 @@ protected:
     uint32_t _tag_labels_spin_lock;
 
 public:
-    khmer::Hashgraph * graph;
+    oxli::Hashgraph * graph;
 
     explicit LabelHash(Hashgraph * ht) : graph(ht)
     {

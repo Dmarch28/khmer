@@ -47,7 +47,7 @@ Contact: khmer-project@idyll.org
 #include "khmer.hh"
 #include "kmer_hash.hh"
 
-namespace khmer
+namespace oxli
 {
 
 class CountingHash;

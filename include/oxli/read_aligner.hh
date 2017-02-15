@@ -48,13 +48,15 @@ Contact: khmer-project@idyll.org
 #include <string>
 #include <vector>
 
+#include "oxli.hh"
+#include "hashgraph.hh"
 #include "counting.hh"
 #include "khmer.hh"
 #include "kmer_hash.hh"
 
 #define READ_ALIGNER_DEBUG 0
 
-namespace khmer
+namespace oxli
 {
 
 enum State { MATCH, INSERT_READ, INSERT_GRAPH,
@@ -226,6 +228,7 @@ private:
     const HashIntoType bitmask;
     const size_t rc_left_shift;
 
+    oxli::Countgraph* m_ch;
     CountingHash* m_ch;
     ScoringMatrix m_sm;
 
@@ -244,6 +247,7 @@ public:
     Alignment* Align(const std::string&);
     Alignment* AlignForward(const std::string&);
 
+    ReadAligner(oxli::Countgraph* ch,
     ReadAligner(CountingHash* ch,
                 BoundedCounterType trusted_cutoff, double bits_theta)
         : bitmask(comp_bitmask(ch->ksize())),
@@ -265,6 +269,7 @@ public:
 #endif
     }
 
+    ReadAligner(oxli::Countgraph* ch,
     ReadAligner(CountingHash* ch,
                 BoundedCounterType trusted_cutoff, double bits_theta,
                 double* scoring_matrix, double* transitions)

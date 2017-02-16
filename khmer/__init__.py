@@ -87,6 +87,7 @@ _buckets_per_byte = {
     # calculated by hand from settings in third-part/cqf/gqf.h
     'qfcounttable': 1 / 1.26,
     'countgraph': 1,
+    'counttable': 1,
     'smallcountgraph': 2,
     'nodegraph': 8,
 }

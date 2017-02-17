@@ -344,7 +344,7 @@ def main():  # pylint: disable=too-many-branches,too-many-statements
         countgraph = khmer_args.create_MQFGraph(args)
     else:
         log_info('making countgraph')
-        countgraph = khmer_args.create_countgraph(args)
+        countgraph = khmer_args.create_counttable(args)
 
 
 

@@ -331,6 +331,11 @@ def main():  # pylint: disable=too-many-branches,too-many-statements
     # check that files exist and there is sufficient output disk space.
     check_valid_file_exists(args.input_filenames)
     check_space(args.input_filenames, args.force)
+    if args.savegraph:
+        if args.hash_function != 'twobit-exact':
+            log_error('ERROR: cannot save different hash functions yet.')
+            sys.exit(1)
+
     if args.savegraph is not None:
         graphsize = calculate_graphsize(args, 'countgraph')
         check_space_for_graph(args.savegraph, graphsize, args.force)

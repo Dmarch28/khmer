@@ -557,5 +557,62 @@ def test_read_cleaning_abundance_distribution():
     assert dist[2] == 68
 
 
+def test_read_cleaning_trim_functions_lowercase():
+    infile = utils.get_test_data('valid-read-testing.fq')
+
+    # read this in using "approved good" behavior w/cleaned_seq
+    x = Counttable(8, int(1e6), 4)
+    for read in ReadParser(infile):
+        x.consume(read.cleaned_seq)       # consume cleaned_seq
+
+    s = "caggcgcccaccaccgtgccctccaacctgatggt"
+    _, where = x.trim_on_abundance(s, 1)
+    assert where == 0
+
+    _, where = x.trim_below_abundance(s, 2)
+    assert where == 35
+
+    posns = x.find_spectral_error_positions(s, 1)
+    assert posns == []
+
+
+def test_read_cleaning_trim_functions_N():
+    infile = utils.get_test_data('valid-read-testing.fq')
+
+    # read this in using "approved good" behavior w/cleaned_seq
+    x = Counttable(8, int(1e6), 4)
+    for read in ReadParser(infile):
+        x.consume(read.cleaned_seq)       # consume cleaned_seq
+
+    s = "ACTGGGCGTAGNCGGTGTCCTCATCGGCACCAGC"
+    _, where = x.trim_on_abundance(s, 1)
+    assert where == 11
+
+    _, where = x.trim_below_abundance(s, 2)
+    assert where == 34
+
+    posns = x.find_spectral_error_positions(s, 1)
+    assert posns == [11]
+
+
+def test_read_cleaning_trim_functions_bad_dna():
+    infile = utils.get_test_data('valid-read-testing.fq')
+
+    # read this in using "approved good" behavior w/cleaned_seq
+    x = Counttable(8, int(1e6), 4)
+    for read in ReadParser(infile):
+        x.consume(read.cleaned_seq)       # consume cleaned_seq
+
+    s = "CCGGCGTGGTTZZYAGGTCACTGAGCTTCATGTC"
+    _, where = x.trim_on_abundance(s, 1)
+    assert where == 11
+
+    _, where = x.trim_below_abundance(s, 2)
+    assert where == 34
+
+    posns = x.find_spectral_error_positions(s, 1)
+    assert posns == [11]
+
+
 # vim: set filetype=python tabstop=4 softtabstop=4 shiftwidth=4 expandtab:
 # vim: set textwidth=79:

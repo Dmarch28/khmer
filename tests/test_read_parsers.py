@@ -38,7 +38,7 @@
 from __future__ import print_function
 from __future__ import absolute_import
 from khmer import Read
-from khmer import ReadParser
+from khmer import ReadParser, Counttable, Nodegraph
 from screed import Record
 from . import khmer_tst_utils as utils
 import pytest
@@ -54,7 +54,7 @@ def test_read_type_basic():
     name = "895:1:1:1246:14654 1:N:0:NNNNN"
     sequence = "ACGT"
     r = Read(name, sequence)
-    s = Record(name, sequence)
+    s = Record(dict(name=name, sequence=sequence))
 
     for x in (r, s):
         assert x.name == name
@@ -484,24 +484,78 @@ def test_clean_seq():
         assert clean == read.cleaned_seq
 
 
-def test_error_badly_formatted_file():
-    fname = utils.get_temp_filename('badly-formatted.fa')
-    with open(fname, 'w') as f:
-        f.write("not-sequence")
+def test_read_cleaning_consume_seqfile():
+    infile = utils.get_test_data('valid-read-testing.fq')
 
-    with pytest.raises(OSError) as e:
-        ReadParser(fname)
+    x = Counttable(15, int(1e6), 4)
+    x.consume_seqfile(infile)
 
-    assert e.match("contains badly formatted sequence")
+    # the relevant read will automatically get uppercased => abundance of 2
+    kmer = "caggcgcccaccacc".upper()
+    assert x.get(kmer) == 2
+
+    # the 2nd read with this k-mer in it has an N in it.
+    kmer = "CCTCATCGGCACCAG"
+    assert x.get(kmer) == 2
+
+    # the 2nd read with this k-mer in it has a Z in it
+    kmer = "ACTGAGCTTCATGTC"
+    assert x.get(kmer) == 2
 
 
-def test_error_file_does_not_exist():
-    fname = utils.get_temp_filename('does-not-exist.fa')
+def test_read_cleaning_consume_read_by_read():
+    infile = utils.get_test_data('valid-read-testing.fq')
 
-    with pytest.raises(OSError) as e:
-        ReadParser(fname)
+    x = Counttable(15, int(1e6), 4)
+    for read in ReadParser(infile):
+        x.consume(read.sequence)          # consume raw sequence
 
-    assert e.match("does not exist")
+    # the relevant read will be entirely ignored
+    # (b/c ReadParser does not uppercase)
+    kmer = "caggcgcccaccacc".upper()
+    assert x.get(kmer) == 1
+
+    # the 2nd read with this k-mer in it has an N in it; 'consume' will ignore.
+    kmer = "CCTCATCGGCACCAG"
+    assert x.get(kmer) == 2
+
+    # the 2nd read with this k-mer in it has a Z in it; 'consume' will ignore.
+    kmer = "ACTGAGCTTCATGTC"
+    assert x.get(kmer) == 2
+
+
+def test_read_cleaning_consume_read_by_read_cleaned_seq():
+    infile = utils.get_test_data('valid-read-testing.fq')
+
+    x = Counttable(15, int(1e6), 4)
+    for read in ReadParser(infile):
+        x.consume(read.cleaned_seq)       # consume cleaned_seq
+
+    # the relevant read will be cleaned & loaded
+    kmer = "caggcgcccaccacc".upper()
+    assert x.get(kmer) == 2
+
+    # this k-mer will be correctly loaded
+    kmer = "CCTCATCGGCACCAG"
+    assert x.get(kmer) == 2
+
+    # this k-mer will be correctly loaded
+    kmer = "ACTGAGCTTCATGTC"
+    assert x.get(kmer) == 2
+
+
+def test_read_cleaning_abundance_distribution():
+    infile = utils.get_test_data('valid-read-testing.fq')
+
+    x = Counttable(15, int(1e6), 4)
+    y = Nodegraph(15, int(1e6), 4)
+
+    x.consume_seqfile(infile)
+
+    dist = x.abundance_distribution(infile, y)
+    assert dist[1] == 29                  # k-mers with non-ACGTN => ignored.
+    assert dist[2] == 68
+
 
 # vim: set filetype=python tabstop=4 softtabstop=4 shiftwidth=4 expandtab:
 # vim: set textwidth=79:

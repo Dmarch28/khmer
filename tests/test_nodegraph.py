@@ -40,6 +40,7 @@ from __future__ import absolute_import
 import khmer
 from khmer import ReadParser
 from khmer import reverse_complement as revcomp
+from khmer.khmer_args import create_matching_nodegraph
 
 import screed
 
@@ -59,6 +60,13 @@ def test_toobig():
         assert 0, "This should fail"
     except MemoryError as err:
         print(str(err))
+
+
+def test_bad_create():
+    try:
+        nodegraph = khmer._Nodegraph(5, [])
+    except ValueError as err:
+        assert 'tablesizes needs to be one or more numbers' in str(err)
 
 
 def test__get_set_tag_density():
@@ -1084,3 +1092,29 @@ def test_traverse_linear_path_3_stopgraph():
     assert size == 0
     assert len(visited) == 0
     assert len(conns) == 0
+
+
+def test_assemble_linear_path_bad_seed():
+    # assemble single node.
+    contigfile = utils.get_test_data('simple-genome.fa')
+    contig = list(screed.open(contigfile))[0].sequence
+
+    nodegraph = khmer.Nodegraph(21, 1e5, 4)
+    nodegraph.consume(contig)
+
+    path = nodegraph.assemble_linear_path('GATTACA' * 3)
+    assert path == ''
+
+
+@pytest.mark.parametrize('ntables,targetsize', [
+    (4, 1e5),
+    (6, 1e5),
+    (8, 1e5),
+    (5, 1e6),
+    (7, 1e6),
+    (9, 1e6),
+])
+def test_create_matching_nodegraph(ntables, targetsize):
+    cg = khmer.Countgraph(31, targetsize, ntables)
+    ng = create_matching_nodegraph(cg)
+    assert cg.hashsizes() == ng.hashsizes()

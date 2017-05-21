@@ -50,7 +50,7 @@ namespace khmer
  ******************************************/
 
 template <bool direction>
-NodeGatherer<direction>::NodeGatherer(const Hashtable * ht,
+NodeGatherer<direction>::NodeGatherer(const Hashgraph * ht,
                                       KmerFilterList filters) :
     KmerFactory(ht->ksize()), graph(ht), filters(filters)
 {
@@ -63,18 +63,25 @@ NodeGatherer<direction>::NodeGatherer(const Hashtable * ht,
 
 
 template <bool direction>
-NodeGatherer<direction>::NodeGatherer(const Hashtable * ht) :
+NodeGatherer<direction>::NodeGatherer(const Hashgraph * ht) :
     NodeGatherer(ht, KmerFilterList())
 {
 }
 
 
 template <bool direction>
-NodeGatherer<direction>::NodeGatherer(const Hashtable * ht,
+NodeGatherer<direction>::NodeGatherer(const Hashgraph * ht,
                                       KmerFilter filter) :
     NodeGatherer(ht, KmerFilterList())
 {
     filters.push_back(filter);
+}
+
+
+template <bool direction>
+WordLength NodeGatherer<direction>::ksize() const
+{
+    return graph->ksize();
 }
 
 
@@ -148,7 +155,7 @@ const
  ******************************************/
 
 template<bool direction>
-NodeCursor<direction>::NodeCursor(const Hashtable * ht,
+NodeCursor<direction>::NodeCursor(const Hashgraph * ht,
                                   Kmer start_kmer,
                                   KmerFilterList filters) :
     NodeGatherer<direction>(ht, filters)
@@ -158,7 +165,7 @@ NodeCursor<direction>::NodeCursor(const Hashtable * ht,
 
 
 template<bool direction>
-NodeCursor<direction>::NodeCursor(const Hashtable * ht,
+NodeCursor<direction>::NodeCursor(const Hashgraph * ht,
                                   Kmer start_kmer) :
     NodeCursor<direction>(ht, start_kmer, KmerFilterList())
 {
@@ -166,7 +173,7 @@ NodeCursor<direction>::NodeCursor(const Hashtable * ht,
 
 
 template<bool direction>
-NodeCursor<direction>::NodeCursor(const Hashtable * ht,
+NodeCursor<direction>::NodeCursor(const Hashgraph * ht,
                                   Kmer start_kmer,
                                   KmerFilter filter) :
     NodeCursor<direction>(ht, start_kmer)
@@ -188,7 +195,7 @@ const
  * Traverser
  ******************************************/
 
-Traverser::Traverser(const Hashtable * ht,
+Traverser::Traverser(const Hashgraph * ht,
                      KmerFilterList filters) :
     KmerFactory(ht->ksize()),
     graph(ht),
@@ -197,7 +204,7 @@ Traverser::Traverser(const Hashtable * ht,
 {
 }
 
-Traverser::Traverser(const Hashtable * ht,
+Traverser::Traverser(const Hashgraph * ht,
                      KmerFilter filter) :
     KmerFactory(ht->ksize()),
     graph(ht),
@@ -211,6 +218,13 @@ void Traverser::push_filter(KmerFilter filter)
 {
     left_gatherer.push_filter(filter);
     right_gatherer.push_filter(filter);
+}
+
+
+KmerFilter Traverser::pop_filter()
+{
+    left_gatherer.pop_filter();
+    return right_gatherer.pop_filter();
 }
 
 
@@ -260,6 +274,35 @@ unsigned int Traverser::degree_right(const Kmer& node) const
  * AssemblerTraverser
  ******************************************/
 
+template<bool direction>
+AssemblerTraverser<direction>::AssemblerTraverser(const Hashgraph * ht,
+                                                  Kmer start_kmer,
+                                                  KmerFilterList filters) :
+        NodeCursor<direction>(ht, start_kmer, filters)
+{
+    visited = std::make_shared<SeenSet>();
+    AssemblerTraverser<direction>::push_filter(get_visited_filter(visited));
+}
+
+template<bool direction>
+AssemblerTraverser<direction>::AssemblerTraverser(const Hashgraph * ht,
+                                                  Kmer start_kmer,
+                                                  KmerFilterList filters,
+                                                  std::shared_ptr<SeenSet> visited) :
+        NodeCursor<direction>(ht, start_kmer, filters), visited(visited)
+{
+    AssemblerTraverser<direction>::push_filter(get_visited_filter(visited));
+}
+
+template<bool direction>
+AssemblerTraverser<direction>::AssemblerTraverser(const AssemblerTraverser<direction>& other) : 
+    AssemblerTraverser<direction>(other.graph,
+                                  other.cursor,
+                                  other.filters,
+                                  other.visited)
+{
+}
+
 template <>
 std::string AssemblerTraverser<TRAVERSAL_RIGHT>::join_contigs(std::string& contig_a,
         std::string& contig_b, WordLength offset)
@@ -284,6 +327,7 @@ char AssemblerTraverser<direction>::next_symbol()
     Kmer neighbor;
     Kmer cursor_next;
 
+    visited->insert(this->cursor);
     for (auto base : alphabets::DNA_SIMPLE) {
         // Get the putative neighbor for this base at the cursor position
         neighbor = NodeCursor<direction>::get_neighbor(this->cursor, base);
@@ -310,29 +354,6 @@ char AssemblerTraverser<direction>::next_symbol()
     }
 }
 
-/******************************************
- * NonLoopingAT
- ******************************************/
-
-template<bool direction>
-NonLoopingAT<direction>::NonLoopingAT(const Hashtable * ht,
-                                      Kmer start_kmer,
-                                      KmerFilterList filters,
-                                      SeenSet * visited) :
-    AssemblerTraverser<direction>(ht, start_kmer, filters), visited(visited)
-{
-    AssemblerTraverser<direction>::push_filter(get_visited_filter(visited));
-}
-
-template<bool direction>
-char NonLoopingAT<direction>::next_symbol()
-{
-#if DEBUG_TRAVERSAL
-    std::cout << "Insert cursor to visited filter" << std::endl;
-#endif
-    visited->insert(this->cursor);
-    return AssemblerTraverser<direction>::next_symbol();
-}
 
 template class NodeGatherer<TRAVERSAL_LEFT>;
 template class NodeGatherer<TRAVERSAL_RIGHT>;
@@ -340,8 +361,6 @@ template class NodeCursor<TRAVERSAL_LEFT>;
 template class NodeCursor<TRAVERSAL_RIGHT>;
 template class AssemblerTraverser<TRAVERSAL_RIGHT>;
 template class AssemblerTraverser<TRAVERSAL_LEFT>;
-template class NonLoopingAT<TRAVERSAL_RIGHT>;
-template class NonLoopingAT<TRAVERSAL_LEFT>;
 
 
 } // namespace khmer

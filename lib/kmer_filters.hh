@@ -41,7 +41,6 @@ Contact: khmer-project@idyll.org
 
 #include "khmer.hh"
 #include "kmer_hash.hh"
-#include "counting.hh"
 #include "labelhash.hh"
 
 
@@ -53,80 +52,19 @@ class LabelHash;
 
 
 bool apply_kmer_filters(const Kmer& node, const KmerFilterList& filters);
-bool apply_kmer_filters(Kmer& node, KmerFilterList& filters);
-bool apply_kmer_filters(const Kmer& node, const KmerFilterList& filters);
 
 KmerFilter get_label_filter(const Label label, const LabelHash * lh);
-inline bool apply_kmer_filters(Kmer& node, std::list<KmerFilter>& filters)
-{
-    if (!filters.size()) {
-        return false;
-    }
-KmerFilter get_label_filter(const Label label, const LabelHash * lh);
-
-KmerFilter get_stop_bf_filter(const Hashtable * stop_bf);
-    for(auto filter : filters) {
-        if (filter(node)) {
-            return true;
-        }
-    }
-KmerFilter get_simple_label_intersect_filter(const LabelSet& src_labels,
-        const LabelHash * lh,
-        const unsigned int min_cov = 5);
 
 KmerFilter get_simple_label_intersect_filter(const LabelSet& src_labels,
         const LabelHash * lh,
         const unsigned int min_cov = 5);
 
-KmerFilter get_visited_filter(const SeenSet * visited);
-    return false;
-}
 KmerFilter get_stop_bf_filter(const Hashtable * stop_bf);
 
-
-inline KmerFilter get_label_filter(const Label label, const LabelHash * lh)
-{
-    KmerFilter filter = [=] (Kmer& node) {
-        LabelSet ls;
-        lh->get_tag_labels(node, ls);
-        #if DEBUG_FILTERS
-        if (ls.size() == 0) {
-            std::cout << "no labels to jump to!" << std::endl;
-        }
-        #endif
-
-        return !set_contains(ls, label);
-
-    };
-    return filter;
-}
-
-
-inline KmerFilter get_stop_bf_filter(const Hashtable * stop_bf)
-{
-    KmerFilter filter = [=] (Kmer& n) {
-        return stop_bf->get_count(n);
-    };
-    return filter;
-}
-
-
-inline KmerFilter get_visited_filter(const SeenSet * visited)
-{
-    KmerFilter filter = [=] (Kmer& node) {
-        #if DEBUG_FILTERS
-        if(set_contains(*visited, node)) {
-            std::cout << "loop!" << std::endl;
-        }
-        #endif
-        return set_contains(*visited, node);
-    };
-    return filter;
-}
-KmerFilter get_visited_filter(const SeenSet * visited);
+KmerFilter get_visited_filter(std::shared_ptr<SeenSet> visited);
 
 KmerFilter get_junction_count_filter(const Kmer& src_node,
-                                     CountingHash * junctions,
+                                     Countgraph * junctions,
                                      const unsigned int min_cov = 2);
 
 }

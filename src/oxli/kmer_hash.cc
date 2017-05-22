@@ -240,7 +240,7 @@ Kmer KmerIterator::first(HashIntoType& f, HashIntoType& r)
 Kmer KmerIterator::next(HashIntoType& f, HashIntoType& r)
 {
     if (done()) {
-        throw oxli_exception();
+        throw oxli_exception("KmerIterator done.");
     }
 
     if (!initialized) {
@@ -251,7 +251,7 @@ Kmer KmerIterator::next(HashIntoType& f, HashIntoType& r)
     unsigned char ch = _seq[index];
     index++;
     if (!(index <= length)) {
-        throw oxli_exception();
+        throw oxli_exception("KmerIterator index <= length; should have finished.");
     }
 
     // left-shift the previous hash over

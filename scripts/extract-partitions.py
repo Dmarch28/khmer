@@ -354,5 +354,6 @@ def main():
            args.prefix,
            suffix), file=sys.stderr)
 
+
 if __name__ == '__main__':
     main()

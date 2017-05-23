@@ -10,6 +10,8 @@ from libcpp.utility cimport pair
 from libc.stdint cimport uint32_t, uint8_t, uint16_t, uint64_t, uintptr_t 
 
 
+from parsing cimport CpReadParser, CpSequence, CpFastxReader
+
 ########################################################################
 #
 # Core: typedefs from oxli.hh.
@@ -82,14 +84,6 @@ cdef extern from "oxli/kmer_hash.hh" namespace "oxli":
                               HashIntoType&, HashIntoType&)
     HashIntoType _hash_murmur_forward(const string&)
 
-
-cdef extern from "oxli/alphabets.hh" namespace "oxli":
-    cdef string DNA_SIMPLE "oxli::alphabets::DNA_SIMPLE"
-    cdef string DNAN_SIMPLE "oxli::alphabets::DNAN_SIMPLE"
-    cdef string RNA_SIMPLE "oxli::alphabets::RNA_SIMPLE"
-    cdef string RNAN_SIMPLE "oxli::alphabets::RNAN_SIMPLE"
-    cdef string IUPAC_NUCL "oxli::alphabets::IUPAC_NUCL"
-    cdef string IUPAC_AA "oxli::alphabets::IUPAC_AA"
 
 
 ########################################################################

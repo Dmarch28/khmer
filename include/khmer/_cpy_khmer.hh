@@ -83,8 +83,6 @@ Contact: khmer-project@idyll.org
 #include "_cpy_countgraph.hh"
 #include "_cpy_nodegraph.hh"
 
-#include "_cpy_assembly.hh"
-
 #include "_cpy_graphlabels.hh" 
 #include "_cpy_hashset.hh" 
 #include "_cpy_hllcounter.hh" 

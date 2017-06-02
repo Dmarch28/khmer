@@ -56,6 +56,11 @@ namespace seqan
     class SequenceStream; // forward dec seqan dep
 }
 
+namespace seqan
+{
+    class SequenceStream; // forward dec seqan dep
+}
+
 namespace oxli
 {
 

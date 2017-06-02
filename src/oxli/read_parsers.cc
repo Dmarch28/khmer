@@ -225,6 +225,9 @@ void ReadParser<SeqIO>::close()
 
 void FastxReader::_init()
 {
+    _stream = std::unique_ptr<seqan::SequenceStream>(new seqan::SequenceStream());
+    seqan::open(*_stream, _filename.c_str());
+    if (!seqan::isGood(*_stream)) {
     seqan::open((*_stream), _filename.c_str());
     if (!seqan::isGood((*_stream))) {
         std::string message = "Could not open ";
@@ -235,6 +238,7 @@ void FastxReader::_init()
         message = message + _filename + " contains badly formatted sequence";
         message = message + " or does not exist.";
         throw InvalidStream(message);
+    } else if (seqan::atEnd(*_stream)) {
     } else if (seqan::atEnd((*_stream))) {
         std::string message = "File ";
         message = message + _filename + " does not contain any sequences!";
@@ -272,11 +276,13 @@ FastxReader::FastxReader(FastxReader& other)
 
 FastxReader::~FastxReader()
 {
+    seqan::close(*_stream);
     seqan::close((*_stream));
 }
 
 bool FastxReader::is_complete()
 {
+    return !seqan::isGood(*_stream) || seqan::atEnd(*_stream);
     return !seqan::isGood((*_stream)) || seqan::atEnd((*_stream));
 }
 
@@ -287,6 +293,7 @@ size_t FastxReader::get_num_reads()
 
 void FastxReader::close()
 {
+    seqan::close(*_stream);
     seqan::close((*_stream));
 }
 
@@ -296,8 +303,10 @@ Read FastxReader::get_next_read()
     int ret = -1;
     const char *invalid_read_exc = NULL;
     while (!__sync_bool_compare_and_swap(&_spin_lock, 0, 1));
+    bool atEnd = seqan::atEnd(*_stream);
     bool atEnd = seqan::atEnd((*_stream));
     if (!atEnd) {
+        ret = seqan::readRecord(read.name, read.sequence, read.quality, *_stream);
         ret = seqan::readRecord(read.name, read.sequence, read.quality, (*_stream));
         if (ret == 0) {
             // Detect if we're parsing something w/ qualities on the first read

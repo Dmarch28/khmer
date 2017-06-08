@@ -436,7 +436,7 @@ public:
 };
 
 // Hashtable-derived class with QFStorage.
-class QFCounttable : public khmer::Hashtable
+class QFCounttable : public oxli::Hashtable
 {
 public:
     explicit QFCounttable(WordLength ksize, int size)

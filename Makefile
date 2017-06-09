@@ -46,6 +46,8 @@ PYSOURCES=$(filter-out khmer/_version.py, \
 SOURCES=$(PYSOURCES) $(CPPSOURCES) $(CYSOURCES) setup.py
 
 DEVPKGS=pep8==1.6.2 diff_cover autopep8 pylint coverage gcovr pytest \
+	'pytest-runner>=2.0,<3dev' pydocstyle screed pyenchant Cython==0.25.2
+
 	pydocstyle screed pyenchant Cython==0.25.2
 	pydocstyle screed pyenchant Cython>=0.25.2
 	pydocstyle pyenchant

@@ -256,8 +256,8 @@ SETUP_METADATA = \
                   "Amanda Charbonneau, Bede Constantinides, Greg Edvenson, "
                   "Scott Fay, Jacob Fenton, Thomas Fenzl, Jordan Fish, "
                   "Leonor Garcia-Gutierrez, Phillip Garland, Jonathan Gluck, "
-                  "Iván González, Sarah Guermond, Jiarong Guo, Aditi Gupta, "
-                  "Joshua R. Herr, Adina Howe, Alex Hyer, Andreas Härpfer, "
+                  "Iv�n Gonz�lez, Sarah Guermond, Jiarong Guo, Aditi Gupta, "
+                  "Joshua R. Herr, Adina Howe, Alex Hyer, Andreas H�rpfer, "
                   "Luiz Irber, Rhys Kidd, David Lin, Justin Lippi, "
                   "Tamer Mansour, Pamela McA'Nulty, Eric McDonald, "
                   "Jessica Mizzi, Kevin D. Murray, Joshua R. Nahum, "
@@ -280,6 +280,8 @@ SETUP_METADATA = \
         "packages": ['khmer', 'khmer.tests', 'oxli', 'khmer._oxli'],
         "package_data": {'khmer/_oxli': ['*.pxd']},
         "package_dir": {'khmer.tests': 'tests'},
+        "install_requires": ['screed >= 1.0', 'bz2file', 'Cython>=0.25.2'],
+        "setup_requires": ["pytest-runner>=2.0,<3dev", "setuptools>=18.0"],
         "install_requires": ['screed >= 0.9', 'bz2file'],
         "setup_requires": ["pytest-runner>=2.0,<3dev", "setuptools>=18.0",
                            "Cython>=0.25.2"],

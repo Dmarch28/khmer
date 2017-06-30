@@ -180,7 +180,6 @@ def main():
                                         args.variable_coverage,
                                         args.normalize_to)
         if trimmed_record:
-            print((trimmed_record,))
             write_record(trimmed_record, outfp)
 
     print('output in', outfile, file=sys.stderr)

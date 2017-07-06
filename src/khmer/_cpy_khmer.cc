@@ -4671,9 +4671,6 @@ MOD_INIT(_khmer)
         return MOD_ERROR_VAL;
     }
 
-    if (PyType_Ready(&khmer_KHLLCounter_Type) < 0) {
-        return MOD_ERROR_VAL;
-    }
     if (PyType_Ready(&khmer_ReadAlignerType) < 0) {
         return MOD_ERROR_VAL;
     }
@@ -4772,12 +4769,6 @@ MOD_INIT(_khmer)
 
     khmer_HashSet_Type.tp_new = khmer_HashSet_new;
     if (PyType_Ready(&khmer_HashSet_Type) < 0) {
-        return MOD_ERROR_VAL;
-    }
-
-    Py_INCREF(&khmer_KHLLCounter_Type);
-    if (PyModule_AddObject(m, "HLLCounter",
-                           (PyObject *)&khmer_KHLLCounter_Type) < 0) {
         return MOD_ERROR_VAL;
     }
 

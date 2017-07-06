@@ -153,7 +153,7 @@ BZIP2DIR = 'third-party/bzip2'
 BUILD_DEPENDS = glob.glob(path_join("include", "khmer", "_cpy_*.hh"))
 BUILD_DEPENDS.extend(path_join("include", "oxli", bn + ".hh") for bn in [
     "khmer", "kmer_hash", "hashtable", "labelhash", "hashgraph",
-    "hllcounter", "khmer_exception", "read_aligner", "subset", "read_parsers",
+    "hllcounter", "oxli_exception", "read_aligner", "subset", "read_parsers",
     "kmer_filters", "traversal", "assembler", "alphabets", "storage"])
 BUILD_DEPENDS.extend(glob.glob(path_join("khmer", "_cpy_*.hh")))
 BUILD_DEPENDS.extend(path_join("khmer", bn + ".hh") for bn in [
@@ -206,7 +206,7 @@ for cython_ext in glob.glob(os.path.join("khmer", "_oxli",
 
     CY_EXTENSION_MOD_DICT = \
         {
-            "sources": [cython_ext],
+            "sources": [cython_ext, "khmer/_oxli/oxli_exception_convert.cc"],
             "extra_compile_args": EXTRA_COMPILE_ARGS,
             "extra_link_args": EXTRA_LINK_ARGS,
             "extra_objects": [path_join(build_dir(), splitext(p)[0] + '.o')

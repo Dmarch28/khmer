@@ -47,11 +47,21 @@ hashtable_count(khmer_KHashtable_Object * me, PyObject * args);
 PyObject *
 hashtable_consume_fasta(khmer_KHashtable_Object * me, PyObject * args);
 
+
 PyObject *
 hashtable_consume_seqfile_banding(khmer_KHashtable_Object * me, PyObject * args);
 
 
 PyObject *
+hashtable_consume_seqfile_with_mask(khmer_KHashtable_Object * me, PyObject * args);
+
+
+PyObject *
+hashtable_consume_seqfile_banding_with_mask(khmer_KHashtable_Object * me, PyObject * args);
+
+
+PyObject *
+hashtable_consume_seqfile_with_reads_parser(khmer_KHashtable_Object * me,
 hashtable_consume_fasta_with_reads_parser(khmer_KHashtable_Object * me,
         PyObject * args);
 

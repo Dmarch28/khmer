@@ -98,7 +98,7 @@ void Hashtable::consume_seqfile_banding(
 template<typename SeqIO>
 void consume_seqfile_with_mask(
     std::string const &filename,
-    Hashtable& mask,
+    Hashtable* mask,
     unsigned int &total_reads,
     unsigned long long &n_consumed
 )
@@ -112,7 +112,7 @@ void consume_seqfile_banding_with_mask(
     std::string const &filename,
     unsigned int num_bands,
     unsigned int band,
-    Hashtable& mask,
+    Hashtable* mask,
     unsigned int &total_reads,
     unsigned long long &n_consumed
 )
@@ -152,7 +152,7 @@ void Hashtable::consume_seqfile(
 template<typename SeqIO>
 void Hashtable::consume_seqfile_with_mask(
     ReadParserPtr<SeqIO>& parser,
-    Hashtable& mask,
+    Hashtable* mask,
     unsigned int &total_reads,
     unsigned long long &n_consumed
 )
@@ -172,7 +172,7 @@ void Hashtable::consume_seqfile_with_mask(
         KmerHashIteratorPtr kmers = new_kmer_iterator(read.cleaned_seq);
         while(!kmers->done()) {
             HashIntoType kmer = kmers->next();
-            if (mask.get_count(kmer) == 0) {
+            if (mask->get_count(kmer) == 0) {
                 count(kmer);
                 this_n_consumed++;
             }
@@ -228,7 +228,7 @@ void Hashtable::consume_seqfile_banding_with_mask(
     ReadParserPtr<SeqIO>& parser,
     unsigned int num_bands,
     unsigned int band,
-    Hashtable& mask,
+    Hashtable* mask,
     unsigned int &total_reads,
     unsigned long long &n_consumed
 )
@@ -250,7 +250,7 @@ void Hashtable::consume_seqfile_banding_with_mask(
         while(!kmers->done()) {
             HashIntoType kmer = kmers->next();
             if (kmer >= interval.first && kmer < interval.second) {
-                if (mask.get_count(kmer) == 0) {
+                if (mask->get_count(kmer) == 0) {
                     count(kmer);
                     this_n_consumed++;
                 }
@@ -689,7 +689,7 @@ template void Hashtable::consume_seqfile_banding<FastxReader>(
 
 template void Hashtable::consume_seqfile_with_mask<FastxReader>(
     ReadParserPtr<FastxReader>& parser,
-    Hashtable& mask,
+    Hashtable* mask,
     unsigned int &total_reads,
     unsigned long long &n_consumed
 );
@@ -698,7 +698,7 @@ template void Hashtable::consume_seqfile_with_mask<FastxReader>(
 //    std::string const &filename,
 //    unsigned int num_bands,
 //    unsigned int bands,
-//    Hashtable& mask,
+//    Hashtable* mask,
 //    unsigned int &total_reads,
 //    unsigned long long &n_consumed
 //);
@@ -708,7 +708,7 @@ template void Hashtable::consume_seqfile_banding_with_mask<FastxReader>(
     ReadParserPtr<FastxReader>& parser,
     unsigned int num_bands,
     unsigned int bands,
-    Hashtable& mask,
+    Hashtable* mask,
     unsigned int &total_reads,
     unsigned long long &n_consumed
 );

@@ -410,16 +410,41 @@ public:
     }
 
     inline virtual HashIntoType
+    hash_dna_top_strand(const char * kmer) const
+    {
+        throw oxli_value_exception("not implemented");
     hash_dna_top_strand(const char * kmer) const {
         throw khmer_exception("not implemented");
     }
 
     inline virtual HashIntoType
+    hash_dna_bottom_strand(const char * kmer) const
+    {
+        throw oxli_value_exception("not implemented");
     hash_dna_bottom_strand(const char * kmer) const {
         throw khmer_exception("not implemented");
     }
 
     inline virtual std::string
+    unhash_dna(HashIntoType hashval) const
+    {
+        throw oxli_value_exception("not implemented");
+    }
+
+    virtual KmerHashIteratorPtr new_kmer_iterator(const char * sp) const
+    {
+        KmerHashIterator * ki = new MurmurKmerHashIterator(sp, _ksize);
+        return unique_ptr<KmerHashIterator>(ki);
+    }
+
+    virtual void save(std::string filename)
+    {
+        store->save(filename, _ksize);
+    }
+    virtual void load(std::string filename)
+    {
+        store->load(filename, _ksize);
+        _init_bitstuff();
     unhash_dna(HashIntoType hashval) const {
         throw khmer_exception("not implemented");
     }

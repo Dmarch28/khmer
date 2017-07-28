@@ -4618,11 +4618,6 @@ MOD_INIT(_khmer)
         return MOD_ERROR_VAL;
     }
 
-    khmer_KCounttable_Type.tp_base = &khmer_KHashtable_Type;
-    if (PyType_Ready(&khmer_KCounttable_Type) < 0) {
-        return MOD_ERROR_VAL;
-    }
-
     khmer_KSmallCounttable_Type.tp_base = &khmer_KHashtable_Type;
     if (PyType_Ready(&khmer_KSmallCounttable_Type) < 0) {
         return MOD_ERROR_VAL;
@@ -4718,12 +4713,6 @@ MOD_INIT(_khmer)
     Py_INCREF(&khmer_ReadParser_Type);
     if (PyModule_AddObject( m, "ReadParser",
                             (PyObject *)&khmer_ReadParser_Type ) < 0) {
-        return MOD_ERROR_VAL;
-    }
-
-    Py_INCREF(&khmer_KCounttable_Type);
-    if (PyModule_AddObject( m, "Counttable",
-                            (PyObject *)&khmer_KCounttable_Type ) < 0) {
         return MOD_ERROR_VAL;
     }
 

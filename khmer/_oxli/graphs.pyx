@@ -293,6 +293,7 @@ cdef class BigCountHashtable(Hashtable):
         return deref(self.c_table).get_use_bigcount()
 
 
+xxx = """
 cdef class Counttable(Hashtable):
     def __cinit__(self, int k, int starting_size, int n_tables):
         primes = get_n_primes_near_x(n_tables, starting_size)
@@ -303,6 +304,7 @@ cdef class Counttable(Hashtable):
 
     def get_use_bigcount(self):
         return deref(self.c_table).get_use_bigcount()
+"""
         if type(self) is Counttable:
             primes = get_n_primes_near_x(n_tables, starting_size)
             self.c_table.reset(<CpHashtable*>new CpCounttable(k, primes))

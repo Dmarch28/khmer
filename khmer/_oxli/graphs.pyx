@@ -253,9 +253,12 @@ cdef class Hashtable:
         """Save the graph to the specified file."""
         deref(self.c_table).save(_bstring(file_name))
 
-    def load(self, file_name):
+    @classmethod
+    def load(cls, file_name):
         """Load the graph from the specified file."""
-        deref(self.c_table).load(_bstring(file_name))
+        cdef Hashtable table = cls(1, 1, 1)
+        deref(table.c_table).load(_bstring(file_name))
+        return table
 
     def n_unique_kmers(self):
         """Estimate of the number of unique kmers stored."""
@@ -280,6 +283,12 @@ cdef class QFCounttable(Hashtable):
         if type(self) is QFCounttable:
             self.c_table.reset(<CpHashtable*>new CpQFCounttable(k, int(log(starting_size, 2))))
 
+    @classmethod
+    def load(cls, file_name):
+        """Load the graph from the specified file."""
+        cdef Hashtable table = cls(1, 1)
+        deref(table.c_table).load(_bstring(file_name))
+        return table
 
 cdef class BigCountHashtable(Hashtable):
     def set_use_bigcount(self, bigcount):
@@ -296,6 +305,9 @@ cdef class BigCountHashtable(Hashtable):
 xxx = """
 cdef class Counttable(Hashtable):
     def __cinit__(self, int k, int starting_size, int n_tables):
+        if type(self) is Nodetable:
+            primes = get_n_primes_near_x(n_tables, starting_size)
+            self.c_table.reset(<CpHashtable*>new CpNodetable(k, primes))
         primes = get_n_primes_near_x(n_tables, starting_size)
         self.c_table.reset(<CpHashtable*>new CpCounttable(k, primes))
 

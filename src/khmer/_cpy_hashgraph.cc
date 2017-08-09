@@ -44,50 +44,7 @@ CPYCHECKER_TYPE_OBJECT_FOR_TYPEDEF("khmer_KHashgraph_Object")
 
 
 PyMethodDef khmer_hashgraph_methods[] = {
-    //
-    // graph/traversal functionality
-    //
 
-    {
-        "neighbors",
-        (PyCFunction)hashgraph_neighbors, METH_VARARGS,
-        "Get a list of neighbor nodes for this k-mer.",
-    },
-    {
-        "calc_connected_graph_size",
-        (PyCFunction)hashgraph_calc_connected_graph_size, METH_VARARGS, ""
-    },
-    {
-        "kmer_degree",
-        (PyCFunction)hashgraph_kmer_degree, METH_VARARGS,
-        "Calculate the number of immediate neighbors this k-mer has in "
-        "the graph."
-    },
-    {
-        "count_kmers_within_radius",
-        (PyCFunction)hashgraph_count_kmers_within_radius, METH_VARARGS,
-        "Calculate the number of neighbors with given radius in the graph."
-    },
-    {
-        "find_high_degree_nodes",
-        (PyCFunction)hashgraph_find_high_degree_nodes, METH_VARARGS,
-        "Examine the given sequence for degree > 2 nodes and add to  "
-        "list; used in graph contraction.",
-    },
-    {
-        "traverse_linear_path",
-        (PyCFunction)hashgraph_traverse_linear_path, METH_VARARGS,
-        "Traverse the path through the graph starting with the given "
-        "k-mer and avoiding high-degree nodes, finding (and returning) "
-        "traversed k-mers and any encountered high-degree nodes.",
-    },
-    {
-        "assemble_linear_path",
-        (PyCFunction)hashgraph_assemble_linear_path, METH_VARARGS,
-        "Assemble a purely linear path starting with the given "
-        "k-mer, returning traversed k-mers and any encountered high-degree "
-        "nodes.",
-    },
 
     //
     // tagging / sparse graph functionality

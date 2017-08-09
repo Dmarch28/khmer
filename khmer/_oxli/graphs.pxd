@@ -160,8 +160,13 @@ cdef extern from "oxli/hashgraph.hh" namespace "oxli":
     cdef cppclass CpCountgraph "oxli::Countgraph" (CpHashgraph):
         CpCountgraph(WordLength, vector[uint64_t])
 
+    cdef cppclass CpSmallCountgraph "oxli::SmallCountgraph" (CpHashgraph):
+        CpSmallCountgraph(WordLength, vector[uint64_t])
+
     cdef cppclass CpNodegraph "oxli::Nodegraph" (CpHashgraph):
         CpNodegraph(WordLength, vector[uint64_t])
+
+        void update_from(const CpNodegraph &)
 
 
 cdef extern from "oxli/labelhash.hh" namespace "oxli":
@@ -220,4 +225,20 @@ cdef class Counttable(Hashtable):
     pass
 
 cdef class Nodetable(Hashtable):
+    pass
+
+
+cdef class Hashgraph(Hashtable):
+    pass
+
+
+cdef class Nodegraph(Hashgraph):
+    pass
+
+
+cdef class Countgraph(Hashgraph):
+    pass
+
+
+cdef class SmallCountgraph(Hashgraph):
     pass

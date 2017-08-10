@@ -132,7 +132,7 @@ cdef extern from "oxli/hashgraph.hh" namespace "oxli":
         void consume_partitioned_fasta[SeqIO](const string &,
                                        unsigned int &,
                                        unsigned long long &)
-        uintptr_t trim_on_stoptags(string) const
+        uintptr_t trim_on_stoptags(string) const nogil
         unsigned int traverse_from_kmer(CpKmer,
                                         uint32_t,
                                         KmerSet&,
@@ -229,7 +229,7 @@ cdef class Nodetable(Hashtable):
 
 
 cdef class Hashgraph(Hashtable):
-    pass
+    cdef 
 
 
 cdef class Nodegraph(Hashgraph):

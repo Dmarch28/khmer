@@ -549,80 +549,6 @@ hashgraph_repartition_largest_partition(khmer_KHashgraph_Object * me,
 }
 
 
-PyObject *
-hashgraph_calc_connected_graph_size(khmer_KHashgraph_Object * me,
-                                    PyObject * args)
-{
-    Hashgraph * hashgraph = me->hashgraph;
-
-    const char * _kmer;
-    unsigned int max_size = 0;
-    PyObject * break_on_circum_o = NULL;
-    if (!PyArg_ParseTuple(args, "s|IO", &_kmer, &max_size, &break_on_circum_o)) {
-        return NULL;
-    }
-
-    bool break_on_circum = false;
-    if (break_on_circum_o && PyObject_IsTrue(break_on_circum_o)) {
-        break_on_circum = true;
-    }
-
-    unsigned long long size = 0;
-    Kmer start_kmer = hashgraph->build_kmer(_kmer);
-
-    Py_BEGIN_ALLOW_THREADS
-    KmerSet keeper;
-    hashgraph->calc_connected_graph_size(start_kmer, size, keeper, max_size,
-                                         break_on_circum);
-    Py_END_ALLOW_THREADS
-
-    return PyLong_FromUnsignedLongLong(size);
-}
-
-
-PyObject *
-hashgraph_kmer_degree(khmer_KHashgraph_Object * me, PyObject * args)
-{
-    Hashgraph * hashgraph = me->hashgraph;
-
-    const char * kmer_s = NULL;
-
-    if (!PyArg_ParseTuple(args, "s", &kmer_s)) {
-        return NULL;
-    }
-
-    return PyLong_FromLong(hashgraph->kmer_degree(kmer_s));
-}
-
-
-PyObject *
-hashgraph_trim_on_stoptags(khmer_KHashgraph_Object * me, PyObject * args)
-{
-    Hashgraph * hashgraph = me->hashgraph;
-
-    const char * seq = NULL;
-
-    if (!PyArg_ParseTuple(args, "s", &seq)) {
-        return NULL;
-    }
-
-    size_t trim_at;
-    Py_BEGIN_ALLOW_THREADS
-
-    trim_at = hashgraph->trim_on_stoptags(seq);
-
-    Py_END_ALLOW_THREADS;
-
-    PyObject * trim_seq = PyUnicode_FromStringAndSize(seq, trim_at);
-    if (trim_seq == NULL) {
-        return NULL;
-    }
-    PyObject * ret = Py_BuildValue("Ok", trim_seq, (unsigned long) trim_at);
-    Py_DECREF(trim_seq);
-
-    return ret;
-}
-
 
 PyObject *
 hashgraph_do_subset_partition(khmer_KHashgraph_Object * me, PyObject * args)
@@ -800,7 +726,6 @@ hashgraph_consume_partitioned_fasta(khmer_KHashgraph_Object * me,
     return Py_BuildValue("IK", total_reads, n_consumed);
 }
 
-
 PyObject *
 hashgraph_find_all_tags(khmer_KHashgraph_Object * me, PyObject * args)
 {
@@ -865,86 +790,6 @@ hashgraph_assign_partition_id(khmer_KHashgraph_Object * me, PyObject * args)
 }
 
 
-PyObject *
-hashgraph_add_tag(khmer_KHashgraph_Object * me, PyObject * args)
-{
-    Hashgraph * hashgraph = me->hashgraph;
-
-    const char * kmer_s = NULL;
-    if (!PyArg_ParseTuple(args, "s", &kmer_s)) {
-        return NULL;
-    }
-
-    HashIntoType kmer = hashgraph->hash_dna(kmer_s);
-    hashgraph->add_tag(kmer);
-
-    Py_RETURN_NONE;
-}
-
-
-PyObject *
-hashgraph_add_stop_tag(khmer_KHashgraph_Object * me, PyObject * args)
-{
-    Hashgraph * hashgraph = me->hashgraph;
-
-    const char * kmer_s = NULL;
-    if (!PyArg_ParseTuple(args, "s", &kmer_s)) {
-        return NULL;
-    }
-
-    HashIntoType kmer = hashgraph->hash_dna(kmer_s);
-    hashgraph->add_stop_tag(kmer);
-
-    Py_RETURN_NONE;
-}
-
-
-PyObject *
-hashgraph_get_stop_tags(khmer_KHashgraph_Object * me, PyObject * args)
-{
-    Hashgraph * hashgraph = me->hashgraph;
-
-    if (!PyArg_ParseTuple(args, "")) {
-        return NULL;
-    }
-
-    SeenSet::const_iterator si;
-
-    PyObject * x = PyList_New(hashgraph->stop_tags.size());
-    unsigned long long i = 0;
-    for (si = hashgraph->stop_tags.begin(); si != hashgraph->stop_tags.end();
-            ++si) {
-        std::string s = hashgraph->unhash_dna(*si);
-        PyList_SET_ITEM(x, i, Py_BuildValue("s", s.c_str()));
-        i++;
-    }
-
-    return x;
-}
-
-
-PyObject *
-hashgraph_get_tagset(khmer_KHashgraph_Object * me, PyObject * args)
-{
-    Hashgraph * hashgraph = me->hashgraph;
-
-    if (!PyArg_ParseTuple(args, "")) {
-        return NULL;
-    }
-
-    SeenSet::const_iterator si;
-
-    PyObject * x = PyList_New(hashgraph->all_tags.size());
-    unsigned long long i = 0;
-    for (si = hashgraph->all_tags.begin(); si != hashgraph->all_tags.end();
-            ++si) {
-        std::string s = hashgraph->unhash_dna(*si);
-        PyList_SET_ITEM(x, i, Py_BuildValue("s", s.c_str()));
-        i++;
-    }
-
-    return x;
-}
 
 
 PyObject *
@@ -1126,56 +971,6 @@ hashgraph_subset_partition_size_distribution(khmer_KHashgraph_Object * me,
 
 
 PyObject *
-hashgraph_load_tagset(khmer_KHashgraph_Object * me, PyObject * args)
-{
-    Hashgraph * hashgraph = me->hashgraph;
-
-    const char * filename = NULL;
-    PyObject * clear_tags_o = NULL;
-
-    if (!PyArg_ParseTuple(args, "s|O", &filename, &clear_tags_o)) {
-        return NULL;
-    }
-
-    bool clear_tags = true;
-    if (clear_tags_o && !PyObject_IsTrue(clear_tags_o)) {
-        clear_tags = false;
-    }
-
-    try {
-        hashgraph->load_tagset(filename, clear_tags);
-    } catch (oxli_file_exception &e) {
-        PyErr_SetString(PyExc_OSError, e.what());
-        return NULL;
-    }
-
-    Py_RETURN_NONE;
-}
-
-
-PyObject *
-hashgraph_save_tagset(khmer_KHashgraph_Object * me, PyObject * args)
-{
-    Hashgraph * hashgraph = me->hashgraph;
-
-    const char * filename = NULL;
-
-    if (!PyArg_ParseTuple(args, "s", &filename)) {
-        return NULL;
-    }
-
-    try {
-        hashgraph->save_tagset(filename);
-    } catch (oxli_file_exception &e) {
-        PyErr_SetString(PyExc_OSError, e.what());
-        return NULL;
-    }
-
-    Py_RETURN_NONE;
-}
-
-
-PyObject *
 hashgraph_save_subset_partitionmap(khmer_KHashgraph_Object * me,
                                    PyObject * args)
 {
@@ -1252,37 +1047,6 @@ hashgraph_load_subset_partitionmap(khmer_KHashgraph_Object * me,
     subset_obj->subset = subset_p;
 
     return (PyObject *) subset_obj;
-}
-
-
-PyObject *
-hashgraph__set_tag_density(khmer_KHashgraph_Object * me, PyObject * args)
-{
-    Hashgraph * hashgraph = me->hashgraph;
-
-    unsigned int d;
-    if (!PyArg_ParseTuple(args, "I", &d)) {
-        return NULL;
-    }
-
-    hashgraph->_set_tag_density(d);
-
-    Py_RETURN_NONE;
-}
-
-
-PyObject *
-hashgraph__get_tag_density(khmer_KHashgraph_Object * me, PyObject * args)
-{
-    Hashgraph * hashgraph = me->hashgraph;
-
-    if (!PyArg_ParseTuple(args, "")) {
-        return NULL;
-    }
-
-    unsigned int d = hashgraph->_get_tag_density();
-
-    return PyLong_FromLong(d);
 }
 
 

@@ -58,6 +58,25 @@ cdef class Hashtable:
             handled = deref(self._ht_this).unhash_dna(kmer)
         return handled
 
+
+cdef CpLabelHash * get_labelhash_ptr(object labels):
+    if not isinstance(labels, PyGraphLabels):
+        return NULL
+
+    cdef CPyGraphLabels_Object * ptr = <CPyGraphLabels_Object*> labels
+    return deref(ptr).labelhash
+
+
+cdef CpHashtable * hashtable_arg_shim(object table,
+                                      allowed=(PyNodegraph, PyCountgraph,
+                                               Nodetable, Counttable,
+                                               SmallCounttable, QFCounttable)):
+    cdef CPyHashtable_Object* cpyhashtable
+    cdef CpHashtable * hashtable
+
+    if isinstance(table, allowed):
+        if isinstance(table, CYTHON_TABLES):
+            hashtable = (<Hashtable>table).c_table.get()
     cdef HashIntoType sanitize_hash_kmer(self, object kmer):
         cdef HashIntoType handled
         if isinstance(kmer, basestring):
@@ -248,7 +267,7 @@ cdef class Hashtable:
                                                                      total_reads,
                                                                      n_consumed)
         return total_reads, n_consumed
-                                                                     
+
     def consume_seqfile_banding(self, file_name, num_bands, band):
         """Count all k-mers from file_name."""
         cdef unsigned long long n_consumed = 0
@@ -307,6 +326,9 @@ cdef class Hashtable:
 
     def abundance_distribution_with_reads_parser(self, object read_parser, Hashtable tracking):
         """Calculate the k-mer abundance distribution over reads."""
+        cdef CpHashtable * cptracking = hashtable_arg_shim(tracking,
+                                                      allowed=(PyNodegraph, Nodetable))
+
 
         cdef CpHashtable * cptracking = tracking._ht_this.get()
  
@@ -352,13 +374,36 @@ cdef class Hashtable:
 
 
 cdef class QFCounttable(Hashtable):
-    def __cinit__(self, int k, int starting_size):
-        # starting size has to be a power of two
-        power_of_two = ((starting_size & (starting_size - 1) == 0) and
-                        (starting_size != 0))
+    """Count kmers using a counting quotient filter.
+
+    The counting quotient filter (CQF) is an extension of the quotient filter
+    that supports counting in addition to simple membership testing. A CQF has
+    better cache locality compared to (Small)Counttable which increases
+    performance.
+
+    Each new k-mer uses one slot, and the number of slots used per k-mer
+    increases the more often the same k-mer is entered into the CQF. As a result
+    the CQF can be "full" and will stop accepting calls to `add` and `count`.
+
+    Parameters
+    ----------
+    k : integer
+        k-mer size
+
+    size : integer
+        Set the number of slots used by the counting quotient filter. This
+        determines the amount of memory used and how many k-mers can be entered
+        into the datastructure. Each slot uses about X bytes.
+    """
+    def __cinit__(self, int k, int size):
+        # size has to be a power of two
+        power_of_two = ((size & (size - 1) == 0) and
+                        (size != 0))
         if not power_of_two:
-            raise ValueError("starting_size has to be a power of two.")
+            raise ValueError("size has to be a power of two, not"
+                             " {}.".format(size))
         if type(self) is QFCounttable:
+            self.c_table.reset(<CpHashtable*>new CpQFCounttable(k, int(log(size, 2))))
             self._qf_this = make_shared[CpQFCounttable](k, <uint64_t>log(starting_size, 2))
             self._ht_this = <shared_ptr[CpHashtable]>self._qf_this
 

@@ -2,7 +2,6 @@
 #include "khmer/_cpy_hashgraph.hh"
 #include "khmer/_cpy_nodegraph.hh"
 #include "khmer/_cpy_countgraph.hh"
-#include "khmer/_cpy_subsetpartition.hh"
 #include "khmer/_cpy_readparsers.hh"
 
 #include <vector>
@@ -511,44 +510,6 @@ hashgraph_save_stop_tags(khmer_KHashgraph_Object * me, PyObject * args)
 //    PyObject * args);
 
 
-PyObject *
-hashgraph_repartition_largest_partition(khmer_KHashgraph_Object * me,
-                                        PyObject * args)
-{
-    Hashgraph * hashgraph = me->hashgraph;
-    khmer_KCountgraph_Object * countgraph_o = NULL;
-    PyObject * subset_o = NULL;
-    SubsetPartition * subset_p;
-    unsigned int distance, threshold, frequency;
-
-    if (!PyArg_ParseTuple(args, "OO!III",
-                          &subset_o,
-                          &khmer_KCountgraph_Type, &countgraph_o,
-                          &distance, &threshold, &frequency)) {
-        return NULL;
-    }
-
-    if (PyObject_TypeCheck(subset_o, &khmer_KSubsetPartition_Type)) {
-        subset_p = ((khmer_KSubsetPartition_Object *) subset_o)->subset;
-    } else {
-        subset_p = hashgraph->partition;
-    }
-
-    Countgraph * countgraph = countgraph_o->countgraph;
-
-    unsigned long next_largest;
-    try {
-        next_largest = subset_p->repartition_largest_partition(distance,
-                       threshold, frequency, *countgraph);
-    } catch (oxli_exception &e) {
-        PyErr_SetString(PyExc_RuntimeError, e.what());
-        return NULL;
-    }
-
-    return PyLong_FromLong(next_largest);
-}
-
-
 
 PyObject *
 hashgraph_do_subset_partition(khmer_KHashgraph_Object * me, PyObject * args)
@@ -888,22 +849,6 @@ hashgraph__validate_partitionmap(khmer_KHashgraph_Object * me, PyObject * args)
     Py_RETURN_NONE;
 }
 
-
-PyObject *
-hashgraph_count_partitions(khmer_KHashgraph_Object * me, PyObject * args)
-{
-    Hashgraph * hashgraph = me->hashgraph;
-
-    if (!PyArg_ParseTuple(args, "")) {
-        return NULL;
-    }
-
-    size_t n_partitions = 0, n_unassigned = 0;
-    hashgraph->partition->count_partitions(n_partitions, n_unassigned);
-
-    return Py_BuildValue("nn", (Py_ssize_t) n_partitions,
-                         (Py_ssize_t) n_unassigned);
-}
 
 
 PyObject *

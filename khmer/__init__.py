@@ -85,6 +85,7 @@ from khmer._oxli.graphs import Counttable
 from khmer._oxli.graphs import QFCounttable
 from khmer._oxli.parsing import FastxParser
 
+from khmer._oxli.utils import get_n_primes_near_x, is_prime
 import sys
 
 from struct import pack, unpack

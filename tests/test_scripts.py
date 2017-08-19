@@ -49,6 +49,7 @@ import io
 import pytest
 from . import khmer_tst_utils as utils
 import khmer
+from khmer import Countgraph, SmallCountgraph, Nodegraph
 import khmer.kfile
 import screed
 
@@ -164,7 +165,7 @@ def test_load_into_counting_max_memory_usage_parameter():
     assert os.path.exists(outfile)
     assert "WARNING: tablesize is default!" not in err
 
-    kh = khmer.load_countgraph(outfile)
+    kh = Countgraph.load(outfile)
     assert sum(kh.hashsizes()) < 3e8
 
 
@@ -802,7 +803,7 @@ def test_filter_stoptags():
     # first, copy test-abund-read-2.fa to 'test.fa' in the temp dir.
     # now, create a file with some stop tags in it --
     K = 18
-    kh = khmer._Nodegraph(K, [1])
+    kh = khmer.Nodegraph(K, 1, 1)
     kh.add_stop_tag('GTTGACGGGGCTCAGGGG')
     kh.save_stop_tags(stopfile)
     del kh
@@ -832,7 +833,7 @@ def test_filter_stoptags_fq():
 
     # now, create a file with some stop tags in it --
     K = 18
-    kh = khmer._Nodegraph(K, [1])
+    kh = khmer.Nodegraph(K, 1, 1)
     kh.add_stop_tag('GTTGACGGGGCTCAGGGG')
     kh.save_stop_tags(stopfile)
     del kh
@@ -934,7 +935,7 @@ def test_load_graph():
     assert os.path.exists(tagset_file), tagset_file
 
     try:
-        ht = khmer.load_nodegraph(ht_file)
+        ht = Nodegraph.load(ht_file)
     except OSError as err:
         assert 0, str(err)
     ht.load_tagset(tagset_file)
@@ -943,7 +944,7 @@ def test_load_graph():
     # upon partitioning (all in one partition).  This is kind of a
     # roundabout way of checking that load-graph.py worked :)
     subset = ht.do_subset_partition(0, 0)
-    x = ht.subset_count_partitions(subset)
+    x = subset.count_partitions()
     assert x == (1, 0), x
 
 
@@ -967,7 +968,7 @@ def test_oxli_build_graph():
     tagset_file = outfile + '.tagset'
     assert os.path.exists(tagset_file), tagset_file
 
-    ht = khmer.load_nodegraph(ht_file)
+    ht = Nodegraph.load(ht_file)
     ht.load_tagset(tagset_file)
 
     # check to make sure we get the expected result for this data set
@@ -1000,7 +1001,7 @@ def test_oxli_build_graph_unique_kmers_arg():
     tagset_file = outfile + '.tagset'
     assert os.path.exists(tagset_file), tagset_file
 
-    ht = khmer.load_nodegraph(ht_file)
+    ht = Nodegraph.load(ht_file)
     ht.load_tagset(tagset_file)
 
     # check to make sure we get the expected result for this data set
@@ -1036,7 +1037,7 @@ def test_load_graph_no_tags():
     tagset_file = outfile + '.tagset'
     assert not os.path.exists(tagset_file), tagset_file
 
-    assert khmer.load_nodegraph(ht_file)
+    assert Nodegraph.load(ht_file)
 
     # can't think of a good way to make sure this worked, beyond just
     # loading the ht file...
@@ -1060,7 +1061,7 @@ def test_oxli_build_graph_no_tags():
     tagset_file = outfile + '.tagset'
     assert not os.path.exists(tagset_file), tagset_file
 
-    assert khmer.load_nodegraph(ht_file)
+    assert Nodegraph.load(ht_file)
 
     # can't think of a good way to make sure this worked, beyond just
     # loading the ht file...
@@ -1196,7 +1197,7 @@ def test_load_graph_max_memory_usage_parameter():
     assert os.path.exists(ht_file), ht_file
 
     try:
-        ht = khmer.load_nodegraph(ht_file)
+        ht = Nodegraph.load(ht_file)
     except OSError as err:
         assert 0, str(err)
 
@@ -1259,7 +1260,7 @@ def test_partition_graph_1():
     final_pmap_file = graphbase + '.pmap.merged'
     assert os.path.exists(final_pmap_file)
 
-    ht = khmer.load_nodegraph(graphbase)
+    ht = Nodegraph.load(graphbase)
     ht.load_tagset(graphbase + '.tagset')
     ht.load_partitionmap(final_pmap_file)
 
@@ -1283,7 +1284,7 @@ def test_partition_graph_nojoin_k21():
     final_pmap_file = graphbase + '.pmap.merged'
     assert os.path.exists(final_pmap_file)
 
-    ht = khmer.load_nodegraph(graphbase)
+    ht = Nodegraph.load(graphbase)
     ht.load_tagset(graphbase + '.tagset')
     ht.load_partitionmap(final_pmap_file)
 
@@ -1311,7 +1312,7 @@ def test_partition_graph_nojoin_stoptags():
     graphbase = _make_graph(utils.get_test_data('random-20-a.fa'))
 
     # add in some stop tags
-    ht = khmer.load_nodegraph(graphbase)
+    ht = Nodegraph.load(graphbase)
     ht.add_stop_tag('TTGCATACGTTGAGCCAGCG')
     stoptags_file = graphbase + '.stoptags'
     ht.save_stop_tags(stoptags_file)
@@ -1330,7 +1331,7 @@ def test_partition_graph_nojoin_stoptags():
     final_pmap_file = graphbase + '.pmap.merged'
     assert os.path.exists(final_pmap_file)
 
-    ht = khmer.load_nodegraph(graphbase)
+    ht = Nodegraph.load(graphbase)
     ht.load_tagset(graphbase + '.tagset')
     ht.load_partitionmap(final_pmap_file)
 
@@ -1345,7 +1346,7 @@ def test_partition_graph_big_traverse():
     final_pmap_file = graphbase + '.pmap.merged'
     assert os.path.exists(final_pmap_file)
 
-    ht = khmer.load_nodegraph(graphbase)
+    ht = Nodegraph.load(graphbase)
     ht.load_tagset(graphbase + '.tagset')
     ht.load_partitionmap(final_pmap_file)
 
@@ -1361,7 +1362,7 @@ def test_partition_graph_no_big_traverse():
     final_pmap_file = graphbase + '.pmap.merged'
     assert os.path.exists(final_pmap_file)
 
-    ht = khmer.load_nodegraph(graphbase)
+    ht = Nodegraph.load(graphbase)
     ht.load_tagset(graphbase + '.tagset')
     ht.load_partitionmap(final_pmap_file)
 
@@ -1415,7 +1416,7 @@ def test_partition_graph_too_many_threads():
     final_pmap_file = graphbase + '.pmap.merged'
     assert os.path.exists(final_pmap_file)
 
-    ht = khmer.load_nodegraph(graphbase)
+    ht = Nodegraph.load(graphbase)
     ht.load_tagset(graphbase + '.tagset')
     ht.load_partitionmap(final_pmap_file)
 
@@ -2553,14 +2554,14 @@ def _execute_load_graph_streaming(filename):
     tagset_file = os.path.join(in_dir, 'out.tagset')
     assert os.path.exists(tagset_file), tagset_file
 
-    ht = khmer.load_nodegraph(ht_file)
+    ht = Nodegraph.load(ht_file)
     ht.load_tagset(tagset_file)
 
     # check to make sure we get the expected result for this data set
     # upon partitioning (all in one partition).  This is kind of a
     # roundabout way of checking that load-graph.py worked :)
     subset = ht.do_subset_partition(0, 0)
-    x = ht.subset_count_partitions(subset)
+    x = subset.count_partitions()
     assert x == (1, 0), x
 
 

@@ -155,6 +155,7 @@ def test_read_cleaning_abundance_distribution(tabletype):
     infile = utils.get_test_data('valid-read-testing.fq')
 
     x = Countingtype(15, *params_1m)
+    y = Nodegraph(15, 1, 1, primes=PRIMES_1m)
     if tabletype == _Nodegraph or tabletype == _Nodetable:
         return
 

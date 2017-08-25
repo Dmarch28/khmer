@@ -39,6 +39,7 @@ from __future__ import print_function
 from __future__ import absolute_import
 from khmer import Countgraph, SmallCountgraph, Nodegraph
 from khmer import Nodetable, Counttable, SmallCounttable
+from khmer import GraphLabels
 from khmer._oxli.utils import get_n_primes_near_x
 from khmer import ReadParser
 from khmer import ReadParser, Nodegraph, _GraphLabels

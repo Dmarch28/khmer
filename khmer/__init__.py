@@ -86,6 +86,7 @@ from khmer._oxli.graphs import _Counttable
 from khmer._oxli.graphs import Counttable
 from khmer._oxli.graphs import QFCounttable
 from khmer._oxli.parsing import FastxParser
+from khmer._oxli.readaligner import ReadAligner
 
 from khmer._oxli.utils import get_n_primes_near_x, is_prime
 import sys
@@ -224,6 +225,7 @@ def calc_expected_collisions(graph, force=False, max_false_pos=.2):
             sys.exit(1)
 
     return fp_all
+
 
 
 

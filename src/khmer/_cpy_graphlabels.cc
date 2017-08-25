@@ -7,6 +7,7 @@
 
 using namespace oxli;
 
+ 
 namespace khmer {
 
 PyTypeObject khmer_KGraphLabels_Type = {

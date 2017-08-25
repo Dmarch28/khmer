@@ -78,6 +78,7 @@ from khmer._khmer import FILETYPES
 from khmer._oxli.graphs import (Counttable, QFCounttable, Nodetable,
                                 SmallCounttable, Countgraph, SmallCountgraph,
                                 Nodegraph)
+from khmer._oxli.labeling import GraphLabels
 from khmer._oxli.legacy_partitioning import SubsetPartition, PrePartitionInfo
 from khmer._oxli.graphs import _Counttable
 #from khmer._oxli.graphs import Counttable
@@ -389,9 +390,8 @@ class ReadAligner(_ReadAligner):
         _ReadAligner.__init__(self)
 '''
 
-#from khmer._oxli.assembly import (LinearAssembler, SimpleLabeledAssembler,
-#                                  JunctionCountAssembler)
-from khmer._oxli.assembly import LinearAssembler, JunctionCountAssembler
+from khmer._oxli.assembly import (LinearAssembler, SimpleLabeledAssembler,
+                                  JunctionCountAssembler)
 from khmer._oxli.hashset import HashSet
 
 from khmer._oxli.hllcounter import HLLCounter

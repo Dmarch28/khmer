@@ -422,7 +422,6 @@ cdef class Hashgraph(Hashtable):
     def __cinit__(self, *args, **kwargs):
         self.partitions = None
 
-
     @property
     def partition(self):
         if self.partitions is None:

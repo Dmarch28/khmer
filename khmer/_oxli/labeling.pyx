@@ -10,7 +10,7 @@ from .parsing cimport CpFastxReader
 
 cdef class GraphLabels:
 
-    def __cinit__(self, Hashgraph graph, *args, **kwargs):
+    def __cinit__(self, Hashgraph graph not None, *args, **kwargs):
         self.graph = graph
         self._lh_this = make_shared[CpLabelHash](graph._hg_this.get())
 

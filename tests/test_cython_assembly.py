@@ -93,6 +93,10 @@ class TestNonBranching:
             assert utils._equals_rc(path, contig[start:]), start
 
 
+        left = graph.hash(contig[:K])
+        assert utils._equals_rc(asm.assemble(left), contig)
+
+
 class TestLinearAssembler_RightBranching:
 
     def test_branch_point(self, right_tip_structure):
@@ -245,6 +249,14 @@ class TestLinearAssembler_LeftBranching:
 
 
 class TestLabeledAssembler:
+
+    def test_hash_as_seed(self, linear_structure):
+        graph, contig = linear_structure
+        lh = khmer.GraphLabels(graph)
+        asm = khmer.SimpleLabeledAssembler(lh)
+
+        left = graph.hash(contig[:K])
+        assert utils._equals_rc(asm.assemble(left).pop(), contig)
 
     def test_beginning_to_end_across_tip(self, right_tip_structure):
         # assemble entire contig, ignoring branch point b/c of labels

@@ -598,7 +598,7 @@ def test_badget():
     try:
         hbts.get(b"AGCTT")
         assert 0, "this should fail"
-    except TypeError as err:
+    except ValueError as err:
         print(str(err))
 
     try:

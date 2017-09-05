@@ -106,6 +106,7 @@ _buckets_per_byte = {
     'nodegraph': 8,
 }
 
+
 def extract_nodegraph_info(filename):
     """Open the given nodegraph file and return a tuple of information.
 
@@ -227,6 +228,7 @@ def calc_expected_collisions(graph, force=False, max_false_pos=.2):
             sys.exit(1)
 
     return fp_all
+
 
 
 

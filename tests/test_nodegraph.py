@@ -62,6 +62,10 @@ def test_toobig():
     except MemoryError as err:
         print(str(err))
 
+def test_bigger_than_int():
+    'Support GB-sized nodegraphs'
+    nodegraph = khmer.Nodegraph(32, 2 ** 32, 1)
+
 
 def test__get_set_tag_density():
     nodegraph = khmer.Nodegraph(32, 1, 1,)

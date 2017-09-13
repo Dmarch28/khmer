@@ -316,7 +316,7 @@ SETUP_METADATA = \
         "include_package_data": True,
         "zip_safe": False,
         "classifiers": CLASSIFIERS,
-        "python_requires": '>=3.5'
+        "python_requires": '>=3.4'
     }
 
 

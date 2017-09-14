@@ -157,7 +157,6 @@ When wrapping code from liboxli:
 
 For imports,
 
-- `__future__` imports at the top, as usual.
 - `libc` cimports next,
 - then `libcpp` imports and cimports.
 - followed by cimports

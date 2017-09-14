@@ -12,6 +12,11 @@ from libcpp.string cimport string
 
 from khmer._oxli.utils cimport _bstring
 from khmer._oxli.utils import get_n_primes_near_x
+from khmer._oxli.parsing cimport (CpFastxReader, CPyReadParser_Object,
+                                  get_parser, CpReadParser, FastxParser,
+                                  FastxParserPtr)
+from khmer._oxli.hashset cimport HashSet
+from khmer._oxli.legacy_partitioning cimport (CpSubsetPartition, SubsetPartition,
 from khmer._oxli.parsing cimport (CpFastxReader, CPyReadParser_Object, get_parser,
 from .utils cimport _bstring, is_str, is_num
 from .utils import get_n_primes_near_x
@@ -167,7 +172,7 @@ cdef CpHashtable * hashtable_arg_shim(object table,
             return deref(self._ht_this).get_count(<HashIntoType> kmer)
         else:
             self._kmer_type_error(kmer)
-            
+
 
     def ksize(self):
         """k-mer size"""
@@ -250,68 +255,75 @@ cdef CpHashtable * hashtable_arg_shim(object table,
                                                                    max_count))
         return posns
 
-    def consume_seqfile_with_reads_parser(self, read_parser):
-        """Count all k-mers from read_parser."""
-        cdef unsigned long long n_consumed = 0
-        cdef unsigned int total_reads = 0
+    cdef FastxParserPtr _get_parser(self, object parser_or_filename) except *:
+        cdef FastxParserPtr _parser
+        if type(parser_or_filename) is FastxParser:
+            _parser = (<FastxParser>parser_or_filename)._this
+        else:
+            _parser = get_parser[CpFastxReader](_bstring(parser_or_filename))
+        return _parser
 
-        cdef CPyReadParser_Object* parser = <CPyReadParser_Object*>read_parser
 
-        deref(self._ht_this).consume_seqfile[CpFastxReader](parser.parser,
-                                                           total_reads,
-                                                           n_consumed)
-        return total_reads, n_consumed
-
-    def consume_seqfile(self, file_name):
+    def consume_seqfile(self, object parser_or_filename):
         """Count all k-mers from file_name."""
         cdef unsigned long long n_consumed = 0
         cdef unsigned int total_reads = 0
-
-        cdef FastxParserPtr parser = get_parser[CpFastxReader](_bstring(file_name))
-        deref(self._ht_this).consume_seqfile[CpFastxReader](parser,
-                                                           total_reads,
-                                                           n_consumed)
+        cdef FastxParserPtr _parser = self._get_parser(parser_or_filename)
+        with nogil:
+            deref(self._ht_this).consume_seqfile[CpFastxReader](\
+                _parser, total_reads, n_consumed
+            )
         return total_reads, n_consumed
 
-    def consume_seqfile_with_mask(self, file_name, Hashtable mask, int threshold=0):
+    def consume_seqfile_with_mask(self, object parser_or_filename,
+                                  Hashtable mask, int threshold=0):
         cdef unsigned long long n_consumed = 0
         cdef unsigned int total_reads = 0
-        cdef FastxParserPtr parser = get_parser[CpFastxReader](_bstring(file_name))
+        cdef FastxParserPtr _parser = self._get_parser(parser_or_filename)
         cdef CpHashtable * cmask = mask._ht_this.get()
-        deref(self._ht_this).consume_seqfile_with_mask[CpFastxReader](parser,
-                                                                     cmask,
-                                                                     threshold,
-                                                                     total_reads,
-                                                                     n_consumed)
+        with nogil:
+            deref(self._ht_this).consume_seqfile_with_mask[CpFastxReader](\
+                _parser, cmask, threshold, total_reads, n_consumed
+            )
         return total_reads, n_consumed
 
-    def consume_seqfile_banding(self, file_name, num_bands, band):
+    def consume_seqfile_banding(self, object parser_or_filename, int num_bands,
+                                int band):
         """Count all k-mers from file_name."""
         cdef unsigned long long n_consumed = 0
         cdef unsigned int total_reads = 0
-        cdef FastxParserPtr parser = get_parser[CpFastxReader](_bstring(file_name))
-        deref(self._ht_this).consume_seqfile_banding[CpFastxReader](parser,
-                                                                   num_bands,
-                                                                   band,
-                                                                   total_reads,
-                                                                   n_consumed)
+        cdef FastxParserPtr _parser = self._get_parser(parser_or_filename)
+        with nogil:
+            deref(self._ht_this).consume_seqfile_banding[CpFastxReader](\
+                _parser, num_bands, band, total_reads, n_consumed
+            )
         return total_reads, n_consumed
 
-    def consume_seqfile_banding_with_mask(self, file_name, num_bands, band,
+    def consume_seqfile_banding_with_mask(self, object parser_or_filename,
+                                          int num_bands, int band,
                                           Hashtable mask, int threshold=0):
         cdef unsigned long long n_consumed = 0
         cdef unsigned int total_reads = 0
-        cdef FastxParserPtr parser = get_parser[CpFastxReader](_bstring(file_name))
+        cdef FastxParserPtr _parser = self._get_parser(parser_or_filename)
         cdef CpHashtable * cmask = mask._ht_this.get()
-        deref(self._ht_this).consume_seqfile_banding_with_mask[CpFastxReader](parser,
-                                                                     num_bands,
-                                                                     band,
-                                                                     cmask,
-                                                                     threshold,
-                                                                     total_reads,
-                                                                     n_consumed)
+        with nogil:
+            deref(self._ht_this).\
+                consume_seqfile_banding_with_mask[CpFastxReader](\
+                    _parser, num_bands, band, cmask, threshold, total_reads,
+                    n_consumed
+                )
         return total_reads, n_consumed
 
+    def abundance_distribution(self, object parser_or_filename,
+                               Hashtable tracking):
+        """Calculate the k-mer abundance distribution over input reads."""
+        cdef FastxParserPtr _parser = self._get_parser(parser_or_filename)
+        cdef CpHashtable * _tracking = tracking._ht_this.get()
+        cdef uint64_t * x
+        with nogil:
+            x = deref(self._ht_this).abundance_distribution[CpFastxReader](\
+                _parser, _tracking
+            )
     def abundance_distribution(self, file_name, Hashtable tracking):
         """Calculate the k-mer abundance distribution over reads in file_name."""
         cdef FastxParserPtr parser = get_parser[CpFastxReader](_bstring(file_name))
@@ -547,12 +559,12 @@ cdef class Hashgraph(Hashtable):
         list; used in graph contraction.'''
         cdef HashSet hdns = HashSet(self.ksize())
         _sequence = self._valid_sequence(sequence)
-        deref(self._hg_this).find_high_degree_nodes(_sequence, 
+        deref(self._hg_this).find_high_degree_nodes(_sequence,
                                                     hdns.hs)
         return hdns
 
 
-    def traverse_linear_path(self, object kmer, HashSet hdns, 
+    def traverse_linear_path(self, object kmer, HashSet hdns,
                              Nodegraph stop_filter=None):
         '''Traverse the path through the graph starting with the given
         k-mer and avoiding high-degree nodes, finding (and returning)
@@ -593,6 +605,14 @@ cdef class Hashgraph(Hashtable):
             if deref(self._hg_this).has_tag(kmer):
                 result.append((pos+1, kmer))
         return result
+
+    def get_tags_for_sequence(self, str sequence):
+        '''Get the tags present in a sequence.'''
+        cdef string _sequence = self._valid_sequence(sequence)
+        cdef HashSet hs = HashSet(self.ksize())
+        deref(self._hg_this).get_tags_for_sequence(_sequence, hs.hs)
+        return hs
+
             
     def find_all_tags_list(self, object kmer):
         '''Find all tags within range of the given k-mer, return as list'''
@@ -602,7 +622,7 @@ cdef class Hashgraph(Hashtable):
         cdef shared_ptr[CpHashgraph] this = self._hg_this
 
         with nogil:
-            deref(deref(self._hg_this).partition).find_all_tags(_kmer, deref(tags), 
+            deref(deref(self._hg_this).partition).find_all_tags(_kmer, deref(tags),
                                                                 deref(this).all_tags)
 
         return result
@@ -618,13 +638,16 @@ cdef class Hashgraph(Hashtable):
                                                                    total_reads,
                                                                    n_consumed)
         return total_reads, n_consumed
-    
+
     def print_tagset(self, str filename):
         '''Print out all of the tags.'''
         deref(self._hg_this).print_tagset(_bstring(filename))
-    
+
     def add_tag(self, object kmer):
         '''Add a k-mer to the tagset.'''
+        cdef HashIntoType _kmer = self.sanitize_hash_kmer(kmer)
+        deref(self._hg_this).add_tag(_kmer)
+
         if isinstance(kmer, basestring):
             deref(self._hg_this).add_tag(deref(self._hg_this).hash_dna(_bstring(kmer)))
         else:
@@ -647,16 +670,16 @@ cdef class Hashgraph(Hashtable):
     def load_tagset(self, str filename, clear_tags=True):
         '''Load tags from a file.'''
         deref(self._hg_this).load_tagset(_bstring(filename), clear_tags)
-        
+
     def save_tagset(self, str filename):
         '''Save tags to a file.'''
         deref(self._hg_this).save_tagset(_bstring(filename))
-    
+
     @property
     def n_tags(self):
         '''Return the count of all tags.'''
         return deref(self._hg_this).n_tags()
-    
+
     def divide_tags_into_subsets(self, int subset_size=0):
         '''Divide tags equally up into subsets of given size.'''
         cdef set[HashIntoType] divvy
@@ -664,12 +687,12 @@ cdef class Hashgraph(Hashtable):
         cdef HashSet hs = HashSet(self.ksize())
         hs.hs = divvy
         return hs
-    
+
     @property
     def tag_density(self):
         '''Get the tagging density.'''
         return deref(self._hg_this)._get_tag_density()
-    
+
     @tag_density.setter
     def tag_density(self, int density):
         '''Set the tagging density.'''
@@ -686,7 +709,7 @@ cdef class Hashgraph(Hashtable):
         cdef HashIntoType end = self.sanitize_hash_kmer(end_kmer)
         cdef bool cbreak = break_on_stoptags
         cdef bool cstop = stop_big_traversals
-        
+
         with nogil:
             deref(subset_ptr).do_partition(start, end, cbreak, cstop)
 
@@ -706,7 +729,7 @@ cdef class Hashgraph(Hashtable):
 
         return ppi
 
-    
+
     def assign_partition_id(self, PrePartitionInfo ppi):
         '''Assign a partition ID to a given tag.'''
         cdef cp_pre_partition_info * cppi = ppi._this.get()
@@ -714,7 +737,7 @@ cdef class Hashgraph(Hashtable):
         pi = deref(deref(self._hg_this).partition).assign_partition_id(deref(cppi).kmer,
                                                                        deref(cppi).tagged_kmers)
         return pi
-    
+
     def output_partitions(self, str filename, str output, bool
                                 output_unassigned=False):
         '''Write out sequences in given filename to another file, annotating '''
@@ -724,7 +747,7 @@ cdef class Hashgraph(Hashtable):
                                                     _bstring(output),
                                                     output_unassigned)
         return n_partitions
-    
+
     def load_partitionmap(self, str filename):
         '''Load a partitionmap for the master subset.'''
         deref(deref(self._hg_this).partition).load_partitionmap(_bstring(filename))
@@ -732,11 +755,11 @@ cdef class Hashgraph(Hashtable):
     def save_partitionmap(self, str filename):
         '''Save a partitionmap for the master subset.'''
         deref(deref(self._hg_this).partition).save_partitionmap(_bstring(filename))
-    
+
     def _validate_partitionmap(self):
         '''Run internal validation checks.'''
         deref(deref(self._hg_this).partition)._validate_pmap()
-    
+
     def consume_seqfile_and_tag_with_reads_parser(self, object read_parser):
         '''Count all k-mers using the given reads parser'''
         cdef unsigned long long n_consumed = 0
@@ -749,7 +772,7 @@ cdef class Hashgraph(Hashtable):
                                                             total_reads,
                                                             n_consumed)
         return total_reads, n_consumed
-    
+
     def consume_partitioned_fasta(self, filename):
         '''Count all k-mers in a given file'''
         cdef unsigned long long n_consumed = 0
@@ -759,7 +782,7 @@ cdef class Hashgraph(Hashtable):
                                                                      total_reads,
                                                                      n_consumed)
         return total_reads, n_consumed
-    
+
     def merge_subset(self, SubsetPartition subset):
         '''Merge the given subset into this one.'''
         deref(deref(self._hg_this).partition).merge(subset._this.get())
@@ -767,11 +790,11 @@ cdef class Hashgraph(Hashtable):
     def merge_subset_from_disk(self, str filename):
         '''Merge the given subset (filename) into this one.'''
         deref(deref(self._hg_this).partition).merge_from_disk(_bstring(filename))
-    
+
     def count_partitions(self):
         '''Count the number of partitions in the master partitionmap.'''
         return self.partition.count_partitions()
-    
+
     def set_partition_id(self, object kmer, PartitionID pid):
         '''Set the partition ID for this tag.'''
         cdef string start = self.sanitize_kmer(kmer)
@@ -785,7 +808,7 @@ cdef class Hashgraph(Hashtable):
         '''Get the partition ID of this tag.'''
         cdef string _kmer = self.sanitize_kmer(kmer)
         return deref(deref(self._hg_this).partition).get_partition_id(_kmer)
-    
+
     def repartition_largest_partition(self, Countgraph counts not None,
                                             unsigned int distance,
                                             unsigned int threshold,
@@ -810,7 +833,7 @@ cdef class Hashgraph(Hashtable):
     def load_stop_tags(self, object filename, clear_tags=False):
         '''Load the set of stop tags.'''
         deref(self._hg_this).load_stop_tags(_bstring(filename), clear_tags)
-        
+
     def save_stop_tags(self, object filename):
         '''Save the set of stop tags.'''
         deref(self._hg_this).save_stop_tags(_bstring(filename))
@@ -818,7 +841,7 @@ cdef class Hashgraph(Hashtable):
     def print_stop_tags(self, filename):
         '''Print out the set of stop tags.'''
         deref(self._hg_this).print_stop_tags(_bstring(filename))
-    
+
     def trim_on_stoptags(self, str sequence):
         '''Trim the reads on the given stop tags.'''
         cdef size_t trim_at
@@ -830,6 +853,9 @@ cdef class Hashgraph(Hashtable):
 
     def add_stop_tag(self, object kmer):
         '''Add this k-mer as a stop tag.'''
+        cdef HashIntoType _kmer = self.sanitize_hash_kmer(kmer)
+        deref(self._hg_this).add_stop_tag(_kmer)
+
         if isinstance(kmer, basestring):
             deref(self._hg_this).add_stop_tag(deref(self._hg_this).hash_dna(_bstring(kmer)))
         else:

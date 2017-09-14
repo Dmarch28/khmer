@@ -6,6 +6,10 @@ from libcpp.memory cimport unique_ptr, shared_ptr, weak_ptr
 from libc.stdint cimport uint8_t, uint32_t, uint64_t, uintptr_t
 
 from khmer._oxli.oxli_types cimport *
+from khmer._oxli.hashing cimport Kmer, CpKmer, KmerSet, CpKmerFactory, CpKmerIterator
+from khmer._oxli.parsing cimport CpReadParser, CpSequence, FastxParserPtr
+from khmer._oxli.legacy_partitioning cimport (CpSubsetPartition, cp_pre_partition_info,
+                                   SubsetPartition)
 from khmer._oxli.hashing cimport CpKmer, KmerSet
 from khmer._oxli.parsing cimport CpReadParser, CpSequence
 from khmer._oxli.utils cimport oxli_raise_py_error
@@ -138,7 +142,7 @@ cdef extern from "oxli/hashgraph.hh" namespace "oxli":
 
         void consume_seqfile_and_tag[SeqIO](const string &,
                                    unsigned int,
-                                   unsigned long long) 
+                                   unsigned long long)
 
         # Ugly workaround. For some reason, Cython doesn't like *just this*
         # templated overload -- it chooses whichever was defined last, breaking
@@ -146,7 +150,7 @@ cdef extern from "oxli/hashgraph.hh" namespace "oxli":
         # the Cython side and give it a real name substitution for code gen.
         void consume_seqfile_and_tag_readparser "consume_seqfile_and_tag" [SeqIO](shared_ptr[CpReadParser[SeqIO]],
                                    unsigned int,
-                                   unsigned long long) 
+                                   unsigned long long)
 
         void consume_sequence_and_tag(const string &,
                                       unsigned long long &)
@@ -159,6 +163,7 @@ cdef extern from "oxli/hashgraph.hh" namespace "oxli":
                                        unsigned int &,
                                        unsigned long long &) except +oxli_raise_py_error
 
+        uintptr_t trim_on_stoptags(string)
         uintptr_t trim_on_stoptags(string) nogil
 
         unsigned int traverse_from_kmer(CpKmer,
@@ -175,6 +180,7 @@ cdef extern from "oxli/hashgraph.hh" namespace "oxli":
         void load_stop_tags(string, bool) except +oxli_raise_py_error
         void extract_unique_paths(string, uint32_t, float, vector[string])
         void calc_connected_graph_size(CpKmer, uint64_t&, KmerSet&,
+                                       const uint64_t, bool)
                                        const uint64_t, bool) nogil
         uint32_t kmer_degree(HashIntoType, HashIntoType)
         uint32_t kmer_degree(const char *)
@@ -248,6 +254,7 @@ cdef class Hashtable:
     cdef HashIntoType sanitize_hash_kmer(self, object kmer) except -1
     cdef bytes _valid_sequence(self, str sequence)
     cdef CpKmer _build_kmer(self, object kmer) except *
+    cdef FastxParserPtr _get_parser(self, object parser_or_filename) except *
     cdef list _get_raw_tables(self, uint8_t **, vector[uint64_t])
 
 cdef class QFCounttable(Hashtable):

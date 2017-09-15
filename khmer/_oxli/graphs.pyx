@@ -261,8 +261,11 @@ cdef CpHashtable * hashtable_arg_shim(object table,
             _parser = (<FastxParser>parser_or_filename)._this
         elif isinstance(parser_or_filename, ReadParser):
             _parser = (<CPyReadParser_Object*>parser_or_filename).parser
-        else:
+        elif is_str(parser_or_filename):
             _parser = get_parser[CpFastxReader](_bstring(parser_or_filename))
+        else:
+            raise TypeError('argument does not appear to be a parser or a '
+                            'filename: {}'.format(parser_or_filename))
         return _parser
 
 

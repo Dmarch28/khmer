@@ -446,7 +446,7 @@ public:
             throw oxli_value_exception("Supplied kmer string doesn't match the underlying k-size.");
             throw khmer_exception("Supplied kmer string doesn't match the underlying k-size.");
         }
-        return _hash_murmur(kmer, _ksize);
+        return _hash_cyclic(kmer, _ksize);
     }
 
     inline virtual HashIntoType
@@ -473,7 +473,8 @@ public:
 
     virtual KmerHashIteratorPtr new_kmer_iterator(const char * sp) const
     {
-        KmerHashIterator * ki = new MurmurKmerHashIterator(sp, _ksize);
+        //KmerHashIterator * ki = new MurmurKmerHashIterator(sp, _ksize);
+        KmerHashIterator * ki = new RollingHashKmerIterator(sp, _ksize);
         return unique_ptr<KmerHashIterator>(ki);
     }
 
@@ -489,6 +490,14 @@ public:
         throw khmer_exception("not implemented");
     }
 
+
+
+// Hashtable-derived class with ByteStorage.
+class Counttable : public oxli::MurmurHashtable
+{
+public:
+    explicit Counttable(WordLength ksize, std::vector<uint64_t> sizes)
+        : MurmurHashtable(ksize, new ByteStorage(sizes)) { } ;
     virtual KmerHashIteratorPtr new_kmer_iterator(const char * sp) const;
 };
 

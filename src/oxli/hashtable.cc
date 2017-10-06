@@ -461,9 +461,6 @@ uint64_t * Hashtable::abundance_distribution(
 
     Read read;
 
-    string name;
-    string seq;
-
     // if not, could lead to overflow.
     if (sizeof(BoundedCounterType) != 2) {
         delete[] dist;
@@ -477,9 +474,8 @@ uint64_t * Hashtable::abundance_distribution(
             break;
         }
         read.set_clean_seq();
-        seq = read.cleaned_seq;
 
-        KmerHashIteratorPtr kmers = new_kmer_iterator(seq);
+        KmerHashIteratorPtr kmers = new_kmer_iterator(read.cleaned_seq);
 
         while(!kmers->done()) {
             HashIntoType kmer = kmers->next();
@@ -490,9 +486,6 @@ uint64_t * Hashtable::abundance_distribution(
                 BoundedCounterType n = get_count(kmer);
                 dist[n]++;
             }
-
-            name.clear();
-            seq.clear();
         }
     }
     return dist;

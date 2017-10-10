@@ -456,8 +456,10 @@ public:
         _initialized(false), fwd_hasher(k), bwd_hasher(k)
     {
         length = strlen(_seq);
+        #if 0
         std::cout << "fwd " << _seq << std::endl;
         std::cout << "rev " << _rev << std::endl;
+        #endif
     };
 
     HashIntoType first() {
@@ -468,9 +470,11 @@ public:
             bwd_hasher.eat(_rev[length - _ksize + i]);
         }
         index += 1;
+        #if 0
         std::cout << "fwdh: " << fwd_hasher.hashvalue << " ";
         std::cout << "bwdh: " << bwd_hasher.hashvalue << " ";
         std::cout << "xorh: " << (fwd_hasher.hashvalue ^ bwd_hasher.hashvalue) << std::endl;
+        #endif
         return (fwd_hasher.hashvalue == bwd_hasher.hashvalue ?
           fwd_hasher.hashvalue : fwd_hasher.hashvalue ^ bwd_hasher.hashvalue);
     }
@@ -489,10 +493,11 @@ public:
         bwd_hasher.reverse_update(
           _rev[length - _ksize - index], _rev[length - index]);
 
+#if 0
         std::cout << "fwdh: " << fwd_hasher.hashvalue << " ";
         std::cout << "bwdh: " << bwd_hasher.hashvalue << " ";
         std::cout << "xorh: " << (fwd_hasher.hashvalue ^ bwd_hasher.hashvalue) << std::endl;
-
+#endif
         index += 1;
         return (fwd_hasher.hashvalue == bwd_hasher.hashvalue ?
           fwd_hasher.hashvalue : fwd_hasher.hashvalue ^ bwd_hasher.hashvalue);

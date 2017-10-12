@@ -112,9 +112,23 @@ cdef extern from "oxli/hashtable.hh" namespace "oxli":
         vector[uint32_t] find_spectral_error_positions(string,
                                                        BoundedCounterType)
 
+    cdef cppclass CpMurmurHashtable "oxli::MurmurHashtable" (CpHashtable):
+        CpMurmurHashtable(WordLength, CpStorage *)
+
+    cdef cppclass CpCyclicHashtable "oxli::CyclicHashtable" (CpHashtable):
+        CpCyclicHashtable(WordLength, CpStorage *)
+
+    cdef cppclass CpCounttable "oxli::Counttable" (CpMurmurHashtable):
     cdef cppclass CpCounttable "oxli::Counttable" (CpHashtable):
         CpCounttable(WordLength, vector[uint64_t])
 
+    cdef cppclass CpCyclicCounttable "oxli::CyclicCounttable" (CpCyclicHashtable):
+        CpCyclicCounttable(WordLength, vector[uint64_t])
+
+    cdef cppclass CpSmallCounttable "oxli::SmallCounttable" (CpMurmurHashtable):
+        CpSmallCounttable(WordLength, vector[uint64_t])
+
+    cdef cppclass CpNodetable "oxli::Nodetable" (CpMurmurHashtable):
     cdef cppclass CpNodetable "oxli::Nodetable" (CpHashtable):
         CpNodetable(WordLength, vector[uint64_t])
 

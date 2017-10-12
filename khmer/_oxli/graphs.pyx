@@ -46,7 +46,8 @@ from .._khmer import Nodetable as PyNodetable
 from .._khmer import ReadParser
 
 
-CYTHON_TABLES = (Hashtable, Nodetable, Counttable, SmallCounttable,
+CYTHON_TABLES = (Hashtable, Nodetable, Counttable, CyclicCounttable,
+                 SmallCounttable,
                  QFCounttable, Nodegraph, Countgraph, SmallCountgraph)
 
 
@@ -464,6 +465,16 @@ cdef class BigCountHashtable(Hashtable):
 
     def get_use_bigcount(self):
         return deref(self.c_table).get_use_bigcount()
+
+cdef class CyclicCounttable(Hashtable):
+
+    def __cinit__(self, int k, uint64_t starting_size, int n_tables):
+        cdef vector[uint64_t] primes
+        if type(self) is CyclicCounttable:
+            primes = get_n_primes_near_x(n_tables, starting_size)
+            self._cct_this = make_shared[CpCyclicCounttable](k, primes)
+            self._ht_this = <shared_ptr[CpHashtable]>self._cct_this
+
 
 cdef class SmallCounttable(Hashtable):
 

@@ -446,6 +446,49 @@ public:
             throw oxli_value_exception("Supplied kmer string doesn't match the underlying k-size.");
             throw khmer_exception("Supplied kmer string doesn't match the underlying k-size.");
         }
+        return _hash_murmur(kmer, _ksize);
+    }
+
+    inline virtual HashIntoType
+    hash_dna_top_strand(const char * kmer) const
+    {
+        throw oxli_value_exception("not implemented");
+    }
+
+    inline virtual HashIntoType
+    hash_dna_bottom_strand(const char * kmer) const
+    {
+        throw oxli_value_exception("not implemented");
+    }
+
+    inline virtual std::string
+    unhash_dna(HashIntoType hashval) const
+    {
+        throw oxli_value_exception("not implemented");
+    }
+
+    virtual KmerHashIteratorPtr new_kmer_iterator(const char * sp) const
+    {
+        KmerHashIterator * ki = new MurmurKmerHashIterator(sp, _ksize);
+        return unique_ptr<KmerHashIterator>(ki);
+    }
+};
+
+
+class CyclicHashtable : public oxli::Hashtable
+{
+public:
+    explicit CyclicHashtable(WordLength ksize, Storage * s)
+        : Hashtable(ksize, s) { };
+
+    inline
+    virtual
+    HashIntoType
+    hash_dna(const char * kmer) const
+    {
+        if (!(strlen(kmer) >= _ksize)) {
+            throw oxli_value_exception("Supplied kmer string doesn't match the underlying k-size.");
+        }
         return _hash_cyclic(kmer, _ksize);
     }
 
@@ -473,7 +516,6 @@ public:
 
     virtual KmerHashIteratorPtr new_kmer_iterator(const char * sp) const
     {
-        //KmerHashIterator * ki = new MurmurKmerHashIterator(sp, _ksize);
         KmerHashIterator * ki = new RollingHashKmerIterator(sp, _ksize);
         return unique_ptr<KmerHashIterator>(ki);
     }
@@ -491,7 +533,6 @@ public:
     }
 
 
-
 // Hashtable-derived class with ByteStorage.
 class Counttable : public oxli::MurmurHashtable
 {
@@ -499,6 +540,13 @@ public:
     explicit Counttable(WordLength ksize, std::vector<uint64_t> sizes)
         : MurmurHashtable(ksize, new ByteStorage(sizes)) { } ;
     virtual KmerHashIteratorPtr new_kmer_iterator(const char * sp) const;
+};
+
+class CyclicCounttable : public oxli::CyclicHashtable
+{
+public:
+    explicit CyclicCounttable(WordLength ksize, std::vector<uint64_t> sizes)
+        : CyclicHashtable(ksize, new ByteStorage(sizes)) { } ;
 };
 
 // Hashtable-derived class with NibbleStorage.

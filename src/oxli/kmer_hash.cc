@@ -52,6 +52,7 @@ using namespace std;
   "                                                                "\
   /*ABCDEFGHIJKLMNOPQRSTUVWXYZ      abcdefghijklmnopqrstuvwxyz    */\
   " TVGH FCD  M KN   YSAABW R       TVGH FCD  M KN   YSAABW R"
+  //" TVGH FCD  M KA   YSAABWARA      TVGH FCD  M KA   YSAABWARA"
 
 //
 // _hash: hash a k-length DNA sequence into a 64-bit number.
@@ -240,7 +241,7 @@ HashIntoType _hash_cyclic(const std::string& kmer, const WordLength k)
     }
     r = rev_hasher.hashvalue;
 
-    return h ^ r;
+    return h > r ? h : r;
 }
 
 HashIntoType _hash_cyclic(const std::string& kmer, const WordLength k,
@@ -266,7 +267,7 @@ HashIntoType _hash_cyclic(const std::string& kmer, const WordLength k,
     }
     r = rev_hasher.hashvalue;
 
-    return h ^ r;
+    return h > r ? h : r;
 }
 
 HashIntoType _hash_cyclic_forward(const std::string& kmer, const WordLength k)

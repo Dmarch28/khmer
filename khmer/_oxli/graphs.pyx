@@ -454,7 +454,9 @@ cdef class QFCounttable(Hashtable):
 cdef class Counttable(Hashtable):
 
     def __cinit__(self, int k, uint64_t starting_size, int n_tables,
-                  primes=[]):
+                  primes=None):
+        if primes is None:
+            primes = list()
         cdef vector[uint64_t] _primes
         if type(self) is Counttable:
             if primes:
@@ -475,7 +477,9 @@ cdef class BigCountHashtable(Hashtable):
 cdef class CyclicCounttable(Hashtable):
 
     def __cinit__(self, int k, uint64_t starting_size, int n_tables,
-                  primes=[]):
+                  primes=None):
+        if primes is None:
+            primes = list()
         cdef vector[uint64_t] _primes
         if type(self) is CyclicCounttable:
             if primes:
@@ -489,7 +493,9 @@ cdef class CyclicCounttable(Hashtable):
 cdef class SmallCounttable(Hashtable):
 
     def __cinit__(self, int k, uint64_t starting_size, int n_tables,
-                  primes=[]):
+                  primes=None):
+        if primes is None:
+            primes = list()
         cdef vector[uint64_t] _primes
         if type(self) is SmallCounttable:
             if primes:
@@ -511,6 +517,11 @@ cdef class SmallCounttable(Hashtable):
 
 cdef class Nodetable(Hashtable):
 
+    def __cinit__(self, int k, uint64_t starting_size, int n_tables,
+                  primes=None):
+        if primes is None:
+            primes = list()
+        cdef vector[uint64_t] _primes
     def __cinit__(self, int k, uint64_t starting_size, int n_tables):
         cdef vector[uint64_t] primes
         if type(self) is Nodetable:
@@ -899,7 +910,9 @@ cdef class Hashgraph(Hashtable):
 cdef class Countgraph(Hashgraph):
 
     def __cinit__(self, int k, uint64_t starting_size, int n_tables,
-                  primes=[]):
+                  primes=None):
+        if primes is None:
+            primes = list()
         cdef vector[uint64_t] _primes
         if type(self) is Countgraph:
             if primes:
@@ -937,7 +950,9 @@ cdef class Countgraph(Hashgraph):
 cdef class SmallCountgraph(Hashgraph):
 
     def __cinit__(self, int k, uint64_t starting_size, int n_tables,
-                  primes=[]):
+                  primes=None):
+        if primes is None:
+            primes = list()
         cdef vector[uint64_t] _primes
         if type(self) is SmallCountgraph:
             if primes:
@@ -960,7 +975,9 @@ cdef class SmallCountgraph(Hashgraph):
 cdef class Nodegraph(Hashgraph):
 
     def __cinit__(self, int k, uint64_t starting_size, int n_tables,
-                  primes=[]):
+                  primes=None):
+        if primes is None:
+            primes = list()
         cdef vector[uint64_t] _primes
         if type(self) is Nodegraph:
             if primes:

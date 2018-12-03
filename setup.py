@@ -36,8 +36,6 @@
 # Contact: khmer-project@idyll.org
 """Setup for khmer project."""
 
-import ez_setup
-
 import glob
 import os
 import sys
@@ -50,16 +48,9 @@ import sys
 import sysconfig
 import tempfile
 
-from setuptools import setup
-from setuptools import Extension
-from setuptools.command.build_ext import build_ext as _build_ext
-from distutils.spawn import spawn
-from distutils.sysconfig import get_config_vars
-from distutils.dist import Distribution
-from distutils.errors import DistutilsPlatformError
+from skbuild import setup
 
 import versioneer
-ez_setup.use_setuptools(version="3.4.1")
 
 CMDCLASS = versioneer.get_cmdclass()
 
@@ -321,7 +312,6 @@ SETUP_METADATA = \
         #        "oxli = oxli:main"
         #    ]
         # },
-        "ext_modules": EXTENSION_MODS,
         # "platforms": '', # empty as is conveyed by the classifiers below
         # "license": '', # empty as is conveyed by the classifier below
         "include_package_data": True,
@@ -329,77 +319,6 @@ SETUP_METADATA = \
         "classifiers": CLASSIFIERS,
         "python_requires": '>=3.4'
     }
-
-
-class KhmerBuildExt(_build_ext):  # pylint: disable=R0904
-    """Specialized Python extension builder for khmer project.
-
-    Only run the library setup when needed, not on every invocation.
-
-    Also strips out the bundled zlib and bzip2 libraries if
-    `--libraries z,bz2` is specified or the equivalent is in setup.cfg
-    """
-
-    def run(self):
-        """Run extension builder."""
-        if "%x" % sys.maxsize != '7fffffffffffffff':
-            raise DistutilsPlatformError("%s require 64-bit operating system" %
-                                         SETUP_METADATA["packages"])
-
-        if sys.platform == 'darwin' and 'gcov' in self.libraries:
-            self.libraries.remove('gcov')
-
-        cqfcmd = ['bash', '-c', 'cd third-party/cqf && make']
-        spawn(cmd=cqfcmd, dry_run=self.dry_run)
-        for ext in self.extensions:
-            ext.extra_objects.append(path_join("third-party", "cqf", "gqf.o"))
-
-        if "z" not in self.libraries:
-            zcmd = ['bash', '-c', 'cd ' + ZLIBDIR + ' && ( test Makefile -nt'
-                    ' configure || bash ./configure --static ) && make -f '
-                    'Makefile.pic PIC']
-            spawn(cmd=zcmd, dry_run=self.dry_run)
-            for ext in self.extensions:
-                ext.extra_objects.extend(
-                    path_join("third-party", "zlib", bn + ".lo") for bn in [
-                        "adler32", "compress", "crc32", "deflate", "gzclose",
-                        "gzlib", "gzread", "gzwrite", "infback", "inffast",
-                        "inflate", "inftrees", "trees", "uncompr", "zutil"])
-
-        if "bz2" not in self.libraries:
-            bz2cmd = ['bash', '-c', 'cd ' + BZIP2DIR + ' && make -f '
-                      'Makefile-libbz2_so all']
-            spawn(cmd=bz2cmd, dry_run=self.dry_run)
-            for ext in self.extensions:
-                ext.extra_objects.extend(
-                    path_join("third-party", "bzip2", bn + ".o") for bn in [
-                        "blocksort", "huffman", "crctable", "randtable",
-                        "compress", "decompress", "bzlib"])
-        _build_ext.run(self)
-
-
-CMDCLASS.update({'build_ext': KhmerBuildExt})
-
-_DISTUTILS_REINIT = Distribution.reinitialize_command
-
-
-def reinitialize_command(self, command, reinit_subcommands):
-    """Monkeypatch the original version from distutils.
-
-    It's supposed to match the behavior of Distribution.get_command_obj()
-    This fixes issues with 'pip install -e' and './setup.py test' not
-    respecting the setup.cfg configuration directives for the build_ext
-    command.
-    """
-    cmd_obj = _DISTUTILS_REINIT(self, command, reinit_subcommands)
-    options = self.command_options.get(command)
-    if options:
-        self._set_command_options(  # pylint: disable=protected-access
-            cmd_obj, options)
-    return cmd_obj
-
-
-Distribution.reinitialize_command = reinitialize_command
 
 
 setup(cmdclass=CMDCLASS, **SETUP_METADATA)

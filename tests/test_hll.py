@@ -100,8 +100,13 @@ def test_hll_consume_string():
 def test_hll_empty_fasta():
     filename = utils.get_test_data('test-empty.fa')
     hll = khmer.HLLCounter(ERR_RATE, K)
+<<<<<<< HEAD
     with pytest.raises(OSError):
         hll.consume_seqfile(filename)
+=======
+    with assert_raises(OSError):
+        hll.consume_fasta(filename)
+>>>>>>> origin/gotta-catch-them-all-rebased
 
 
 def test_hll_consume_seqfile():

@@ -145,6 +145,75 @@ size_t SubsetPartition::output_partitioned_file(
             read = parser->get_next_read();
         } catch (NoMoreReadsAvailable &exc) {
             break;
+<<<<<<< HEAD:src/oxli/subset.cc
+=======
+        }
+
+        seq = read.sequence;
+
+        if (_ht->check_and_normalize_read(seq)) {
+            const char * kmer_s = seq.c_str();
+
+            bool found_tag = false;
+            for (unsigned int i = 0; i < seq.length() - ksize + 1; i++) {
+                kmer = _hash(kmer_s + i, ksize);
+
+                // is this a known tag?
+                if (set_contains(partition_map, kmer)) {
+                    found_tag = true;
+                    break;
+                }
+            }
+
+            // all sequences should have at least one tag in them.
+            // assert(found_tag);  @CTB currently breaks tests.  give fn flag
+            // to disable.
+
+            PartitionID partition_id = 0;
+            if (found_tag) {
+                PartitionID * partition_p = partition_map[kmer];
+                if (partition_p == NULL ) {
+                    partition_id = 0;
+                    n_singletons++;
+                } else {
+                    partition_id = *partition_p;
+                    partitions.insert(partition_id);
+                }
+            }
+
+            if (partition_id > 0 || output_unassigned) {
+                if (read.quality.length()) { // FASTQ
+                    outfile << "@" << read.name << "\t" << partition_id
+                            << "\n";
+                    outfile << seq << "\n+\n";
+                    outfile << read.quality << "\n";
+                } else {		// FASTA
+                    outfile << ">" << read.name << "\t" << partition_id;
+                    outfile << "\n" << seq << "\n";
+                }
+            }
+#ifdef VALIDATE_PARTITIONS
+            std::cout << "checking: " << read.name << "\n";
+            if (!is_single_partition(seq)) {
+                throw khmer_exception();
+            }
+#endif // VALIDATE_PARTITIONS
+
+            total_reads++;
+
+            // run callback, if specified
+            if (total_reads % CALLBACK_PERIOD == 0 && callback) {
+                try {
+                    callback("output_partitions", callback_data,
+                             total_reads, reads_kept);
+                } catch (...) {
+                    delete parser;
+                    parser = NULL;
+                    outfile.close();
+                    throw;
+                }
+            }
+>>>>>>> origin/gotta-catch-them-all-rebased:lib/subset.cc
         }
 
         read.set_clean_seq();
@@ -155,10 +224,56 @@ size_t SubsetPartition::output_partitioned_file(
         while (!kmers->done()) {
             kmer = kmers->next();
 
+<<<<<<< HEAD:src/oxli/subset.cc
             // is this a known tag?
             if (set_contains(partition_map, kmer)) {
                 found_tag = true;
                 break;
+=======
+    SeenSet tags_todo;
+
+    const unsigned int ksize = _ht->ksize();
+
+    //
+    // go through all the new reads, and consume & tag them.  keep track
+    // of all waypoints in the read in 'found_tags', and then check to
+    // see if we've found either tags with no partition, or tags from
+    // different partitions, or, heck, anything new.  if we did, then
+    // we have "new stuff" from the perspective of the graph.
+    //
+    // so, we can either traverse the graph, or just merge the partitions.
+    // the former is exact, the latter is inexact but way faster :)
+    //
+
+    while(!parser->is_complete()) {
+        try {
+            read = parser->get_next_read();
+        } catch (NoMoreReadsAvailable &exc) {
+            break;
+        }
+        seq = read.sequence;
+
+        if (_ht->check_and_normalize_read(seq)) {
+            unsigned long long n_consumed = 0;
+            SeenSet found_tags;
+            _ht->consume_sequence_and_tag(seq, n_consumed, &found_tags);
+
+            PartitionSet pset;
+            bool found_zero = false;
+
+            for (SeenSet::iterator si = found_tags.begin();
+                    si != found_tags.end(); ++si) {
+                PartitionMap::iterator pi = partition_map.find(*si);
+                PartitionID partition_id = 0;
+                if (pi != partition_map.end() && pi->second != NULL) {
+                    partition_id = *(pi->second);
+                }
+                if (partition_id == 0) {
+                    found_zero = true;
+                } else {
+                    pset.insert(partition_id);
+                }
+>>>>>>> origin/gotta-catch-them-all-rebased:lib/subset.cc
             }
         }
 

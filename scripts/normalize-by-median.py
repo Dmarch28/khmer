@@ -415,9 +415,15 @@ def main():  # pylint: disable=too-many-branches,too-many-statements
     log_info('fp rate estimated to be {fpr:1.3f}', fpr=fp_rate)
 
     if args.force and len(corrupt_files) > 0:
+<<<<<<< HEAD
         log_error("** WARNING: Finished with errors!")
         log_error("** I/O Errors occurred in the following files:")
         log_error("\t" + " ".join(corrupt_files))
+=======
+        print("** WARNING: Finished with errors!", file=sys.stderr)
+        print("** I/O Errors occurred in the following files:", file=sys.stderr)
+        print("\t", " ".join(corrupt_files), file=sys.stderr)
+>>>>>>> origin/gotta-catch-them-all-rebased
 
 
 if __name__ == '__main__':

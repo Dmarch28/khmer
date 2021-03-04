@@ -434,10 +434,15 @@ def test_read_pair_iterator_in_error_mode_xfail_osxsafe():
         for _ in rparser.iter_read_pairs():
             pass
         failed = False
+<<<<<<< HEAD
     except ValueError as exc:
         assert "Invalid read pair detected" in str(exc), str(exc)
     except ValueError:
         pass
+=======
+    except ValueError as exc:
+        assert "Invalid read pair detected" in str(exc), str(exc)
+>>>>>>> origin/gotta-catch-them-all-rebased
     assert failed
 
 

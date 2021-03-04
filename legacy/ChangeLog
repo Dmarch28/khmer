@@ -1,3 +1,4 @@
+<<<<<<< HEAD:legacy/ChangeLog
 2015-06-17  Kevin Murray  <spam@kdmurray.id.au>
 
    * lib/*.{cc,hh},khmer/_khmermodule.cc,tests/test_*.py: Simplify exception
@@ -1237,6 +1238,13 @@
    * doc/dev/binary-file-formats.rst: Add documentation of khmer's binary file
    formats.
    * doc/dev/index.rst: Add above docs to developer documentation index.
+=======
+2015-06-17  Kevin Murray  <spam@kdmurray.id.au>
+
+   * lib/*.{cc,hh},khmer/_khmermodule.cc,tests/test_*.py: Simplify exception
+   hierarchy, and ensure all C++ exceptions are converted to python errors.
+   * scripts/normalize-by-median.py: Clarify error message.
+>>>>>>> origin/gotta-catch-them-all-rebased:ChangeLog
 
 2015-06-14  Michael R. Crusoe  <crusoe@ucdavis.edu>
 

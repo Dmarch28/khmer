@@ -49,6 +49,37 @@ def broken_paired_reader(screed_iter, min_length=None,
                          force_single=False, require_paired=False):
     """Read pairs from a stream.
 
+    Handles both Casava formats: seq/1 and seq/2, and 'seq::... 1::...'
+    and 'seq::... 2::...'.
+    """
+    if hasattr(record1, 'accuracy') or hasattr(record2, 'accuracy'):
+        if not (hasattr(record1, 'accuracy') and hasattr(record2, 'accuracy')):
+            raise ValueError("both records must be same type (FASTA or FASTQ)")
+
+    name1 = record1.name
+    name2 = record2.name
+
+    if ' ' in name1:                        # handle '@name 1:rst'
+        name1, rest1 = record1.name.split(' ', 1)
+        name2, rest2 = record2.name.split(' ', 1)
+
+        if name1 == name2 and \
+           rest1.startswith('1:') and rest2.startswith('2:'):
+            return True
+
+    elif name1.endswith('/1') and name2.endswith('/2'):  # handle name/1
+        subpart1 = name1.split('/', 1)[0]
+        subpart2 = name2.split('/', 1)[0]
+
+        assert subpart1
+        if subpart1 == subpart2:
+            return True
+
+    return False
+
+
+def broken_paired_reader(screed_iter, min_length=None, force_single=False):
+    """
     A generator that yields singletons and pairs from a stream of FASTA/FASTQ
     records (yielded by 'screed_iter').  Yields (n, is_pair, r1, r2) where
     'r2' is None if is_pair is False.
@@ -61,6 +92,13 @@ def broken_paired_reader(screed_iter, min_length=None,
        for n, is_pair, read1, read2 in broken_paired_reader(...):
           ...
 
+    Note that 'n' is the number of records read from the input stream, so
+    is incremented by 2 for a pair of reads.
+
+    If 'min_length' is set, all reads under this length are ignored (even
+    if they are pairs).
+
+    If 'force_single' is True, all reads are returned as singletons.
     Note that 'n' behaves like enumerate() and starts at 0, but tracks
     the number of records read from the input stream, so is
     incremented by 2 for a pair of reads.
@@ -78,8 +116,17 @@ def broken_paired_reader(screed_iter, min_length=None,
         raise ValueError("force_single and require_paired cannot both be set!")
 
     # handle the majority of the stream.
+    for n, record in enumerate(screed_iter):
+        # ignore short reads
+        if min_length and len(record.sequence) < min_length:
+            record = None
+            continue
+
     for record in screed_iter:
         if prev_record:
+            if check_is_pair(prev_record, record) and not force_single:
+                yield n, True, prev_record, record  # it's a pair!
+                record = None
             if check_is_pair(prev_record, record) and not force_single:
                 if min_length and (len(prev_record.sequence) < min_length or
                                    len(record.sequence) < min_length):
@@ -106,8 +153,13 @@ def broken_paired_reader(screed_iter, min_length=None,
         prev_record = record
         record = None
 
+    # handle the last two records (which cannot be pairs)
     # handle the last record, if it exists (i.e. last two records not a pair)
     if prev_record:
+        # the only way into this if statement is if 'prev_record' and
+        # 'record' are both singletons.
+        if not force_single and record:
+            assert not check_is_pair(prev_record, record)
         if require_paired:
             raise UnpairedReadsError("Unpaired reads when require_paired "
                                      "is set!", prev_record, None)
@@ -135,6 +187,11 @@ def write_record(record, fileobj):
         fileobj.write(recstr)
 
 
+    if record:                     # guaranteed to be orphan
+        # ignore short reads
+        if not min_length or len(record.sequence) >= min_length:
+            n += 1
+            yield n, False, record, None
 def write_record_pair(read1, read2, fileobj):
     """Write a pair of sequence records to 'fileobj' in FASTA/FASTQ format."""
     _rec_pair = '@%s\n%s\n+\n%s\n' * 2

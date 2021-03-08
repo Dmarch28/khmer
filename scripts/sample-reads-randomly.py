@@ -85,6 +85,9 @@ def get_parser():
         epilog=textwrap.dedent(epilog))
 
     parser.add_argument('filenames', nargs='+')
+    parser.add_argument('-N', '--num_reads', type=float, dest='num_reads',
+                        default=DEFAULT_NUM_READS)
+    parser.add_argument('-M', '--max_reads', type=float, dest='max_reads',
     parser.add_argument('-N', '--num_reads', type=int, dest='num_reads',
                         default=DEFAULT_NUM_READS, help='samples the '
                         'number of sequences or pairs specified with -N')

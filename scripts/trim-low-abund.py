@@ -104,6 +104,9 @@ def get_parser():
 
     parser.add_argument('input_filenames', nargs='+')
 
+    parser.add_argument('--cutoff', '-C', type=int,
+    parser.add_argument('input_filenames', nargs='+')
+
     parser.add_argument('-C', '--cutoff', type=int,
                         help='remove k-mers below this abundance',
                         default=DEFAULT_CUTOFF)
@@ -125,6 +128,9 @@ def get_parser():
                         help='Only trim low-abundance k-mers from sequences '
                         'that have high coverage.')
 
+    # expert options
+    parser.add_argument('--ignore-pairs', default=False, action='store_true')
+    parser.add_argument('--tempdir', '-T', type=str, default='./')
     add_loadgraph_args(parser)
     parser.add_argument('-s', '--savegraph', metavar="filename", default='',
                         help='save the k-mer countgraph to disk after all'
@@ -402,6 +408,9 @@ def main():
         paired_iter = broken_paired_reader(ReadParser(filename), min_length=K,
                                            force_single=args.ignore_pairs)
 
+                seq = read1.sequence.replace('N', 'A')
+
+                med, _, _ = ct.get_median_count(seq)
         # main loop through the file.
         n_start = trimmer.n_reads
         save_start = trimmer.n_saved
@@ -494,6 +503,18 @@ def main():
     percent_reads_trimmed = float(trimmed_reads + (n_reads - written_reads)) /\
         n_reads * 100.0
 
+    n_passes = 1.0 + (float(save_pass2_total) / n_reads)
+    percent_reads_trimmed = float(trimmed_reads + (n_reads - written_reads)) /\
+        n_reads * 100.0
+
+    print 'read %d reads, %d bp' % (n_reads, n_bp,)
+    print 'wrote %d reads, %d bp' % (written_reads, written_bp,)
+    print 'looked at %d reads twice (%.2f passes)' % (save_pass2_total,
+                                                      n_passes)
+    print 'removed %d reads and trimmed %d reads (%.2f%%)' % \
+        (n_reads - written_reads, trimmed_reads, percent_reads_trimmed)
+    print 'trimmed or removed %.2f%% of bases (%d total)' % \
+        ((1 - (written_bp / float(n_bp))) * 100.0, n_bp - written_bp)
     log_info('read {read} reads, {bp} bp', read=n_reads, bp=n_bp)
     log_info('wrote {wr} reads, {wbp} bp', wr=written_reads, wbp=written_bp)
     log_info('looked at {st} reads twice ({np:.2f} passes)',
@@ -505,6 +526,10 @@ def main():
              p=(1 - (written_bp / float(n_bp))) * 100.0, bp=n_bp - written_bp)
 
     if args.variable_coverage:
+        percent_reads_hicov = 100.0 * float(n_reads - skipped_n) / n_reads
+        print '%d reads were high coverage;' % (n_reads - skipped_n)
+        print 'skipped %d reads/%d bases because of low coverage' % \
+              (skipped_n, skipped_bp)
         percent_reads_hicov = 100.0 * float(n_reads - n_skipped) / n_reads
         log_info('{n} reads were high coverage ({p:.2f}%);',
                  n=n_reads - n_skipped, p=percent_reads_hicov)

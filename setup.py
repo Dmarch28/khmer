@@ -325,9 +325,12 @@ class KhmerBuildExt(_build_ext):  # pylint: disable=R0904
         if sys.platform == 'darwin' and 'gcov' in self.libraries:
             self.libraries.remove('gcov')
 
+        mqfcmd = ['bash', '-c', 'cd third-party/mqf && make']
+        spawn(cmd=mqfcmd, dry_run=self.dry_run)
         mqfcmd = ['bash', '-c', 'cd third-party/MQF && make all NH=1']
         spawn(cmd=mqfcmd, dry_run=self.dry_run)
         for ext in self.extensions:
+            ext.extra_objects.append(path_join("third-party", "mqf", "gqf.o"))
             ext.extra_objects.append(path_join("third-party", "MQF", "libMQF.a"))
             ext.extra_objects.append(path_join("third-party", "MQF","ThirdParty","stxxl","build","lib", "libstxxl.a"))
 

@@ -69,8 +69,11 @@ PREFIX=/usr/local
 
 INCLUDES= -I ../../include/ -I ../../third-party/seqan/core/include/ \
 	      -I ../../third-party/smhasher/ \
+				-I ../../third-party/mqf/ \
+				-I ../../third-party/rollinghash \
 				-I ../../third-party/MQF/ \
 				-I ../../third-party/rollinghash
+
 
 ifeq ($(USE_SYSTEM_ZLIB), false)
 INCLUDES += -I ../../third-party/zlib/
@@ -102,6 +105,7 @@ CFLAGS   += -Wshadow -Wcast-align -Wstrict-prototypes
 CFLAGS   += $(INCLUDES) $(CPPFLAGS)
 
 LDFLAGS  ?=
+LDFLAGS  += -lstdc++
 ifneq ($(USE_SYSTEM_ZLIB), false)
 LDFLAGS  += -lz
 endif
@@ -223,6 +227,8 @@ BZIP2_OBJS_BASE= \
 BZIP2_OBJS=$(addprefix $(BZIP2_DIR)/, $(BZIP2_OBJS_BASE))
 
 # Counting bloom filter
+MQF_DIR=../../third-party/mqf
+MQF_OBJS_BASE= gqf.o
 MQF_DIR=../../third-party/MQF
 MQF_OBJS_BASE= libMQF.a
 

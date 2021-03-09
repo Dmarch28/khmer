@@ -5,6 +5,9 @@ from khmer import QFCounttable
 import khmer
 from tests import khmer_tst_utils as utils
 from khmer import ReadParser
+import khmer
+from tests import khmer_tst_utils as utils
+from khmer import ReadParser
 
 import random
 import pytest
@@ -35,6 +38,8 @@ def test_count_1(getSketch):
     kmer = 'G' * 12
     hashval = hi.hash('G' * 12)
 
+import random
+import pytest
     assert hi.get(kmer) == 0
     assert hi.get(hashval) == 0
 
@@ -98,6 +103,71 @@ def test_maxcount_with_bigcount(getSketch):
     # hashtable should not saturate, if use_bigcount is set.
     kh = getSketch(4, 128,8)
 
+MAX_COUNT = 255
+MAX_BIGCOUNT = 65535
+
+sketchSize = 1048576
+
+
+DNA = "AGCTTTTCATTCTGACTGCAACGGGCAATATGTCTCTGTGTGGATTAAAAAAAGAGTGTCTGATAGCAGC"
+
+
+def teardown():
+    utils.cleanup()
+
+
+@pytest.fixture(params=[khmer.QFCounttable])
+def getSketch(request):
+    return request.param
+
+
+def test_count_1(getSketch):
+    print("start")
+    hi = getSketch(12, sketchSize)
+
+    kmer = 'G' * 12
+    hashval = hi.hash('G' * 12)
+
+    assert hi.get(kmer) == 0
+    assert hi.get(hashval) == 0
+
+    hi.count(kmer)
+    assert hi.get(kmer) == 1
+    assert hi.get(hashval) == 1
+
+    hi.count(kmer)
+    assert hi.get(kmer) == 2
+    assert hi.get(hashval) == 2
+
+    kmer = 'G' * 11
+
+    with pytest.raises(ValueError):
+        hi.hash(kmer)
+
+
+def test_count_2(getSketch):
+    hi = getSketch(12, sketchSize)
+    print("done")
+    kmer = 'G' * 12
+    hashval = hi.hash('G' * 12)
+
+    assert hi.get(kmer) == 0
+    assert hi.get(hashval) == 0
+
+    hi.count(kmer)
+    assert hi.get(kmer) == 1
+    assert hi.get(hashval) == 1
+
+    hi.count(hashval)                     # count hashes same as strings
+    assert hi.get(kmer) == 2
+    assert hi.get(hashval) == 2
+
+
+def test_read_write(getSketch):
+    print("Start")
+    fname = str.encode(utils.get_temp_filename('zzz'))
+    rng = random.Random(1)
+    ctm = getSketch(20, sketchSize)
     last_count = None
     for _ in range(0, 10000):
         kh.count('AAAA')
@@ -111,6 +181,9 @@ def test_maxcount_with_bigcount(getSketch):
     assert c == 10000, "should be able to count to 1000: %d" % c
 
 
+def test_get_ksize(getSketch):
+    kh = getSketch(22, 16)
+    assert kh.ksize() == 22
 def test_get_ksize(getSketch):
     kh = getSketch(22, 16,8)
     assert kh.ksize() == 22

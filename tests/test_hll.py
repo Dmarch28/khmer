@@ -101,6 +101,8 @@ def test_hll_empty_fasta():
     filename = utils.get_test_data('test-empty.fa')
     hll = khmer.HLLCounter(ERR_RATE, K)
     with pytest.raises(OSError):
+        hll.consume_fasta(filename)
+    with pytest.raises(OSError):
         hll.consume_seqfile(filename)
 
 
@@ -187,6 +189,8 @@ def test_hll_cover_calc_alpha():
 
 def test_hll_invalid_base():
     hllcpp = khmer.HLLCounter(ERR_RATE, 5)
+    with pytest.raises(ValueError):
+        hllcpp.consume_string("ACGTTTCGNAATNNNNN")
 
     # this should succeed; invalid bases need to be removed before
     # hashing.
@@ -240,6 +244,10 @@ def test_hll_change_error_rate():
     with pytest.raises(TypeError):
         del hllcpp.error_rate
 
+    with pytest.raises(TypeError):
+        hllcpp.error_rate = 5
+
+    with pytest.raises(ValueError):
     with pytest.raises(ValueError):
         hllcpp.error_rate = 2.5
 

@@ -59,6 +59,10 @@ def teardown():
     utils.cleanup()
 
 
+def test_import_all():
+    sandbox_path = os.path.join(os.path.dirname(__file__), "../sandbox")
+    if not os.path.exists(sandbox_path):
+        pytest.skip("sandbox scripts are only tested in a repository")
 # sandbox script tests are only run when the tests are loaded from
 # the repository
 IN_REPOSITORY = os.path.exists(os.path.join(os.path.dirname(__file__),

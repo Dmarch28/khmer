@@ -300,6 +300,7 @@ SETUP_METADATA = \
         "install_requires": ['screed >= 1.0', 'bz2file', 'Cython==0.25.2'],
         "setup_requires": ["pytest-runner>=2.0,<3dev", "setuptools>=18.0"],
         "install_requires": ['screed >= 0.9', 'bz2file'],
+        "setup_requires": ["pytest-runner>=2.0,<3dev"],
         "setup_requires": ["pytest-runner>=2.0,<3dev", "setuptools>=18.0",
                            "Cython>=0.25.2"],
         "extras_require": {':python_version=="2.6"': ['argparse>=1.2.1'],

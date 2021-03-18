@@ -50,6 +50,7 @@ from khmer._khmer import GraphLabels as _GraphLabels
 from khmer._khmer import Nodegraph as _Nodegraph
 from khmer._khmer import Nodetable as _Nodetable
 from khmer._khmer import ReadAligner as _ReadAligner
+from khmer._khmer import HashSet
 
 from khmer._khmer import Read
 from khmer._khmer import forward_hash

@@ -116,6 +116,17 @@ HashIntoType _hash(const std::string kmer, const WordLength k)
 }
 
 HashIntoType _hash(const std::string kmer, const WordLength k,
+                    HashIntoType& h, HashIntoType& r)
+{
+    return _hash(kmer.c_str(), k, h, r);
+}
+
+HashIntoType _hash(const std::string kmer, const WordLength k)
+{
+    return _hash(kmer.c_str(), k);
+}
+
+HashIntoType _hash(const std::string kmer, const WordLength k,
                    HashIntoType& h, HashIntoType& r)
 {
     return _hash(kmer.c_str(), k, h, r);

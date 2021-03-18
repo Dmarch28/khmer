@@ -1,3 +1,58 @@
+2016-05-25  Titus Brown  <titus@idyll.org>
+
+   * scripts/trim-low-abund.py: switched to watermark-based reporting to
+   isolate a hard-to-trigger undefined variable error in reporting.
+   * tests/test_scripts.py: added a test for basic reporting functionality.
+
+2016-05-16  Titus Brown  <titus@idyll.org>
+
+   * khmer/_khmer.cc: define new khmer_HashSet_Type and khmer_HashSet_Object;
+   lots of associated cleanup of k-mer <-> C++ interface; added
+   Hashtable::neighbors; added Hashtable::hash and Hashtable::reverse_hash;
+   CPython 'hashtable.count(...)' function now takes either hash or string.
+   * lib/{kmer_hash.cc, kmer_hash.hh}: added some function overloads so that
+   _hash(...) could take strings as arguments without conversion; added
+   Kmer::set_from_unique_hash convenience function.
+   * lib/{hashtable.cc, hashtable.hh}: minor cleanup;
+   * lib/{read_aligner.cc, subset.cc}: minor refactoring.
+   * lib/{traversal.cc, traversal.hh}: made 'filter' argument to traverse*
+   functions optional; added 'traverse' function for combine traversal.
+   * tests/test_hashset.py: tests for new HashSet class.
+   * tests/test_countgraph.py: tests for new hash/reverse_hash functions,
+   and 'count' behavior.
+   * tests/test_nodegraph.py: tests for new neighbors function.
+   * khmer/__init__.py: import new HashSet type from _khmer.
+   * scripts/{do-partition.py, make-initial-stoptags.py,
+   partition-graph.py},tests/{test_labelhash.py, test_subset_graph.py}:
+   refactor existing code to use HashSet object.
+   * tests/test_counting_single.py: add printout to assert.
+
+2016-05-16  Luiz Irber  <khmer@luizirber.org>
+
+   * Makefile,jenkins-build.sh,setup.cfg,tests/khmer_tst_utils.py,
+   tests/test_{countgraph,counting_single,hll,labelhash,nodegraph,
+   normalize_by_median,read_aligner,read_handling,read_parsers,sandbox_scripts,
+   scripts,version}.py: replace nose with pytest, update configuration.
+
+2016-05-16  Luiz Irber  <khmer@luizirber.org>
+
+   * lib/hashtable.cc: fix bug with substr
+   * tests/test_countgraph.py: add test to trigger the substr bug.
+
+2016-05-11  Titus Brown  <titus@idyll.org>
+
+   * scripts/trim-low-abund.py: refactor to use generators; add --diginorm
+   option to include digital normalization in trim-low-abund functionality.
+   * tests/test_script_output.py: added md5sum hashing tests to pin down
+   functionality in trim-low-abund.py and normalize-by-median.py; verified
+   that refactoring does not alter existing functionality.
+   * tests/test-data/simple-genome-reads.fa: supporting file for md5sum
+   tests.
+   * tests/test-data/README.rst: a new README for describing test files,
+   how to generate them, and their uses.
+   * tests/test_scripts.py: added additional tests for trim-low-abund.py
+   functionality and error cases.
+
 2016-11-15 Nicole Kingsley <nbkingsley@ucdavis.edu>
 
    * tests/{test_normalize_by_median.py,test_scripts.py}:
@@ -459,6 +514,11 @@
 2016-04-29  Luiz Irber  <khmer@luizirber.org>
 
    * jenkins-build.sh: add codecov coverage upload tool.
+
+2016-02-24  Sourav Singh <ssouravsingh12@gmail.com>
+
+   * scripts/abundance-dist-single.py: Remove --force argument from
+   abundance-dist-single.py since it is no longer used.
 
 2016-02-17  Daniel Standage <daniel.standage@gmail.com>
 

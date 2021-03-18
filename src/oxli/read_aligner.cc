@@ -532,6 +532,7 @@ Alignment* ReadAligner::Align(const std::string& read)
     }
 
     HashIntoType fhash = 0, rhash = 0;
+    _hash(start.kmer, k, fhash, rhash);
     fhash = m_ch->hash_dna_top_strand(start.kmer.c_str());
     rhash = m_ch->hash_dna_bottom_strand(start.kmer.c_str());
 
@@ -611,6 +612,7 @@ Alignment* ReadAligner::AlignForward(const std::string& read)
     }
 
     HashIntoType fhash = 0, rhash = 0;
+    _hash(start.kmer, k, fhash, rhash);
     fhash = m_ch->hash_dna_top_strand(start.kmer.c_str());
     rhash = m_ch->hash_dna_bottom_strand(start.kmer.c_str());
 

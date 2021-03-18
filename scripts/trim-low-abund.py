@@ -108,6 +108,10 @@ def get_parser():
                         help='remove k-mers below this abundance',
                         default=DEFAULT_CUTOFF)
 
+    parser.add_argument('--trim-at-coverage', '-Z', '--normalize-to',
+                        type=int,
+                        help='trim reads when entire read above this coverage',
+                        default=DEFAULT_TRIM_AT_COVERAGE)
     parser.add_argument('-Z', '--trim-at-coverage', '--normalize-to',
                         type=int,
                         help='trim reads when entire read above this coverage',
@@ -139,6 +143,10 @@ def get_parser():
 
     # expert options
     parser.add_argument('--force', default=False, action='store_true')
+    parser.add_argument('--ignore-pairs', default=False, action='store_true')
+    parser.add_argument('--tempdir', '-T', type=str, default='./',
+                        help="Set location of temporary directory for "
+                        "second pass")
     parser.add_argument('--ignore-pairs', default=False, action='store_true',
                         help='treat all reads as if they were singletons')
     parser.add_argument('-T', '--tempdir', type=str, default='./',
@@ -157,6 +165,177 @@ def get_parser():
                         "data")
 
     return parser
+
+
+class ReadBundle(object):
+    def __init__(self, *raw_records):
+        self.reads = [i for i in raw_records if i]
+        self.cleaned_reads, self.n_reads, self.n_bp = \
+            clean_up_reads(self.reads)
+
+    def coverages(self, graph):
+        return [graph.get_median_count(r)[0] for r in self.cleaned_reads]
+
+    def both(self):
+        return zip(self.reads, self.cleaned_reads)
+
+
+def clean_up_reads(reads):
+    n_reads = 0
+    n_bp = 0
+    cleaned_reads = []
+    for read in reads:
+        r = read.sequence.replace('N', 'A')
+        cleaned_reads.append(r)
+        n_reads += 1
+        n_bp += len(r)
+
+    return cleaned_reads, n_reads, n_bp
+
+
+def trim_record(read, trim_at):
+    "Utility function: create a new record, trimmed at given location."
+    new_read = Record()
+    new_read.name = read.name
+    new_read.sequence = read.sequence[:trim_at]
+    if hasattr(read, 'quality'):
+        new_read.quality = read.quality[:trim_at]
+
+    return new_read
+
+
+def do_trim_read(graph, read, cleaned_read, CUTOFF):
+    "Utility function: trim a read on abundance."
+    K = graph.ksize()
+
+    # trim the 'N'-cleaned read
+    _, trim_at = graph.trim_on_abundance(cleaned_read, CUTOFF)
+
+    # too short after trimming? eliminate read.
+    if trim_at < K:
+        return None, False
+
+    # will trim? do so.
+    did_trim = False
+    if trim_at != len(cleaned_read):
+        did_trim = True
+        read = trim_record(read, trim_at)
+
+    # return for processing
+    return read, did_trim
+
+
+class Trimmer(object):
+    """
+    Core trimming object; the two utility functions are 'pass1' and 'pass2',
+    which execute the first and second pass across the data, respectively.
+    """
+
+    def __init__(self, graph, do_trim_low_abund, cutoff, trim_at_coverage):
+        self.graph = graph
+        self.do_trim_low_abund = do_trim_low_abund
+        self.cutoff = cutoff
+        self.trim_at_coverage = trim_at_coverage
+
+        self.n_reads = 0
+        self.n_bp = 0
+        self.trimmed_reads = 0
+        self.n_saved = 0
+        self.n_skipped = 0
+        self.bp_skipped = 0
+
+        self.do_normalize = False
+        self.diginorm_coverage = None
+
+    def set_diginorm(self, coverage):
+        self.do_normalize = True
+        self.diginorm_coverage = coverage
+
+    def pass1(self, reader, saver):
+        """
+        The first pass across the read data does the following:
+
+        1. If do_normalize is set, discard all read pairs with coverage
+        above DIGINORM_COVERAGE.
+
+        2. For each remaining read pair, check if the read pair is above
+        the coverage necessary for trimming (TRIM_AT_COVERAGE).  If so,
+        k-mer trim the reads at CUTOFF, and yield them.
+
+        3. If the read pair is not at the coverage necessary for trimming,
+        consume the read pair with the graph and save the read pair for the
+        second pass.
+        """
+        graph = self.graph
+        TRIM_AT_COVERAGE = self.trim_at_coverage
+        CUTOFF = self.cutoff
+        DIGINORM_COVERAGE = self.diginorm_coverage
+        K = graph.ksize()
+
+        for n, is_pair, read1, read2 in reader:
+            bundle = ReadBundle(read1, read2)
+
+            # clean up the sequences for examination.
+            self.n_reads += bundle.n_reads
+            self.n_bp += bundle.n_bp
+
+            min_coverage = min(bundle.coverages(graph))
+
+            if self.do_normalize and min_coverage >= DIGINORM_COVERAGE:
+                # skip reads if normalizing
+                continue
+
+            # trim?
+            if min_coverage >= TRIM_AT_COVERAGE:
+                for read, cleaned_read in bundle.both():
+                    record, did_trim = do_trim_read(graph, read,
+                                                    cleaned_read, CUTOFF)
+                    if did_trim:
+                        self.trimmed_reads += 1
+                    if record:
+                        yield record
+            # no, too low coverage to trim; consume & set aside for 2nd pass.
+            else:
+                for read, cleaned_read in bundle.both():
+                    graph.consume(cleaned_read)
+                    write_record(read, saver)
+                    self.n_saved += 1
+
+    def pass2(self, reader):
+        """
+        The second pass across the data does the following.
+
+        1. For each read, evaluate the coverage. If the coverage is
+        sufficient to trim, OR we are trimming low-abundance reads (-V not
+        set), do trimming.
+
+        2. Otherwise, return the untrimmed read pair.
+        """
+        graph = self.graph
+        TRIM_AT_COVERAGE = self.trim_at_coverage
+        CUTOFF = self.cutoff
+        K = graph.ksize()
+
+        for n, is_pair, read1, read2 in reader:
+            bundle = ReadBundle(read1, read2)
+
+            # clean up the sequences for examination.
+            self.n_reads += bundle.n_reads
+            self.n_bp += bundle.n_bp
+
+            for (read, cleaned_read), coverage in zip(bundle.both(),
+                                                      bundle.coverages(graph)):
+                if coverage >= TRIM_AT_COVERAGE or self.do_trim_low_abund:
+                    record, did_trim = do_trim_read(graph, read, cleaned_read,
+                                                    CUTOFF)
+                    if did_trim:
+                        self.trimmed_reads += 1
+                    if record:
+                        yield record
+                else:
+                    self.n_skipped += 1
+                    self.bp_skipped += 1
+                    yield read
 
 
 class Trimmer(object):
@@ -313,6 +492,26 @@ def main():
 
     if args.trim_at_coverage != DEFAULT_TRIM_AT_COVERAGE and \
        not args.variable_coverage:
+        print("Error: --trim-at-coverage/-Z given, but",
+              "--variable-coverage/-V not specified.",
+              file=sys.stderr)
+        sys.exit(1)
+
+    if args.diginorm_coverage != DEFAULT_DIGINORM_COVERAGE and \
+       not args.diginorm:
+        print("Error: --diginorm-coverage given, but",
+              "--diginorm not specified.",
+              file=sys.stderr)
+        sys.exit(1)
+
+    if args.diginorm and args.single_pass:
+        print("Error: --diginorm and --single-pass are incompatible!\n"
+              "You probably want to use normalize-by-median.py instead.",
+              file=sys.stderr)
+        sys.exit(1)
+
+    if args.trim_at_coverage != DEFAULT_TRIM_AT_COVERAGE and \
+       not args.variable_coverage:
         log_error("Error: --trim-at-coverage/-Z given, but "
                   "--variable-coverage/-V not specified.")
         sys.exit(1)
@@ -376,8 +575,15 @@ def main():
     if args.output:
         trimfp = get_file_writer(args.output, args.gzip, args.bzip)
 
+    # only create the file writer once if outfp is specified; otherwise,
+    # create it for each file.
+    if args.output:
+        trimfp = get_file_writer(args.output, args.gzip, args.bzip)
+
     pass2list = []
     for filename in args.input_filenames:
+        # figure out temporary filename for 2nd pass
+        pass2filename = os.path.basename(filename) + '.pass2'
         # figure out temporary filename for 2nd pass
         pass2filename = filename.replace(os.path.sep, '-') + '.pass2'
         pass2filename = os.path.join(tempdir, pass2filename)
@@ -387,16 +593,44 @@ def main():
         if args.output is None:
             # note: this will be saved in trimfp.
             outfp = open(os.path.basename(filename) + '.abundtrim', 'wb')
+            # note: this will be saved in trimfp.
+            outfp = open(os.path.basename(filename) + '.abundtrim', 'wb')
+
+            # get file handle w/gzip, bzip
+            trimfp = get_file_writer(outfp, args.gzip, args.bzip)
 
             # get file handle w/gzip, bzip
             trimfp = get_file_writer(outfp, args.gzip, args.bzip)
 
         # record all this info
+        # record all this info
         pass2list.append((filename, pass2filename, trimfp))
 
         # input file stuff: get a broken_paired reader.
+        screed_iter = screed.open(filename)
+        paired_iter = broken_paired_reader(screed_iter, min_length=K,
+        # input file stuff: get a broken_paired reader.
         paired_iter = broken_paired_reader(ReadParser(filename), min_length=K,
                                            force_single=args.ignore_pairs)
+
+        # main loop through the file.
+        n_start = trimmer.n_reads
+        save_start = trimmer.n_saved
+
+        watermark = REPORT_EVERY_N_READS
+        for read in trimmer.pass1(paired_iter, pass2fp):
+            if (trimmer.n_reads - n_start) > watermark:
+                print('...', filename, trimmer.n_saved,
+                      trimmer.n_reads, trimmer.n_bp,
+                      written_reads, written_bp, file=sys.stderr)
+                watermark += REPORT_EVERY_N_READS
+
+            # write out the trimmed/etc sequences that AREN'T going to be
+            # revisited in a 2nd pass.
+            write_record(read, trimfp)
+            written_bp += len(read)
+            written_reads += 1
+        pass2fp.close()
 
         # main loop through the file.
         n_start = trimmer.n_reads
@@ -432,6 +666,18 @@ def main():
 
     # ### SECOND PASS. ###
 
+        print('%s: kept aside %d of %d from first pass, in %s' %
+              (filename,
+               trimmer.n_saved - save_start, trimmer.n_reads - n_start,
+               filename),
+              file=sys.stderr)
+
+    # first pass goes across all the data, so record relevant stats...
+    n_reads = trimmer.n_reads
+    n_bp = trimmer.n_bp
+    n_skipped = trimmer.n_skipped
+    bp_skipped = trimmer.bp_skipped
+    save_pass2_total = trimmer.n_saved
     # nothing should have been skipped yet!
     assert trimmer.n_skipped == 0
     assert trimmer.bp_skipped == 0
@@ -439,6 +685,14 @@ def main():
     if args.single_pass:
         pass2list = []
 
+    # nothing should have been skipped yet!
+    assert trimmer.n_skipped == 0
+    assert trimmer.bp_skipped == 0
+
+    if args.single_pass:
+        pass2list = []
+
+    # go back through all the files again.
     # go back through all the files again.
     for _, pass2filename, trimfp in pass2list:
         log_info('second pass: looking at sequences kept aside in {pass2}',
@@ -449,6 +703,19 @@ def main():
         # so pairs will stay together if not orphaned.  This is in contrast
         # to the first loop.  Hence, force_single=True below.
 
+        screed_iter = screed.open(pass2filename, parse_description=False)
+        paired_iter = broken_paired_reader(screed_iter, min_length=K,
+                                           force_single=True)
+        # to the first loop.  Hence, force_single=True below.
+
+        watermark = REPORT_EVERY_N_READS
+        for read in trimmer.pass2(paired_iter):
+            if (trimmer.n_reads - n_start) > watermark:
+                print('... x 2', trimmer.n_reads - n_start,
+                      pass2filename, trimmer.n_saved,
+                      trimmer.n_reads, trimmer.n_bp,
+                      written_reads, written_bp, file=sys.stderr)
+                watermark += REPORT_EVERY_N_READS
         read_parser = ReadParser(pass2filename)
         paired_iter = broken_paired_reader(read_parser,
                                            min_length=K,
@@ -467,6 +734,9 @@ def main():
             write_record(read, trimfp)
             written_reads += 1
             written_bp += len(read)
+            write_record(read, trimfp)
+            written_reads += 1
+            written_bp += len(read)
 
         read_parser.close()
 
@@ -477,12 +747,20 @@ def main():
         if not args.output:
             trimfp.close()
 
+    print('removing temp directory & contents (%s)' % tempdir, file=sys.stderr)
+    shutil.rmtree(tempdir)
+        # if we created our own trimfps, close 'em.
+        if not args.output:
+            trimfp.close()
+
     try:
         log_info('removing temp directory & contents ({temp})', temp=tempdir)
         shutil.rmtree(tempdir)
     except OSError as oe:
         log_info('WARNING: unable to remove {temp} (probably an NFS issue); '
                  'please remove manually', temp=tempdir)
+
+    trimmed_reads = trimmer.trimmed_reads
 
     trimmed_reads = trimmer.trimmed_reads
 
@@ -501,6 +779,13 @@ def main():
              p=(1 - (written_bp / float(n_bp))) * 100.0, bp=n_bp - written_bp)
 
     if args.variable_coverage:
+        percent_reads_hicov = 100.0 * float(n_reads - n_skipped) / n_reads
+        print('%d reads were high coverage (%.2f%%);' % (n_reads - n_skipped,
+                                                         percent_reads_hicov),
+              file=sys.stderr)
+        print('skipped %d reads/%d bases because of low coverage' %
+              (n_skipped, bp_skipped),
+              file=sys.stderr)
         percent_reads_hicov = 100.0 * float(n_reads - n_skipped) / n_reads
         log_info('{n} reads were high coverage ({p:.2f}%);',
                  n=n_reads - n_skipped, p=percent_reads_hicov)

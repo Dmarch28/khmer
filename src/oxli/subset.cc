@@ -623,6 +623,7 @@ void SubsetPartition::set_partition_id(
     if (!(kmer_s.length() >= _ht->ksize())) {
         throw oxli_exception();
     }
+    kmer = _hash(kmer_s, _ht->ksize());
     kmer = _ht->hash_dna(kmer_s.c_str());
 
     set_partition_id(kmer, p);
@@ -773,6 +774,10 @@ PartitionID SubsetPartition::join_partitions(
     }
 
     if (!set_contains(reverse_pmap, orig) ||
+        !set_contains(reverse_pmap, join) ||
+        reverse_pmap[orig] == NULL ||
+        reverse_pmap[join] == NULL) {
+    if (!set_contains(reverse_pmap, orig) ||
             !set_contains(reverse_pmap, join) ||
             reverse_pmap[orig] == NULL ||
             reverse_pmap[join] == NULL) {
@@ -793,6 +798,7 @@ PartitionID SubsetPartition::get_partition_id(std::string kmer_s)
     if (!(kmer_s.length() >= _ht->ksize())) {
         throw oxli_exception();
     }
+    kmer = _hash(kmer_s, _ht->ksize());
     kmer = _ht->hash_dna(kmer_s.c_str());
 
     return get_partition_id(kmer);

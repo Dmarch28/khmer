@@ -109,6 +109,35 @@ One-time preparation
 
        make install-dep
 
+   OS X users and others may need to download virtualenv first::
+
+	curl -O https://pypi.python.org/packages/source/v/virtualenv/virtualenv-1.11.6.tar.gz
+	tar xzf virtualenv*
+	cd virtualenv-*; python2.7 virtualenv.py ../env; cd ..
+
+   `Mac ports <https://www.macports.org/>`__ users on the OS X platform can
+   install pip by execution from the command line::
+     
+       sudo port install py27-pip
+     
+   `Homebrew <http://brew.sh/>`__ users on the OS X platform will have pip
+   already installed
+
+
+   `Conda <https://github.com/conda/conda>`__ users on any platform
+   should instead create a separate Conda environment::
+
+       conda create -n khmer anaconda
+
+#. Activate the virtualenv and install a few packages::
+
+       source env/bin/activate
+       cd khmer
+       make install-dependencies
+
+   (This installs `Sphinx <http://sphinx-doc.org/>`__ and `pytest
+   <https://pytest.org/>`__, packages we use for
+   building the documentation and running the tests.)
    If you have chosen not using a virtual environment, you may need to invoke ``sudo make install-dep`` instead.
    This will install several packages used in khmer testing and development.
 
@@ -131,6 +160,7 @@ Building khmer and running the tests
    This will run all of the Python tests in the ``tests/`` directory.
    You should see lots of output, with something like::
 
+      ====== 658 passed, 22 deselected in 40.93 seconds =======
       ====== 1289 passed, 1 skipped, 25 deselected, 1 xpassed in 50.98 seconds =======
 
    at the end.
@@ -176,7 +206,7 @@ Claiming an issue and starting to develop
    This will display a list of all the files git has noticed you changed. A file
    in the 'untracked' section are files that haven't existed previously in the repository but git has noticed.
 
-   To commit changes you have to 'stage' them—this is done by issuing the following command::
+   To commit changes you have to 'stage' them�this is done by issuing the following command::
 
       git add path/to/file
 
@@ -248,7 +278,7 @@ Claiming an issue and starting to develop
 #. When you are ready to have the pull request reviewed, please mention @luizirber, @camillescott, @standage, @betatim, and/or @ctb with the comment 'Ready for review!'
 
 #. The khmer team will now review your pull request and communicate with you through the pull request page.
-   Please feel free to add 'ping!' and an @ in the comments if you are looking for feedback—this will alert us that you are still on the line.
+   Please feel free to add 'ping!' and an @ in the comments if you are looking for feedback�this will alert us that you are still on the line.
 
    If this is your first issue, please *don't* take another issue until we've merged your first one. Thanks!
 
@@ -270,7 +300,7 @@ Before getting started with your second (or third, or fourth, or nth) contributi
     git branch -d fix/brief_issue_description     # delete the branch locally
     git push origin :fix/brief_issue_description  # delete the branch on your GitHub fork
 
-This will syncronize your local main (master) branch with the central khmer repository—including your newly integrated contribution—and delete the branch you used to make your submission.
+This will syncronize your local main (master) branch with the central khmer repository�including your newly integrated contribution�and delete the branch you used to make your submission.
 
 Now your local copy of the code is teed up for another contribution.
 If you find another issue that interests you, go back to the beginning of these instructions and repeat!

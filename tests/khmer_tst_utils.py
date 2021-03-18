@@ -1,6 +1,7 @@
 # This file is part of khmer, https://github.com/dib-lab/khmer/, and is
 # Copyright (C) 2010-2015, Michigan State University.
 # Copyright (C) 2015-2016, The Regents of the University of California.
+# Copyright (C) 2015-2016, The Regents of the University of California.
 # Copyright (C) 2016, Google, Inc
 #
 # Redistribution and use in source and binary forms, with or without
@@ -46,6 +47,7 @@ import subprocess
 from io import open  # pylint: disable=redefined-builtin
 from hashlib import md5
 
+import pytest
 from khmer import reverse_complement as revcomp
 
 import pytest
@@ -137,6 +139,15 @@ def _runscript(scriptname, sandbox=False):
     else:
         path = scriptpath()
 
+        scriptfile = os.path.join(path, scriptname)
+        if os.path.isfile(scriptfile):
+            if os.path.isfile(scriptfile):
+                exec(  # pylint: disable=exec-used
+                    compile(open(scriptfile).read(), scriptfile, 'exec'),
+                    namespace)
+                return 0
+        elif sandbox:
+            pytest.skip("sandbox tests are only run in a repository.")
     scriptfile = os.path.join(path, scriptname)
     if os.path.isfile(scriptfile):
         if os.path.isfile(scriptfile):

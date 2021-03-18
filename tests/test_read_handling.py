@@ -34,6 +34,18 @@
 # Contact: khmer-project@idyll.org
 # pylint: disable=C0111,C0103,E1103,W0612
 
+from __future__ import print_function
+from __future__ import absolute_import
+from __future__ import unicode_literals
+import json
+import sys
+import os
+import stat
+import shutil
+from io import StringIO
+import traceback
+import threading
+import bz2
 
 import gzip
 import os

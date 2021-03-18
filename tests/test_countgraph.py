@@ -1,6 +1,7 @@
 # This file is part of khmer, https://github.com/dib-lab/khmer/, and is
 # Copyright (C) 2010-2015, Michigan State University.
 # Copyright (C) 2015-2016, The Regents of the University of California.
+# Copyright (C) 2015-2016, The Regents of the University of California.
 # Copyright (C) 2016, Google, Inc
 #
 # Redistribution and use in source and binary forms, with or without
@@ -47,6 +48,8 @@ import screed
 
 import pytest
 
+import pytest
+
 MAX_COUNT = 255
 MAX_BIGCOUNT = 65535
 
@@ -64,6 +67,56 @@ DNA = "AGCTTTTCATTCTGACTGCAACGGGCAATATGTCTCTGTGTGGATTAAAAAAAGAGTGTCTGATAGCAGC"
 
 def teardown():
     utils.cleanup()
+
+
+def test_count_1():
+    hi = khmer._Countgraph(12, PRIMES_1m)
+
+    kmer = 'G'*12
+    hashval = hi.hash('G' * 12)
+
+    assert hi.get(kmer) == 0
+    assert hi.get(hashval) == 0
+
+    hi.count(kmer)
+    assert hi.get(kmer) == 1
+    assert hi.get(hashval) == 1
+
+    hi.count(kmer)
+    assert hi.get(kmer) == 2
+    assert hi.get(hashval) == 2
+
+    kmer = 'G'*11
+    try:
+        hi.hash(kmer)
+        assert 0, "incorrect kmer size should fail"
+    except RuntimeError:
+        pass
+
+
+def test_count_2():
+    hi = khmer._Countgraph(12, PRIMES_1m)
+    kmer = 'G'*12
+    hashval = hi.hash('G' * 12)
+
+    assert hi.get(kmer) == 0
+    assert hi.get(hashval) == 0
+
+    hi.count(kmer)
+    assert hi.get(kmer) == 1
+    assert hi.get(hashval) == 1
+
+    hi.count(hashval)                     # count hashes same as strings
+    assert hi.get(kmer) == 2
+    assert hi.get(hashval) == 2
+
+
+def test_revhash_1():
+    hi = khmer._Countgraph(12, [1])
+    kmer = 'C'*12
+    hashval = hi.hash('C' * 12)
+
+    assert hi.reverse_hash(hashval) == kmer
 
 
 def test_count_1():
@@ -227,6 +280,7 @@ def test_get_raw_tables_view():
         assert sum(tab.tolist()) == 1
 
 
+@pytest.mark.huge
 def test_get_raw_tables_view_smallcountgraph():
     ht = khmer.SmallCountgraph(4, 1e5, 4)
     tables = ht.get_raw_tables()
@@ -611,6 +665,14 @@ def test_get_kmers():
     kmers = hi.get_kmers("AGCTTTTC")
     assert kmers == ['AGCTTT', 'GCTTTT', 'CTTTTC']
 
+    kmers = hi.get_kmers("AGCTTTTC")
+    assert kmers == ['AGCTTT', 'GCTTTT', 'CTTTTC']
+
+@pytest.mark.huge
+def test_save_load_large():
+    def do_test(ctfile):
+        inpath = utils.get_test_data('random-20-a.fa')
+        savepath = utils.get_temp_filename(ctfile)
 
 @pytest.mark.huge
 @pytest.mark.parametrize("ctfile", ['temp.ct', 'temp.ct.gz'])

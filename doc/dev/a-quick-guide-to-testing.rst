@@ -139,10 +139,15 @@ review.
 
 To run one specific test rather than all of them, you can do::
 
+  ./setup.py test --addopts "tests/test_scripts.py::test_load_into_counting"
   py.test tests/test_scripts.py::test_load_into_counting
 
 Here, you're running just one test -- the test function named
 ``test_load_into_counting`` in the file ``test_scripts.py``.
+
+You can also use py.test directly, it is a bit less verbose::
+
+  py.test tests/test_scripts.py::test_load_into_counting
 
 You can also invoke the test via setup.py, which is a bit more verbose::
 

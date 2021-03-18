@@ -97,6 +97,8 @@ def get_parser():
                         help="Save the k-mer countgraph to the specified "
                         "filename.")
     parser.add_argument('-f', '--force', default=False, action='store_true',
+                         help='Force writing graph to file (suppress limited '
+                         'disk space warnings)')
                         help='Override sanity checks')
     parser.add_argument('-q', '--quiet', dest='quiet', default=False,
                         action='store_true')
@@ -107,6 +109,9 @@ def main():  # pylint: disable=too-many-locals,too-many-branches
     args = sanitize_help(get_parser()).parse_args()
     graph_type = 'smallcountgraph' if args.small_count else 'countgraph'
 
+    check_input_files(args.input_sequence_filename, False)
+    if args.savegraph:
+        graphsize = calculate_graphsize(args, 'countgraph')
     configure_logging(args.quiet)
     report_on_config(args, graph_type)
 

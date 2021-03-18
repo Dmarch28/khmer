@@ -46,6 +46,8 @@ PYSOURCES=$(filter-out khmer/_version.py, \
 SOURCES=$(PYSOURCES) $(CPPSOURCES) $(CYSOURCES) setup.py
 
 DEVPKGS=pep8==1.6.2 diff_cover autopep8 pylint coverage gcovr pytest \
+	pydocstyle screed pyenchant
+DEVPKGS=pep8==1.6.2 diff_cover autopep8 pylint coverage gcovr pytest \
 	'pytest-runner>=2.0,<3dev' pydocstyle pyenchant
 
 	pydocstyle screed pyenchant Cython==0.25.2
@@ -249,6 +251,8 @@ diff_pylint_report: pylint_report.txt
 .coverage: $(PYSOURCES) $(wildcard tests/*.py) $(EXTENSION_MODULE)
 	./setup.py develop
 	coverage run --branch --source=scripts,khmer,oxli \
+		--omit=khmer/_version.py -m pytest --junitxml=nosetests.xml \
+		-m $(TESTATTR)
 		--omit=khmer/_version.py -m pytest --junitxml=pytests.xml \
 		-m $(TESTATTR)
 
@@ -276,6 +280,8 @@ diff-cover.html: coverage-gcovr.xml coverage.xml
 	diff-cover coverage-gcovr.xml coverage.xml \
 		--html-report diff-cover.html
 
+nosetests.xml: FORCE
+	py.test --junitxml=$@ -m ${TESTATTR}
 pytests.xml: FORCE
 	py.test --junitxml=$@ -m ${TESTATTR}
 
@@ -329,6 +335,8 @@ sloccount.sc: $(CPPSOURCES) $(PYSOURCES) $(wildcard tests/*.py) Makefile
 		setup.py Makefile > sloccount.sc
 
 ## sloccount   : count lines of code
+sloccount:
+	sloccount lib khmer scripts tests setup.py Makefile
 sloccount:
 	sloccount src include khmer scripts tests setup.py Makefile
 

@@ -1,5 +1,7 @@
 /*
 This file is part of khmer, https://github.com/dib-lab/khmer/, and is
+Copyright (C) 2010-2015, Michigan State University.
+Copyright (C) 2015-2016, The Regents of the University of California.
 Copyright (C) 2016, The Regents of the University of California.
 
 Redistribution and use in source and binary forms, with or without
@@ -402,6 +404,13 @@ void Hashgraph::consume_partitioned_fasta(
         // Then consume the sequence
         n_consumed += consume_string(seq); // @CTB why are we doing this?
 
+            // Next, compute the tag & set the partition, if nonzero
+            HashIntoType kmer = _hash(seq, _ksize);
+            all_tags.insert(kmer);
+            if (p > 0) {
+                partition->set_partition_id(kmer, p);
+            }
+        }
         // Next, compute the tag & set the partition, if nonzero
         HashIntoType kmer = hash_dna(seq.c_str());
         all_tags.insert(kmer);
@@ -838,6 +847,11 @@ const
     if (n >= 10000) {
         std::cout << "\rfound " << n << " high degree nodes.\n";
     }
+    for (unsigned int i = 0; i < s.length() - _ksize + 1; i++) {
+        std::string sub = s.substr(i, _ksize);
+        kmers_vec.push_back(sub);
+    }
+}
 }
 
 unsigned int Hashgraph::traverse_linear_path(const Kmer seed_kmer,

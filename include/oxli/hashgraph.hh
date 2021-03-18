@@ -1,5 +1,7 @@
 /*
 This file is part of khmer, https://github.com/dib-lab/khmer/, and is
+Copyright (C) 2010-2015, Michigan State University.
+Copyright (C) 2015-2016, The Regents of the University of California.
 Copyright (C) 2016, The Regents of the University of California.
 
 Redistribution and use in source and binary forms, with or without
@@ -106,6 +108,15 @@ protected:
         _all_tags_spin_lock = 0;
     }
 
+
+    void _init_bitstuff()
+    {
+        bitmask = 0;
+        for (unsigned int i = 0; i < _ksize; i++) {
+            bitmask = (bitmask << 2) | 3;
+        }
+        _nbits_sub_1 = (_ksize*2 - 2);
+    }
 
     // empty the partition structure
     void _clear_all_partitions()

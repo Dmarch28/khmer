@@ -1,5 +1,6 @@
 /*
 This file is part of khmer, https://github.com/dib-lab/khmer/, and is
+Copyright (C) 2015-2016, The Regents of the University of California.
 Copyright (C) 2010-2015, Michigan State University.
 Copyright (C) 2015-2016, The Regents of the University of California.
 
@@ -56,6 +57,28 @@ class LabelHash;
 class Hashbits : public Hashgraph
 {
 public:
+
+    const Hashtable * graph;
+
+    explicit Traverser(const Hashtable * ht);
+
+    Kmer get_left(Kmer& node, const char ch);
+    Kmer get_right(Kmer& node, const char ch);
+
+    unsigned int traverse_left(Kmer& node,
+                               KmerQueue &node_q,
+                               std::function<bool (Kmer&)> filter=0);
+    unsigned int traverse_right(Kmer& node,
+                                KmerQueue &node_q,
+                                std::function<bool (Kmer&)> filter=0);
+    unsigned int traverse(Kmer& node,
+                          KmerQueue &node_q,
+                          std::function<bool (Kmer&)> filter=0) {
+        unsigned int found;
+        found = traverse_left(node, node_q, filter);
+        found += traverse_right(node, node_q, filter);
+        return found;
+    };
     explicit Hashbits(WordLength ksize, std::vector<uint64_t> sizes)
         : Hashgraph(ksize, new BitStorage(sizes)) { } ;
 

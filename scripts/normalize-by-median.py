@@ -45,24 +45,23 @@ option to output to STDOUT.
 
 Use '-h' for parameter help.
 """
+from __future__ import print_function
 
 import sys
 import screed
 import os
 import khmer
 import textwrap
-from khmer import khmer_args, Countgraph
+from khmer import khmer_args
 from contextlib import contextmanager
 from khmer.khmer_args import (build_counting_args, add_loadgraph_args,
-                              report_on_config, calculate_graphsize,
+                              report_on_config, info, calculate_graphsize,
                               sanitize_help, check_argument_range)
-from khmer.khmer_args import FileType as khFileType
 import argparse
 from khmer.kfile import (check_space, check_space_for_graph,
                          check_valid_file_exists, add_output_compression_type,
-                         get_file_writer, describe_file_handle)
-from khmer.utils import (write_record, broken_paired_reader, ReadBundle,
-                         clean_input_reads)
+                         get_file_writer, is_block, describe_file_handle)
+from khmer.utils import (write_record, broken_paired_reader, ReadBundle)
 from khmer.khmer_logger import (configure_logging, log_info, log_error)
 
 
@@ -254,8 +253,7 @@ def get_parser():
         tests/test-data/test-fastq-reads.fq"""
     parser = build_counting_args(
         descr="Do digital normalization (remove mostly redundant sequences)",
-        epilog=textwrap.dedent(epilog),
-        citations=['diginorm'])
+        epilog=textwrap.dedent(epilog))
     parser.add_argument('-q', '--quiet', dest='quiet', default=False,
                         action='store_true')
     parser.add_argument('-C', '--cutoff', help="when the median "
@@ -272,20 +270,19 @@ def get_parser():
                         metavar="unpaired_reads_filename",
                         help='include a file of unpaired reads to which '
                         '-p/--paired does not apply.')
-    parser.add_argument('-s', '--savegraph', metavar="filename", default=None,
+    parser.add_argument('-s', '--savegraph', metavar="filename", default='',
                         help='save the k-mer countgraph to disk after all '
                         'reads are loaded.')
     parser.add_argument('-R', '--report',
-                        help='write progress report to report_filename',
                         metavar='report_filename', type=argparse.FileType('w'))
     parser.add_argument('--report-frequency',
-                        metavar='report_frequency', type=int, default=100000,
-                        help='report progress every report_frequency reads')
+                        metavar='report_frequency', type=int,
+                        default=100000)
     parser.add_argument('-f', '--force', dest='force',
                         help='continue past file reading errors',
                         action='store_true')
     parser.add_argument('-o', '--output', metavar="filename",
-                        type=khFileType('wb'),
+                        type=argparse.FileType('wb'),
                         default=None, dest='single_output_file',
                         help='only output a single file with '
                         'the specified filename; use a single dash "-" to '
@@ -301,6 +298,9 @@ def get_parser():
 def main():  # pylint: disable=too-many-branches,too-many-statements
     parser = sanitize_help(get_parser())
     args = parser.parse_args()
+
+    if not args.quiet:
+        info('normalize-by-median.py', ['diginorm'])
 
     configure_logging(args.quiet)
     report_on_config(args)
@@ -329,7 +329,7 @@ def main():  # pylint: disable=too-many-branches,too-many-statements
     # check that files exist and there is sufficient output disk space.
     check_valid_file_exists(args.input_filenames)
     check_space(args.input_filenames, args.force)
-    if args.savegraph is not None:
+    if args.savegraph:
         graphsize = calculate_graphsize(args, 'countgraph')
         check_space_for_graph(args.savegraph, graphsize, args.force)
 
@@ -337,7 +337,7 @@ def main():  # pylint: disable=too-many-branches,too-many-statements
     if args.loadgraph:
         log_info('loading k-mer countgraph from {graph}',
                  graph=args.loadgraph)
-        countgraph = Countgraph.load(args.loadgraph)
+        countgraph = khmer.load_countgraph(args.loadgraph)
     else:
         log_info('making countgraph')
         countgraph = khmer_args.create_countgraph(args)
@@ -380,7 +380,8 @@ def main():  # pylint: disable=too-many-branches,too-many-statements
         # failsafe context manager in case an input file breaks
         with catch_io_errors(filename, outfp, args.single_output_file,
                              args.force, corrupt_files):
-            screed_iter = clean_input_reads(screed.open(filename))
+
+            screed_iter = screed.open(filename)
             reader = broken_paired_reader(screed_iter, min_length=args.ksize,
                                           force_single=force_single,
                                           require_paired=require_paired)
@@ -399,7 +400,7 @@ def main():  # pylint: disable=too-many-branches,too-many-statements
     log_info('Total number of unique k-mers: {umers}',
              umers=countgraph.n_unique_kmers())
 
-    if args.savegraph is not None:
+    if args.savegraph:
         log_info('...saving to {name}', name=args.savegraph)
         countgraph.save(args.savegraph)
 

@@ -13,6 +13,7 @@ Procedure:
     erroneous paths from super-high-abundance data
 * run this script with the assembly & the remaining reads.
 """
+from __future__ import print_function
 import sys
 import os.path
 import khmer, khmer.utils
@@ -38,7 +39,7 @@ def main():
     ng._set_tag_density(20)
 
     print('loading & tagging assembly from:', args.assembly)
-    ng.consume_seqfile_and_tag(args.assembly)
+    ng.consume_fasta_and_tag(args.assembly)
 
     if args.output:
         outfp = open(args.output, 'w')

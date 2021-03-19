@@ -67,24 +67,22 @@ PREFIX=/usr/local
 
 ### NOTE: No user-serviceable parts below this line! ###
 
-INCLUDES= -I ../../include/ -I ../../third-party/seqan/core/include/ \
-	      -I ../../third-party/smhasher/ \
-				-I ../../third-party/cqf/ \
-				-I ../../third-party/rollinghash
+INCLUDES= -I ../third-party/seqan/core/include/ 	\
+	  -I ../third-party/smhasher/
 
 ifeq ($(USE_SYSTEM_ZLIB), false)
-INCLUDES += -I ../../third-party/zlib/
+INCLUDES += -I ../third-party/zlib/
 endif
 
 ifeq ($(USE_SYSTEM_LIBBZ2), false)
-INCLUDES += -I ../../third-party/bzip2/
+INCLUDES += -I ../third-party/bzip2/
 endif
 
 # Warnings in common to C and C++
 WARNINGS=-Wall
 
 # Flags in common to C and C++
-COMMON_FLAGS=-O3 -fPIC -fno-omit-frame-pointer
+COMMON_FLAGS=-O3 -fPIC
 SEQAN_FLAGS=-DSEQAN_HAS_ZLIB=1 -DSEQAN_HAS_BZIP2=1
 
 # Base C/CXXFLAGS
@@ -117,9 +115,9 @@ CFLAGS   += $(DEBUG_FLAGS)
 endif
 
 ifeq ($(WANT_EXTRA_SANITY_CHECKING), true)
-DEFINE_OXLI_EXTRA_SANITY_CHECKS=-DOXLI_EXTRA_SANITY_CHECKS
-CXXFLAGS += $(DEFINE_OXLI_EXTRA_SANITY_CHECKS)
-CFLAGS   += $(DEFINE_OXLI_EXTRA_SANITY_CHECKS)
+DEFINE_KHMER_EXTRA_SANITY_CHECKS=-DKHMER_EXTRA_SANITY_CHECKS
+CXXFLAGS += $(DEFINE_KHMER_EXTRA_SANITY_CHECKS)
+CFLAGS   += $(DEFINE_KHMER_EXTRA_SANITY_CHECKS)
 endif
 
 ifeq ($(WANT_PROFILING), true)
@@ -170,7 +168,7 @@ SONAME       = liboxli.$(SHARED_EXT).$(LIB_VERSION)
 SONAME_FLAGS = -Wl,-soname=$(SONAME)
 endif
 
-LIBOXLISO=$(SONAME)
+LIBKHMERSO=$(SONAME)
 
 CXXFLAGS += -DVERSION=$(VERSION)
 
@@ -187,7 +185,7 @@ export VERSION
 
 #### Third party dependencies ####
 # ZLIB, use .lo not .o, so we get -fPIC and other library-related flags
-ZLIB_DIR=../../third-party/zlib
+ZLIB_DIR=../third-party/zlib
 ZLIB_OBJS_BASE=\
 	adler32.lo \
 	crc32.lo \
@@ -208,7 +206,7 @@ ZLIB_OBJS_BASE=\
 ZLIB_OBJS=$(addprefix $(ZLIB_DIR)/, $(ZLIB_OBJS_BASE))
 
 # BZ2
-BZIP2_DIR=../../third-party/bzip2
+BZIP2_DIR=../third-party/bzip2
 BZIP2_OBJS_BASE= \
 	blocksort.o \
 	huffman.o \
@@ -220,15 +218,9 @@ BZIP2_OBJS_BASE= \
 
 BZIP2_OBJS=$(addprefix $(BZIP2_DIR)/, $(BZIP2_OBJS_BASE))
 
-# Counting bloom filter
-CQF_DIR=../../third-party/cqf
-CQF_OBJS_BASE= gqf.o
-
-CQF_OBJS=$(addprefix $(CQF_DIR)/, $(CQF_OBJS_BASE))
 
 #### oxli proper below here ####
 
-LIBOXLI_OBJS= \
 LIBKHMER_OBJS= \
 	counting.o \
 	hashbits.o \
@@ -245,37 +237,28 @@ LIBKHMER_OBJS= \
 	alphabets.o \
 	murmur3.o \
 	storage.o
-	murmur3.o
 
 PRECOMILE_OBJS ?=
 PRECLEAN_TARGS ?=
 
 ifeq ($(USE_SYSTEM_ZLIB), false)
-LIBOXLI_OBJS  += $(ZLIB_OBJS)
+LIBKHMER_OBJS  += $(ZLIB_OBJS)
 PRECOMILE_OBJS += $(ZLIB_OBJS)
 PRECLEAN_TARGS += zlibclean
 endif
 
 ifeq ($(USE_SYSTEM_LIBBZ2), false)
-LIBOXLI_OBJS  += $(BZIP2_OBJS)
+LIBKHMER_OBJS  += $(BZIP2_OBJS)
 PRECOMILE_OBJS += $(BZIP2_OBJS)
 PRECLEAN_TARGS += libbz2clean
 endif
 
-LIBOXLI_OBJS  += $(CQF_OBJS)
-PRECOMILE_OBJS += $(CQF_OBJS)
-PRECLEAN_TARGS += libcqfclean
-
-HEADERS= \
-OXLI_HEADERS= \
 KHMER_HEADERS= \
 	counting.hh \
 	hashbits.hh \
 	hashtable.hh \
-	hashgraph.hh \
-	hllcounter.hh \
-	oxli_exception.hh \
-	oxli.hh \
+	khmer_exception.hh \
+	khmer.hh \
 	kmer_hash.hh \
 	labelhash.hh \
 	traversal.hh \
@@ -286,33 +269,28 @@ KHMER_HEADERS= \
 	assembler.hh \
 	alphabets.hh \
 	storage.hh
-OXLI_HEADERS = $(addprefix ../../include/oxli/,$(HEADERS))
-	alphabets.hh
 
 # START OF RULES #
 
 # The all rule comes first!
-all: $(LIBOXLISO) liboxli.a oxli.pc
+all: $(LIBKHMERSO) liboxli.a oxli.pc
 
 zlibclean:
 	(cd $(ZLIB_DIR) && make distclean)
 libbz2clean:
 	(cd $(BZIP2_DIR) && make -f Makefile-libbz2_so clean)
-libcqfclean:
-	(cd $(CQF_DIR) && make clean)
 
 clean: $(PRECLEAN_TARGS)
 	rm -f *.o *.a *.$(SHARED_EXT)* oxli.pc $(TEST_PROGS)
 
-install: $(LIBOXLISO) liboxli.a oxli.pc $(OXLI_HEADERS)
-	rm -rf $(PREFIX)/include/oxli $(PREFIX)/include/khmer
+install: $(LIBKHMERSO) liboxli.a oxli.pc $(KHMER_HEADERS)
 	mkdir -p $(PREFIX)/lib $(PREFIX)/lib/pkgconfig $(PREFIX)/include/oxli
-	cp -r $(OXLI_HEADERS) 				\
-		../../third-party/smhasher/MurmurHash3.h 	\
+	cp -r $(KHMER_HEADERS) 				\
+		../third-party/smhasher/MurmurHash3.h 	\
 		$(PREFIX)/include/oxli/
 	cp oxli.pc $(PREFIX)/lib/pkgconfig/
-	cp $(LIBOXLISO) liboxli.a $(PREFIX)/lib/
-	ln -sf $(PREFIX)/lib/$(LIBOXLISO) $(PREFIX)/lib/liboxli.$(SHARED_EXT)
+	cp $(LIBKHMERSO) liboxli.a $(PREFIX)/lib
+	ln -sf $(PREFIX)/lib/$(LIBKHMERSO) $(PREFIX)/lib/liboxli.$(SHARED_EXT)
 
 oxli.pc: oxli.pc.in
 	sed -e 's,@prefix@,$(PREFIX),'  -e 's,@VERSION@,$(VERSION),' $< >$@
@@ -323,20 +301,17 @@ $(ZLIB_OBJS):
 $(BZIP2_OBJS):
 	(cd $(BZIP2_DIR) && make -f Makefile-libbz2_so $(BZIP2_OBJS_BASE))
 
-$(CQF_OBJS):
-	(cd $(CQF_DIR) && make)
-
 # MurMur3
-murmur3.o: ../../third-party/smhasher/MurmurHash3.cc
+murmur3.o: ../third-party/smhasher/MurmurHash3.cc
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-%.o: %.cc $(PRECOMILE_OBJS) $(OXLI_HEADERS)
+%.o: %.cc $(PRECOMILE_OBJS) $(KHMER_HEADERS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -c -o $@ $<
 
-$(LIBOXLISO): $(LIBOXLI_OBJS)
+$(LIBKHMERSO): $(LIBKHMER_OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(SONAME_FLAGS) -shared -o $@ $^
 	ln -sf $(SONAME) liboxli.$(SHARED_EXT)
 
-liboxli.a: $(LIBOXLI_OBJS)
+liboxli.a: $(LIBKHMER_OBJS)
 	ar rcs $@ $^
 	ranlib $@

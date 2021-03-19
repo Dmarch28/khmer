@@ -7,6 +7,7 @@
 #
 # pylint: disable=missing-docstring,no-member
 """Common functions for partitioning."""
+from __future__ import print_function, absolute_import, unicode_literals
 
 import sys
 import gc
@@ -40,7 +41,7 @@ def worker(que, basename, stop_big_traversals):
                                                stop_big_traversals)
 
         print('saving:', basename, index, file=sys.stderr)
-        subset.save_partitionmap(outfile)
+        nodegraph.save_subset_partitionmap(subset, outfile)
         del subset
         gc.collect()
 

@@ -41,6 +41,7 @@ Build a counting Bloom filter from the given sequences, save in <countgraph>.
 
 Use '-h' for parameter help.
 """
+from __future__ import print_function, unicode_literals
 
 import json
 import os
@@ -80,8 +81,7 @@ def get_parser():
     """
 
     parser = build_counting_args("Build a k-mer countgraph from the given"
-                                 " sequences.", epilog=textwrap.dedent(epilog),
-                                 citations=['counting', 'SeqAn'])
+                                 " sequences.", epilog=textwrap.dedent(epilog))
     add_threading_args(parser)
     parser.add_argument('output_countgraph_filename', help="The name of the"
                         " file to write the k-mer countgraph to.")
@@ -92,7 +92,7 @@ def get_parser():
                         action='store_false', help="The default behaviour is "
                         "to count past 255 using bigcount. This flag turns "
                         "bigcount off, limiting counts to 255.")
-    parser.add_argument('-s', '--summary-info', type=str, default=None,
+    parser.add_argument('--summary-info', '-s', type=str, default=None,
                         metavar="FORMAT", choices=[str('json'), str('tsv')],
                         help="What format should the machine readable run "
                         "summary be in? (`json` or `tsv`, disabled by"
@@ -107,6 +107,8 @@ def get_parser():
 def main():
 
     args = sanitize_help(get_parser()).parse_args()
+    if not args.quiet:
+        info('load-into-counting.py', ['counting', 'SeqAn'])
 
     configure_logging(args.quiet)
     report_on_config(args)
@@ -135,6 +137,7 @@ def main():
 
     log_info('making countgraph')
     countgraph = khmer_args.create_countgraph(args)
+    countgraph.set_use_bigcount(args.bigcount)
 
     filename = None
 
@@ -148,7 +151,7 @@ def main():
         for _ in range(args.threads):
             cur_thrd = \
                 threading.Thread(
-                    target=countgraph.consume_seqfile,
+                    target=countgraph.consume_fasta_with_reads_parser,
                     args=(rparser, )
                 )
             threads.append(cur_thrd)
@@ -214,7 +217,6 @@ def main():
 
     log_info('DONE.')
     log_info('wrote to: {filename}', filename=info_filename)
-
 
 if __name__ == '__main__':
     main()

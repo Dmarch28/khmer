@@ -35,12 +35,12 @@
 # pylint: disable=missing-docstring,too-few-public-methods
 """Utilities for dealing with multithreaded processing of short reads."""
 
+from __future__ import print_function, unicode_literals
 
 import threading
 import sys
 import screed
-import khmer
-from khmer.utils import write_record, check_is_pair
+from khmer.utils import (write_record, check_is_pair, clean_input_reads)
 from khmer.khmer_logger import log_info
 # stdlib queue module was renamed on Python 3
 try:
@@ -53,12 +53,12 @@ DEFAULT_GROUPSIZE = 100
 
 
 def verbose_loader(filename):
-    """Read iterator that additionally prints progress info to stderr."""
-    for num, record in enumerate(khmer.ReadParser(filename)):
+    """Screed iterator that additionally prints progress info to stderr."""
+    screed_iter = clean_input_reads(screed.open(filename))
+    for num, record in enumerate(screed_iter):
         if num % 100000 == 0:
             log_info('... filtering {num}', num=num)
         yield record
-
 
 verbose_fasta_iter = verbose_loader  # pylint: disable=invalid-name
 
@@ -169,11 +169,11 @@ class ThreadedSequenceProcessor(object):
             keep = []
             for record in grouping.seqlist:
                 name, sequence = self.process_fn(record)
-                bp_processed += len(record.sequence)
+                bp_processed += len(record['sequence'])
                 if name:
-                    quality = None
-                    if hasattr(record, 'quality'):
-                        quality = record.quality[:len(sequence)]
+                    quality = record.get('quality')
+                    if quality:
+                        quality = quality[:len(sequence)]
                     bp_written += len(sequence)
                     keep.append((name, sequence, quality))
 

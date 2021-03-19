@@ -1,18 +1,16 @@
-// A demonstration of using khmer for exact k-mer counting. The memory required
-// is 4^k, which limits this to small values of k.
+// A demonstration of using khmer to count k-mers; in this case, the request
+// was for exact counting.
 
 #include <vector>
 #include <cmath>
-#include "oxli/oxli.hh"
-#include "oxli/hashgraph.hh"
+#include "khmer.hh"
+#include "counting.hh"
 
-
-using namespace oxli;
+using namespace khmer;
 
 int main()
 {
     unsigned int ksize = 11;
-    uint64_t nkmers = pow(4, ksize);
 
     // For exact counting, you need to create one table that is >= 4**k. This
     // will be that size in bytes, note, so you will need the appropriate amount
@@ -21,21 +19,23 @@ int main()
     // If `ksize` is even, note that k-mers will collapse with their reverse
     // complement. In that case, a table size of 4**(k-1) + k is required.
 
-    std::vector<uint64_t> tablesize = {nkmers};
-    Countgraph counts(ksize, tablesize);
+    std::vector<HashIntoType> tablesize;
+    tablesize.push_back(pow(4, ksize));
 
-    counts.consume_string("ATGGCGATGGCAAGTAGGACCCAGATGGACCAAAG");
+    CountingHash ktable(ksize, tablesize);
 
-    std::cout << "count for: " << "ATGGCGATGGC" << " is " <<
-        counts.get_count("ATGGCGATGGC") << "\n";
-
-    counts.add("ATGGCGATGGC");
+    ktable.consume_string("ATGGCGATGGCAAGTAGGACCCAGATGGACCAAAG");
 
     std::cout << "count for: " << "ATGGCGATGGC" << " is " <<
-        counts.get_count("ATGGCGATGGC") << "\n";
+        ktable.get_count("ATGGCGATGGC") << "\n";
+
+    ktable.add("ATGGCGATGGC");
+
+    std::cout << "count for: " << "ATGGCGATGGC" << " is " <<
+        ktable.get_count("ATGGCGATGGC") << "\n";
 
     std::cout << "count for: " << "GTGGCGATGGC" << " is " <<
-        counts.get_count("GTGGCGATGGC") << "\n";
+        ktable.get_count("GTGGCGATGGC") << "\n";
 
     return 0;
 }

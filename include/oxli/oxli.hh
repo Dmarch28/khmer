@@ -35,8 +35,8 @@ LICENSE (END)
 
 Contact: khmer-project@idyll.org
 */
-#ifndef OXLI_HH
-#   define OXLI_HH
+#ifndef KHMER_HH
+#   define KHMER_HH
 
 // C standard integer types are used almost ubiquitously.
 #   if (__cplusplus >= 201103L)
@@ -71,12 +71,11 @@ private:\
 
 #include <set>
 #include <map>
-#include <unordered_map>
 #include <queue>
 #include <list>
 #include <functional>
 
-#include "oxli_exception.hh"
+#include "khmer_exception.hh"
 
 #   define MAX_KCOUNT 255
 #   define MAX_BIGCOUNT 65535
@@ -94,18 +93,16 @@ private:\
 #   define SAVED_STOPTAGS 4
 #   define SAVED_SUBSET 5
 #   define SAVED_LABELSET 6
-#   define SAVED_SMALLCOUNT 7
-#   define SAVED_QFCOUNT 8
 
-#   define TRAVERSAL_LEFT 0
-#   define TRAVERSAL_RIGHT 1
+#   define LEFT 0
+#   define RIGHT 1
 
 #   define VERBOSE_REPARTITION 0
 
 #   define MIN( a, b )	(((a) > (b)) ? (b) : (a))
 #   define MAX( a, b )	(((a) < (b)) ? (b) : (a))
 
-namespace oxli
+namespace khmer
 {
 
 // largest number we can count up to, exactly. (8 bytes)
@@ -130,22 +127,22 @@ typedef void (*CallbackFn)(const char * info, void * callback_data,
 typedef unsigned int PartitionID;
 typedef std::set<HashIntoType> SeenSet;
 typedef std::set<PartitionID> PartitionSet;
-typedef std::unordered_map<HashIntoType, PartitionID*> PartitionMap;
-typedef std::unordered_map<PartitionID, PartitionID*> PartitionPtrMap;
-typedef std::unordered_map<PartitionID, SeenSet*> PartitionsToTagsMap;
+typedef std::map<HashIntoType, PartitionID*> PartitionMap;
+typedef std::map<PartitionID, PartitionID*> PartitionPtrMap;
+typedef std::map<PartitionID, SeenSet*> PartitionsToTagsMap;
 typedef std::set<PartitionID *> PartitionPtrSet;
-typedef std::unordered_map<PartitionID, PartitionPtrSet*> ReversePartitionMap;
+typedef std::map<PartitionID, PartitionPtrSet*> ReversePartitionMap;
 typedef std::queue<HashIntoType> NodeQueue;
-typedef std::unordered_map<PartitionID, PartitionID*> PartitionToPartitionPMap;
-typedef std::unordered_map<HashIntoType, unsigned int> TagCountMap;
-typedef std::unordered_map<PartitionID, unsigned int> PartitionCountMap;
+typedef std::map<PartitionID, PartitionID*> PartitionToPartitionPMap;
+typedef std::map<HashIntoType, unsigned int> TagCountMap;
+typedef std::map<PartitionID, unsigned int> PartitionCountMap;
 typedef std::map<unsigned long long, unsigned long long>
 PartitionCountDistribution;
 
 // types used in @camillescott's sparse labeling extension
 typedef unsigned long long int Label;
-typedef std::unordered_multimap<HashIntoType, Label> TagLabelMap;
-typedef std::unordered_multimap<Label, HashIntoType> LabelTagMap;
+typedef std::multimap<HashIntoType, Label> TagLabelMap;
+typedef std::multimap<Label, HashIntoType> LabelTagMap;
 typedef std::pair<HashIntoType, Label> TagLabelPair;
 typedef std::pair<Label, HashIntoType> LabelTagPair;
 typedef std::set<Label> LabelSet;
@@ -169,11 +166,6 @@ typedef std::set<Kmer> KmerSet;
 typedef std::function<bool (const Kmer&)> KmerFilter;
 typedef std::list<KmerFilter> KmerFilterList;
 typedef std::vector<std::string> StringVector;
-// A function which takes a Kmer and returns true if it
-// is to be filtered / ignored
-typedef std::function<bool (const Kmer&)> KmerFilter;
-typedef std::list<KmerFilter> KmerFilterList;
-typedef std::vector<std::string> StringVector;
 }
 
-#endif // OXLI_HH
+#endif // KHMER_HH

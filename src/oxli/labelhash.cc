@@ -41,11 +41,12 @@ Contact: khmer-project@idyll.org
 #include <sstream> // IWYU pragma: keep
 #include <set>
 
-#include "oxli/hashgraph.hh"
-#include "oxli/oxli_exception.hh"
-#include "oxli/labelhash.hh"
-#include "oxli/read_parsers.hh"
-#include "oxli/subset.hh"
+#include "hashbits.hh"
+#include "hashtable.hh"
+#include "khmer_exception.hh"
+#include "labelhash.hh"
+#include "read_parsers.hh"
+#include "subset.hh"
 
 #define IO_BUF_SIZE 250*1000*1000
 
@@ -55,38 +56,37 @@ Contact: khmer-project@idyll.org
 #define DEBUG 0
 
 using namespace std;
-using namespace oxli;
-using namespace oxli:: read_parsers;
 using namespace khmer;
-using namespace khmer::read_parsers;
-
-namespace khmer
-{
+using namespace khmer:: read_parsers;
 
 /*
  * @camillescott
- * Might be time for a refactor: could do a general consume_seqfile
+ * Might be time for a refactor: could do a general consume_fasta
  * function which accepts a consume_sequence function pointer as a parameter
  */
 
-template<typename SeqIO>
-void LabelHash::consume_seqfile_and_tag_with_labels(
+void
+LabelHash::consume_fasta_and_tag_with_labels(
     std:: string const  &filename,
     unsigned int	      &total_reads, unsigned long long	&n_consumed,
     CallbackFn	      callback,	    void *		callback_data
 )
 {
-    ReadParserPtr<SeqIO> parser = get_parser<SeqIO>(filename);
-    consume_seqfile_and_tag_with_labels<SeqIO>(
+    IParser *	  parser =
+        IParser::get_parser( filename );
+
+    consume_fasta_and_tag_with_labels(
         parser,
         total_reads, n_consumed,
         callback, callback_data
     );
+
+    delete parser;
 }
 
-template<typename SeqIO>
-void LabelHash::consume_seqfile_and_tag_with_labels(
-    ReadParserPtr<SeqIO>& parser,
+void
+LabelHash::consume_fasta_and_tag_with_labels(
+    read_parsers:: IParser *  parser,
     unsigned int		    &total_reads,   unsigned long long	&n_consumed,
     CallbackFn		    callback,	    void *		callback_data
 )
@@ -110,21 +110,21 @@ void LabelHash::consume_seqfile_and_tag_with_labels(
             break;
         }
 
-        read.set_clean_seq();
-
-        // TODO: make threadsafe!
-        unsigned long long this_n_consumed = 0;
-        consume_sequence_and_tag_with_labels( read.cleaned_seq,
-                                              this_n_consumed,
-                                              the_label );
-        the_label++;
+        if (graph->check_and_normalize_read( read.sequence )) {
+            // TODO: make threadsafe!
+            unsigned long long this_n_consumed = 0;
+            consume_sequence_and_tag_with_labels( read.sequence,
+                                                  this_n_consumed,
+                                                  the_label );
+            the_label++;
 
 #if (0) // Note: Used with callback - currently disabled.
-        n_consumed_LOCAL  = __sync_add_and_fetch( &n_consumed, this_n_consumed );
+            n_consumed_LOCAL  = __sync_add_and_fetch( &n_consumed, this_n_consumed );
 #else
-        __sync_add_and_fetch( &n_consumed, this_n_consumed );
+            __sync_add_and_fetch( &n_consumed, this_n_consumed );
 #endif
-        __sync_add_and_fetch( &total_reads, 1 );
+            __sync_add_and_fetch( &total_reads, 1 );
+        }
 
         // TODO: Figure out alternative to callback into Python VM
         //       Cannot use in multi-threaded operation.
@@ -133,7 +133,7 @@ void LabelHash::consume_seqfile_and_tag_with_labels(
         if (total_reads_TL % CALLBACK_PERIOD == 0 && callback) {
             std::cout << "n tags: " << graph->all_tags.size() << "\n";
             try {
-                callback("consume_seqfile_and_tag_with_labels", callback_data,
+                callback("consume_fasta_and_tag_with_labels", callback_data,
                          total_reads_TL,
                          n_consumed);
             } catch (...) {
@@ -147,7 +147,6 @@ void LabelHash::consume_seqfile_and_tag_with_labels(
 
 }
 
-template<typename SeqIO>
 void LabelHash::consume_partitioned_fasta_and_tag_with_labels(
     const std::string &filename,
     unsigned int &total_reads,
@@ -158,7 +157,7 @@ void LabelHash::consume_partitioned_fasta_and_tag_with_labels(
     total_reads = 0;
     n_consumed = 0;
 
-    ReadParserPtr<SeqIO> parser = get_parser<SeqIO>(filename);
+    IParser* parser = IParser::get_parser(filename.c_str());
     Read read;
 
     std::string seq = "";
@@ -173,19 +172,19 @@ void LabelHash::consume_partitioned_fasta_and_tag_with_labels(
     PartitionID p;
     while(!parser->is_complete())  {
         read = parser->get_next_read();
+        seq = read.sequence;
 
-        read.set_clean_seq();
-        seq = read.cleaned_seq;
-
-        // First, figure out what the partition is (if non-zero), and
-        // save that.
-        printdbg(parsing partition id)
-        p = _parse_partition_id(read.name);
-        printdbg(consuming sequence and tagging)
-        consume_sequence_and_tag_with_labels( seq,
-                                              n_consumed,
-                                              p );
-        printdbg(back in consume_partitioned)
+        if (graph->check_and_normalize_read(seq)) {
+            // First, figure out what the partition is (if non-zero), and
+            // save that.
+            printdbg(parsing partition id)
+            p = _parse_partition_id(read.name);
+            printdbg(consuming sequence and tagging)
+            consume_sequence_and_tag_with_labels( seq,
+                                                  n_consumed,
+                                                  p );
+            printdbg(back in consume_partitioned)
+        }
 
         // reset the sequence info, increment read number
         total_reads++;
@@ -196,17 +195,21 @@ void LabelHash::consume_partitioned_fasta_and_tag_with_labels(
                 callback("consume_partitioned_fasta_and_tag_with_labels", callback_data,
                          total_reads, n_consumed);
             } catch (...) {
+                delete parser;
                 throw;
             }
         }
     }
     printdbg(done with while loop in consume_partitioned)
+
+        // @cswelcher TODO: check that deallocate LabelPtrMap is correct
+    {
+        delete parser;
+    }
     printdbg(deleted parser and exiting)
 }
 
-// Note: this function assumes that 'kmer' is already in graph->all_tags;
-// see usage elsewhere in this code.
-
+// @cswelcher: double-check -- is it valid to pull the address from a reference?
 void LabelHash::link_tag_and_label(const HashIntoType kmer,
                                    const Label kmer_label)
 {
@@ -326,7 +329,7 @@ unsigned int LabelHash::sweep_label_neighborhood(const std::string& seq,
     //printf("range=%u ", range);
     if (range == 0) {
         if (!(num_traversed == seq.length()-graph->ksize()+1)) {
-            throw oxli_exception();
+            throw khmer_exception();
         }
     }
     tagged_kmers.clear();
@@ -338,34 +341,6 @@ void LabelHash::get_tag_labels(const HashIntoType tag,
 {
     if (set_contains(graph->all_tags, tag)) {
         _get_tag_labels(tag, tag_labels, labels);
-    }
-}
-
-// get_labels_for_sequence: return labels present in the given sequence.
-
-void LabelHash::get_labels_for_sequence(const std::string& seq,
-                                        LabelSet& found_labels)
-const
-{
-    bool kmer_tagged;
-    TagSet tags;
-
-    KmerIterator kmers(seq.c_str(), graph->_ksize);
-    HashIntoType kmer;
-
-    while(!kmers.done()) {
-        kmer = kmers.next();
-
-        kmer_tagged = set_contains(graph->all_tags, kmer);
-
-        if (kmer_tagged) {
-            tags.insert(kmer);
-        }
-    }
-
-    SeenSet::const_iterator si;
-    for (si = tags.begin(); si != tags.end(); ++si) {
-        _get_tag_labels(*si, tag_labels, found_labels);
     }
 }
 
@@ -450,7 +425,7 @@ void LabelHash::save_labels_and_tags(std::string filename)
 
     if (outfile.fail()) {
         delete[] buf;
-        throw oxli_file_exception(strerror(errno));
+        throw khmer_file_exception(strerror(errno));
     }
     outfile.close();
 
@@ -473,13 +448,13 @@ void LabelHash::load_labels_and_tags(std::string filename)
         } else {
             err = "Unknown error in opening file: " + filename;
         }
-        throw oxli_file_exception(err);
+        throw khmer_file_exception(err);
     } catch (const std::exception &e) {
         // Catching std::exception is a stopgap for
         // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66145
         std::string err = "Unknown error opening file: " + filename + " "
                           + strerror(errno);
-        throw oxli_file_exception(err);
+        throw khmer_file_exception(err);
     }
 
     unsigned long n_labeltags = 1;
@@ -499,17 +474,17 @@ void LabelHash::load_labels_and_tags(std::string filename)
             }
             err << " while reading labels/tags from " << filename
                 << " Should be: " << SAVED_SIGNATURE;
-            throw oxli_file_exception(err.str());
+            throw khmer_file_exception(err.str());
         } else if (!(version == SAVED_FORMAT_VERSION)) {
             std::ostringstream err;
             err << "Incorrect file format version " << (int) version
                 << " while reading labels/tags from " << filename;
-            throw oxli_file_exception(err.str());
+            throw khmer_file_exception(err.str());
         } else if (!(ht_type == SAVED_LABELSET)) {
             std::ostringstream err;
             err << "Incorrect file format type " << (int) ht_type
                 << " while reading labels/tags from " << filename;
-            throw oxli_file_exception(err.str());
+            throw khmer_file_exception(err.str());
         }
 
         infile.read((char *) &save_ksize, sizeof(save_ksize));
@@ -517,20 +492,20 @@ void LabelHash::load_labels_and_tags(std::string filename)
             std::ostringstream err;
             err << "Incorrect k-mer size " << save_ksize
                 << " while reading labels/tags from " << filename;
-            throw oxli_file_exception(err.str());
+            throw khmer_file_exception(err.str());
         }
 
         infile.read((char *) &n_labeltags, sizeof(n_labeltags));
     } catch (std::ifstream::failure &e) {
         std::string err;
         err = "Unknown error reading header info from: " + filename;
-        throw oxli_file_exception(err);
-    } catch (oxli_file_exception &e) {
+        throw khmer_file_exception(err);
+    } catch (khmer_file_exception &e) {
         throw e;
     } catch (const std::exception &e) {
         std::string err = "Unknown error opening file: " + filename + " "
                           + strerror(errno);
-        throw oxli_file_exception(err);
+        throw khmer_file_exception(err);
     }
 
     char * buf = new char[IO_BUF_SIZE];
@@ -560,7 +535,7 @@ void LabelHash::load_labels_and_tags(std::string filename)
 
                 std::string err;
                 err = "Unknown error reading data from: " + filename;
-                throw oxli_file_exception(err);
+                throw khmer_file_exception(err);
             }
         }
 
@@ -585,19 +560,19 @@ void LabelHash::load_labels_and_tags(std::string filename)
         }
         if (!(i == n_bytes)) {
             delete[] buf;
-            throw oxli_file_exception("unknown error reading labels and tags");
+            throw khmer_file_exception("unknown error reading labels and tags");
         }
         memcpy(buf, buf + n_bytes, remainder);
     }
 
     if (remainder != 0) {
         delete[] buf;
-        throw oxli_file_exception("unknown error reading labels and tags");
+        throw khmer_file_exception("unknown error reading labels and tags");
     }
 
     if (loaded != n_labeltags) {
         delete[] buf;
-        throw oxli_file_exception("error loading labels: too few loaded");
+        throw khmer_file_exception("error loading labels: too few loaded");
     }
 
     delete[] buf;
@@ -644,26 +619,4 @@ void LabelHash::label_across_high_degree_nodes(const char * s,
     }
 }
 
-template void LabelHash::consume_seqfile_and_tag_with_labels<FastxReader>(
-    std:: string const &filename,
-    unsigned int &total_reads,
-    unsigned long long &n_consumed,
-    CallbackFn callback,
-    void * callback_data
-);
-template void LabelHash::consume_seqfile_and_tag_with_labels<FastxReader>(
-    ReadParserPtr<FastxReader>& parser,
-    unsigned int &total_reads,
-    unsigned long long &n_consumed,
-    CallbackFn callback,
-    void * callback_data
-);
-template void LabelHash::consume_partitioned_fasta_and_tag_with_labels<FastxReader>(
-    const std::string &filename,
-    unsigned int &total_reads,
-    unsigned long long &n_consumed,
-    CallbackFn callback = NULL,
-    void * callback_datac = NULL
-);
-
-} // namespace khmer
+// vim: set sts=2 sw=2:

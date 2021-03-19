@@ -1,13 +1,14 @@
 #! /usr/bin/env python
 from __future__ import print_function
+import csv
 import screed
 import khmer
+from khmer.khmer_args import build_counting_args, create_countgraph
 import argparse
 import sys
 
 
 DEFAULT_COV = 20
-K = 21
 THRESH2 = 30
 
 
@@ -69,50 +70,70 @@ def extract_orfs(pepseq, min_length=99):
 
 
 def main():
-    p = argparse.ArgumentParser()
+    p = build_counting_args(descr='Streaming assembly with tracking info')
     p.add_argument('fastq_files', nargs='+')
+    p.add_argument('-o', type=argparse.FileType('w'),
+                   default='assembly-stats.csv')
     args = p.parse_args()
 
-    cg = khmer.Countgraph(K, 1e8, 4)
+    cg = create_countgraph(args)
 
     kept = 0
-    hdn = khmer.HashSet(K)
+    hdn = khmer.HashSet(args.ksize)
     lh = khmer._GraphLabels(cg)
     next_label = 1
     next_orf = 1
     output = set()
+    statswriter = csv.DictWriter(args.o, delimiter=',',
+                                 fieldnames=['read_n', 'action', 'cov', 'n_hdn',
+                                             'contig_n', 'orf_n', 'new'])
 
     for filename in args.fastq_files:
         for n, record in enumerate(screed.open(filename)):
             if n and n % 10000 == 0:
                 print('...', n, file=sys.stderr)
 
-            if len(record.sequence) < K:
+            if len(record.sequence) < args.ksize:
                 continue
 
             cov, _, _ = cg.get_median_count(record.sequence)
             if cov < 20:
                 kept += 1
                 cg.consume(record.sequence)
+                statswriter.writerow({'read_n': n, 'action': 'c', 'cov': cov,
+                                      'n_hdn': None, 'contig_n': None, 
+                                      'orf_n': None, 'new': None})
             elif cov < 30:
                 #print('intermediate', next_label, file=sys.stderr)
                 seq, pos = cg.trim_on_abundance(record.sequence, 3)
-                if len(seq) < K:
+                if len(seq) < args.ksize:
                     continue
                 
                 cg.consume(seq)
                 hdn = cg.find_high_degree_nodes(seq)
                 lh.label_across_high_degree_nodes(seq, hdn, next_label)
                 next_label += 1
+                statswriter.writerow({'read_n': n, 'action': 'l', 'cov': cov,
+                                      'n_hdn': len(hdn), 'contig_n': None, 
+                                      'orf_n': None, 'new': None})
             elif cov == 30:
-                contigs = lh.assemble_labeled_path(record.sequence[:K])
-                for contig in contigs:
+                contigs = lh.assemble_labeled_path(record.sequence[:args.ksize])
+                for contig_n, contig in enumerate(contigs):
+                    statswriter.writerow({'read_n': n, 'action': 'a', 'cov': cov,
+                                          'n_hdn': None, 'contig_n': contig_n, 
+                                          'orf_n': None, 'new': None})
                     for t in translate(contig):
-                        for o in extract_orfs(t):
+                        for orf_n, o in enumerate(extract_orfs(t)):
                             if hash(o) not in output:
+                                new = True
                                 output.add(hash(o))
                                 print('>orf%d\n%s' % (next_orf, o))
                                 next_orf += 1
+                            else:
+                                new = False
+                            statswriter.writerow({'read_n': n, 'action': 'a', 'cov': cov,
+                                                  'n_hdn': None, 'contig_n': contig_n, 
+                                                  'orf_n': orf_n, 'new': new})
 
 if __name__ == '__main__':
     main()

@@ -34,18 +34,39 @@ LICENSE (END)
 
 Contact: khmer-project@idyll.org
 */
+#ifndef FILTER_HH
+#define FILTER_HH
 
-#include <string>
+#include <functional>
+
+#include "khmer.hh"
+#include "kmer_hash.hh"
+#include "counting.hh"
+#include "labelhash.hh"
+
 
 namespace khmer
 {
-namespace alphabets
-{
 
-std::string DNA_SIMPLE = "ACGT";
-std::string DNAN_SIMPLE = "ACGTN";
-std::string IUPAC_NUCL = "ACGTURYSWKMBDHVN.-";
-std::string IUPAC_AA = "ACDEFGHIKLMNPQRSTVWY";
+class Hashtable;
+class LabelHash;
+
+
+bool apply_kmer_filters(const Kmer& node, const KmerFilterList& filters);
+
+KmerFilter get_label_filter(const Label label, const LabelHash * lh);
+
+KmerFilter get_simple_label_intersect_filter(const LabelSet& src_labels,
+        const LabelHash * lh,
+        const unsigned int min_cov = 5);
+
+KmerFilter get_stop_bf_filter(const Hashtable * stop_bf);
+
+KmerFilter get_visited_filter(const SeenSet * visited);
+
+KmerFilter get_junction_count_filter(const Kmer& src_node,
+                                     CountingHash * junctions,
+                                     const unsigned int min_cov = 2);
 
 }
-}
+#endif

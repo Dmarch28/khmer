@@ -8,6 +8,7 @@ Procedure:
     erroneous paths from super-high-abundance data
 * run this script with the assembly & the remaining reads.
 """
+from __future__ import print_function
 import sys
 import os.path
 import khmer, khmer.utils
@@ -35,13 +36,13 @@ def main():
 
     for readfile in args.readfiles:
         print('loading & tagging reads from:', readfile)
-        ng.consume_seqfile_and_tag(readfile)
+        ng.consume_fasta_and_tag(readfile)
 
     ## next, consume & label the assembly
 
     print('loading & tagging assembly from:', args.assembly)
     lh = khmer._GraphLabels(ng)
-    lh.consume_seqfile_and_tag_with_labels(args.assembly)
+    lh.consume_fasta_and_tag_with_labels(args.assembly)
 
     if args.output:
         outfp = open(args.output, 'w')

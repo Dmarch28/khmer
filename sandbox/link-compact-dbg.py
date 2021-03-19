@@ -1,4 +1,5 @@
 #! /usr/bin/env python
+from __future__ import print_function
 import khmer
 import screed
 import argparse
@@ -52,20 +53,10 @@ class Pathfinder(object):
 
 def traverse_and_mark_linear_paths(graph, nk, stop_bf, pathy, degree_nodes,
                                    lh):
-def traverse_and_mark_linear_paths(graph, nk, stop_bf, pathy, degree_nodes):
-def traverse_and_mark_linear_paths(graph, nk, stop_bf, pathy, degree_nodes,
-                                   lh):
     size, conns, visited = graph.traverse_linear_path(nk, degree_nodes,
                                                       stop_bf)
     if not size:
         return
-
-    linear_path_labels = set()
-    for node in visited:
-        linear_path_labels.update(lh.get_tag_labels(node))
-
-    # TODO: do something graph-y with these, like split paths across HDNs
-    # or simply omit HDNs altogether with traversal.
 
     linear_path_labels = set()
     for node in visited:
@@ -145,19 +136,12 @@ def main():
     ####
 
     lh = khmer._GraphLabels(graph)
-    lh = khmer._LabelHash(graph)
-    lh = khmer._GraphLabels(graph)
     n = 0
     for seqfile in args.seqfiles:
         for record in screed.open(seqfile):
             n += 1
             if n % 10000 == 0:
                 print('...2', seqfile, n)
-            lh.label_across_high_degree_nodes(record.sequence, degree_nodes, n)
-
-    print('num labels:', lh.n_labels())
-    print(lh.n_labels())
-            graph.label_across_hdn(record.sequence, degree_nodes, n)
             lh.label_across_high_degree_nodes(record.sequence, degree_nodes, n)
 
     print('num labels:', lh.n_labels())
@@ -189,8 +173,6 @@ def main():
             else:
                 # linear! walk it.
                 traverse_and_mark_linear_paths(graph, nk, stop_bf, pathy,
-                                               degree_nodes, lh)
-                                               degree_nodes)
                                                degree_nodes, lh)
 
     print(len(pathy.segments), 'segments, containing',

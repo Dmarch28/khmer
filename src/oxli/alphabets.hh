@@ -34,18 +34,19 @@ LICENSE (END)
 
 Contact: khmer-project@idyll.org
 */
-
-#include <string>
+#ifndef SYMBOLS_HH
+#define SYMBOLS_HH
 
 namespace khmer
 {
 namespace alphabets
 {
 
-std::string DNA_SIMPLE = "ACGT";
-std::string DNAN_SIMPLE = "ACGTN";
-std::string IUPAC_NUCL = "ACGTURYSWKMBDHVN.-";
-std::string IUPAC_AA = "ACDEFGHIKLMNPQRSTVWY";
+extern std::string DNA_SIMPLE;
+extern std::string DNAN_SIMPLE;
+extern std::string IUPAC_NUCL;
+extern std::string IUPAC_AA;
 
 }
 }
+#endif

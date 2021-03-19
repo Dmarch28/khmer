@@ -45,20 +45,14 @@ Contact: khmer-project@idyll.org
 #include <utility>
 
 #include "hashtable.hh"
-#include "hashgraph.hh"
-#include "oxli.hh"
+#include "khmer.hh"
 #include "read_parsers.hh"
 
-namespace oxli
+namespace khmer
 {
-    class Hashgraph;
+class Hashgraph;
 
-    using read_parsers::ReadParser;
-    namespace read_parsers
-    {
-        template<typename SeqIO> class ReadParser;
-        class FastxReader;
-    }
+using read_parsers::IParser;
 
 class LabelHash
 {
@@ -124,7 +118,7 @@ protected:
     uint32_t _tag_labels_spin_lock;
 
 public:
-    oxli::Hashgraph * graph;
+    khmer::Hashgraph * graph;
 
     explicit LabelHash(Hashgraph * ht) : graph(ht)
     {
@@ -143,44 +137,32 @@ public:
         return all_labels.size();
     }
 
-    template<typename SeqIO>
-    void consume_seqfile_and_tag_with_labels(
+
+    void consume_fasta_and_tag_with_labels(
         std::string const	  &filename,
         unsigned int	  &total_reads,
         unsigned long long  &n_consumed,
         CallbackFn	  callback	  = NULL,
         void *		  callback_data	  = NULL);
 
-    template<typename SeqIO>
-    void consume_seqfile_and_tag_with_labels(
-        read_parsers::ReadParserPtr<SeqIO>& parser,
+    void consume_fasta_and_tag_with_labels(
+        read_parsers:: IParser *	    parser,
         unsigned int	    &total_reads,
         unsigned long long  &n_consumed,
         CallbackFn	    callback	    = NULL,
         void *		    callback_data   = NULL);
 
-    template<typename SeqIO>
-    void consume_partitioned_fasta_and_tag_with_labels(
-        const std::string &filename,
-        unsigned int &total_reads,
-        unsigned long long &n_consumed,
-        CallbackFn callback = NULL,
-        void * callback_datac = NULL);
+    void consume_partitioned_fasta_and_tag_with_labels(const std::string &filename,
+            unsigned int &total_reads,
+            unsigned long long &n_consumed,
+            CallbackFn callback = NULL,
+            void * callback_datac = NULL);
 
     void consume_sequence_and_tag_with_labels(const std::string& seq,
             unsigned long long& n_consumed,
             Label current_label,
             SeenSet * new_tags = 0);
 
-    void get_labels_for_sequence(const std::string& seq,
-                                 LabelSet& labels) const;
-
-    void get_tag_labels(const HashIntoType tag,
-                        LabelSet& labels) const;
-    void get_tags_from_label(const Label label,
-                             TagSet& tags) const;
-                               TagSet& tags) const;
-    LabelSet get_tag_labels(const HashIntoType tag) const;
     void get_tag_labels(const HashIntoType tag,
                         LabelSet& labels) const;
     void get_tags_from_label(const Label label,
@@ -204,8 +186,7 @@ public:
                                         SeenSet& high_degree_nodes,
                                         const Label label);
 };
-
-} // namespace khmer
+}
 
 #define ACQUIRE_TAG_COLORS_SPIN_LOCK \
   while(!__sync_bool_compare_and_swap( &_tag_labels_spin_lock, 0, 1));

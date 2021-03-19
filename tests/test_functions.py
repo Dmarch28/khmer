@@ -33,22 +33,25 @@
 #
 # Contact: khmer-project@idyll.org
 # pylint: disable=missing-docstring,invalid-name,no-member
+from __future__ import print_function
+from __future__ import absolute_import
 
 import screed
 import khmer
 import os
 import sys
+import collections
 import pytest
-from khmer.utils import check_is_pair, broken_paired_reader
 from . import khmer_tst_utils as utils
-
 from khmer.utils import (check_is_pair, broken_paired_reader, check_is_left,
-                         check_is_right, clean_input_reads)
+                         check_is_right)
 from khmer.kfile import check_input_files, get_file_writer
 try:
     from StringIO import StringIO
 except ImportError:
     from io import StringIO
+
+import pytest
 
 
 def test_forward_hash():
@@ -121,25 +124,6 @@ def test_reverse_complement_exception():
         khmer.reverse_complement('FGF')
 
 
-def test_reverse_complement():
-    s = 'AATTCCGG'
-    assert khmer.reverse_complement(s) == 'CCGGAATT'
-
-    s = 'A'
-    assert khmer.reverse_complement(s) == 'T'
-    s = 'T'
-    assert khmer.reverse_complement(s) == 'A'
-    s = 'C'
-    assert khmer.reverse_complement(s) == 'G'
-    s = 'G'
-    assert khmer.reverse_complement(s) == 'C'
-
-
-def test_reverse_complement_exception():
-    # deal with DNA, ignore rest
-    assert khmer.reverse_complement('FGF') == 'FCF'
-
-
 def test_reverse_hash_longs():
     # test explicitly with long integers, only needed for python2
     # the builtin `long` exists in the global scope only
@@ -172,9 +156,6 @@ def test_hash_murmur3():
     assert khmer.hash_murmur3('TTTT') == 526240128537019279
     assert khmer.hash_murmur3('CCCC') == 14391997331386449225
     assert khmer.hash_murmur3('GGGG') == 14391997331386449225
-    assert khmer.hash_murmur3('TATATATATATATATATATA') != 0
-    assert khmer.hash_murmur3('TTTTGCAAAA') != 0
-    assert khmer.hash_murmur3('GAAAATTTTC') != 0
 
 
 def test_hash_no_rc_murmur3():
@@ -195,11 +176,6 @@ def test_get_primes():
     primes = khmer.get_n_primes_near_x(7, 20)
 
     assert primes == [19, 17, 13, 11, 7, 5, 3]
-
-    primes_not_float = khmer.get_n_primes_near_x(7, 20.)
-
-    assert primes_not_float == [19, 17, 13, 11, 7, 5, 3]
-    assert all(isinstance(p, int) for p in primes_not_float)
 
 
 def test_get_primes_fal():
@@ -229,7 +205,7 @@ def test_extract_countgraph_info():
             info = khmer.extract_countgraph_info(fn)
         except ValueError as err:
             assert 0, 'Should not throw a ValueErorr: ' + str(err)
-        ksize, n_tables, table_size, _, _, _, _ = info
+        ksize, table_size, n_tables, _, _, _, _ = info
         print(ksize, table_size, n_tables)
 
         assert(ksize) == 25
@@ -385,68 +361,6 @@ def test_check_is_pair_7():
     read2 = screed.Record(name='seq/1', sequence='AAA')
 
     assert not check_is_pair(read1, read2)
-
-
-class Test_BrokenPairedReader(object):
-    stream = [FakeFastaRead(name='seq1/1', sequence='A'*5),
-              FakeFastaRead(name='seq1/2', sequence='A'*4),
-              FakeFastaRead(name='seq2/1', sequence='A'*5),
-              FakeFastaRead(name='seq3/1', sequence='A'*3),
-              FakeFastaRead(name='seq3/2', sequence='A'*5)]
-
-    def gather(self, **kw):
-        iter = broken_paired_reader(self.stream, **kw)
-
-        x = []
-        for n, is_pair, read1, read2 in iter:
-            if is_pair:
-                x.append((read1.name, read2.name))
-            else:
-                x.append((read1.name, None))
-
-        return x
-
-    def testDefault(self):
-        x = self.gather(min_length=1)
-
-        expected = [('seq1/1', 'seq1/2'),
-                    ('seq2/1', None),
-                    ('seq3/1', 'seq3/2')]
-        assert x == expected, x
-
-    def testMinLength(self):
-        x = self.gather(min_length=3)
-
-        expected = [('seq1/1', 'seq1/2'),
-                    ('seq2/1', None),
-                    ('seq3/1', 'seq3/2')]
-        assert x == expected, x
-
-    def testMinLength_2(self):
-        x = self.gather(min_length=4)
-
-        expected = [('seq1/1', 'seq1/2'),
-                    ('seq2/1', None),
-                    ('seq3/2', None)]
-        assert x == expected, x
-
-    def testForceSingle(self):
-        x = self.gather(force_single=True)
-
-        expected = [('seq1/1', None),
-                    ('seq1/2', None),
-                    ('seq2/1', None),
-                    ('seq3/1', None),
-                    ('seq3/2', None)]
-        assert x == expected, x
-
-    def testForceSingleAndMinLength(self):
-        x = self.gather(min_length=5, force_single=True)
-
-        expected = [('seq1/1', None),
-                    ('seq2/1', None),
-                    ('seq3/2', None)]
-        assert x == expected, x
 
 
 def test_check_is_right():
@@ -608,7 +522,6 @@ def test_BrokenPairedReader_lowercase():
     stream = [screed.Record(name='seq1/1', sequence='acgtn'),
               screed.Record(name='seq1/2', sequence='AcGtN'),
               screed.Record(name='seq1/2', sequence='aCgTn')]
-    stream = clean_input_reads(stream)
 
     results = []
     for num, is_pair, read1, read2 in broken_paired_reader(stream):
@@ -624,33 +537,3 @@ def test_BrokenPairedReader_lowercase():
     assert c.sequence == 'aCgTn'
     assert c.cleaned_seq == 'ACGTA'
     assert d is None
-
-
-def test_BrokenPairedReader_lowercase_khmer_Read():
-    # use khmer.Read objects which should automatically have a `cleaned_seq`
-    # attribute
-    stream = [khmer.Read(name='seq1/1', sequence='acgtn'),
-              khmer.Read(name='seq1/2', sequence='AcGtN'),
-              khmer.Read(name='seq1/2', sequence='aCgTn')]
-
-    results = []
-    for num, is_pair, read1, read2 in broken_paired_reader(stream):
-        results.append((read1, read2))
-
-    a, b = results[0]
-    assert a.sequence == 'acgtn'
-    assert a.cleaned_seq == 'ACGTA'
-    assert b.sequence == 'AcGtN'
-    assert b.cleaned_seq == 'ACGTA'
-
-    c, d = results[1]
-    assert c.sequence == 'aCgTn'
-    assert c.cleaned_seq == 'ACGTA'
-    assert d is None
-
-
-def test_clean_input_reads():
-    # all Read attributes are read only
-    stream = [khmer.Read(name='seq1/1', sequence='ACGT')]
-    with pytest.raises(AttributeError):
-        next(clean_input_reads(stream))

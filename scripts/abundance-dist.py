@@ -41,15 +41,18 @@ Produce the k-mer abundance distribution for the given file.
 
 Use '-h' for parameter help.
 """
+from __future__ import print_function
 
 import sys
 import csv
 import khmer
+import argparse
 import textwrap
 import os
-from khmer import Countgraph
+from khmer import __version__
 from khmer.kfile import check_input_files
-from khmer.khmer_args import (sanitize_help, KhmerArgumentParser)
+from khmer.khmer_args import (info, sanitize_help, ComboFormatter,
+                              _VersionStdErrAction)
 from khmer.khmer_logger import (configure_logging, log_info, log_error,
                                 log_warn)
 
@@ -62,10 +65,10 @@ def get_parser():
                 tests/test-data/test-abund-read-2.fa
         abundance-dist.py counts tests/test-data/test-abund-read-2.fa test-dist
     """
-    parser = KhmerArgumentParser(
+    parser = argparse.ArgumentParser(
         description="Calculate abundance distribution of the k-mers in "
         "the sequence file using a pre-made k-mer countgraph.",
-        epilog=textwrap.dedent(epilog), citations=['counting'])
+        formatter_class=ComboFormatter, epilog=textwrap.dedent(epilog))
 
     parser.add_argument('input_count_graph_filename', help='The name of the'
                         ' input k-mer countgraph file.')
@@ -83,6 +86,8 @@ def get_parser():
     parser.add_argument('-b', '--no-bigcount', dest='bigcount', default=True,
                         action='store_false',
                         help='Do not count k-mers past 255')
+    parser.add_argument('--version', action=_VersionStdErrAction,
+                        version='khmer {v}'.format(v=__version__))
     parser.add_argument('-f', '--force', default=False, action='store_true',
                         help='Continue even if specified input files '
                         'do not exist or are empty.')
@@ -93,6 +98,8 @@ def get_parser():
 
 def main():
     args = sanitize_help(get_parser()).parse_args()
+    if not args.quiet:
+        info('abundance-dist.py', ['counting'])
 
     configure_logging(args.quiet)
 
@@ -103,7 +110,8 @@ def main():
 
     log_info('Loading counting graph from {graph}',
              graph=args.input_count_graph_filename)
-    countgraph = Countgraph.load(args.input_count_graph_filename)
+    countgraph = khmer.load_countgraph(
+        args.input_count_graph_filename)
 
     if not countgraph.get_use_bigcount() and args.bigcount:
         log_warn("WARNING: The loaded graph has bigcount DISABLED while "
@@ -114,8 +122,8 @@ def main():
 
     kmer_size = countgraph.ksize()
     hashsizes = countgraph.hashsizes()
-    tracking = khmer.Nodegraph(  # pylint: disable=protected-access
-        kmer_size, 1, 1, primes=hashsizes)
+    tracking = khmer._Nodegraph(  # pylint: disable=protected-access
+        kmer_size, hashsizes)
 
     log_info('K: {ksize}', ksize=kmer_size)
     log_info('outputting to {output}', output=args.output_histogram_filename)

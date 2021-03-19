@@ -43,11 +43,11 @@ Contact: khmer-project@idyll.org
 #include <set>
 #include <utility>
 
-#include "oxli/hashtable.hh"
-#include "oxli/oxli_exception.hh"
-#include "oxli/read_aligner.hh"
+#include "hashtable.hh"
+#include "khmer_exception.hh"
+#include "read_aligner.hh"
 
-namespace oxli
+namespace khmer
 {
 
 Alignment * _empty_alignment()
@@ -417,7 +417,7 @@ Alignment* ReadAligner::ExtractAlignment(AlignmentNode* node,
 
     if (!(node->seq_idx < read.length())) {
         delete ret;
-        throw oxli_exception();
+        throw khmer_exception();
     }
     std::string read_alignment = "";
     std::string graph_alignment = "";
@@ -532,7 +532,6 @@ Alignment* ReadAligner::Align(const std::string& read)
     }
 
     HashIntoType fhash = 0, rhash = 0;
-    _hash(start.kmer, k, fhash, rhash);
     fhash = m_ch->hash_dna_top_strand(start.kmer.c_str());
     rhash = m_ch->hash_dna_bottom_strand(start.kmer.c_str());
 
@@ -612,7 +611,6 @@ Alignment* ReadAligner::AlignForward(const std::string& read)
     }
 
     HashIntoType fhash = 0, rhash = 0;
-    _hash(start.kmer, k, fhash, rhash);
     fhash = m_ch->hash_dna_top_strand(start.kmer.c_str());
     rhash = m_ch->hash_dna_bottom_strand(start.kmer.c_str());
 

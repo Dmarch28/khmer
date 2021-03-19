@@ -44,9 +44,7 @@ Contact: khmer-project@idyll.org
 #include <string.h>
 #include <string>
 
-#include "cyclichash.h"
-
-#include "oxli.hh"
+#include "khmer.hh"
 
 // test validity
 #ifdef KHMER_EXTRA_SANITY_CHECKS
@@ -96,7 +94,7 @@ Contact: khmer-project@idyll.org
 #endif
 
 
-namespace oxli
+namespace khmer
 {
 // two-way hash functions.
 HashIntoType _hash(const char * kmer, const WordLength k);
@@ -111,21 +109,10 @@ std::string _revhash(HashIntoType hash, WordLength k);
 std::string _revcomp(const std::string& kmer);
 
 // two-way hash functions, MurmurHash3.
-HashIntoType _hash_murmur(const std::string& kmer, const WordLength k);
-HashIntoType _hash_murmur(const std::string& kmer, const WordLength k,
+HashIntoType _hash_murmur(const std::string& kmer);
+HashIntoType _hash_murmur(const std::string& kmer,
                           HashIntoType& h, HashIntoType& r);
-HashIntoType _hash_murmur_forward(const std::string& kmer,
-                                  const WordLength k);
-
-// Cyclic hash, a rolling hash that is irreversible
-HashIntoType _hash_cyclic(const std::string& kmer, const WordLength k);
-HashIntoType _hash_cyclic(const std::string& kmer, const WordLength k,
-                          HashIntoType& h, HashIntoType& r);
-HashIntoType _hash_cyclic_forward(const std::string& kmer, const WordLength k);
-
-// Function to support k-mer banding.
-std::pair<uint64_t, uint64_t> compute_band_interval(unsigned int num_bands,
-                                                    unsigned int band);
+HashIntoType _hash_murmur_forward(const std::string& kmer);
 
 /**
  * \class Kmer
@@ -220,24 +207,6 @@ public:
     {
         return kmer_f == kmer_u;
     }
-    char get_last_base() const
-    {
-        return revtwobit_repr(kmer_f & 3);
-    }
-
-    std::string repr(WordLength K) const
-    {
-        std::string s = "<Us=" + _revhash(kmer_u, K) + ", Fs=" +
-                        _revhash(kmer_f, K) + ", Rs=" + _revhash(kmer_r, K) + ">";
-        //", U=" + std::to_string(kmer_u) + ", F=" + std::to_string(kmer_f) +
-        //", R=" + std::to_string(kmer_r) + ">";
-        return s;
-    }
-
-    bool is_forward() const
-    {
-        return kmer_f == kmer_u;
-    }
 };
 
 
@@ -275,8 +244,6 @@ public:
      */
     Kmer build_kmer(HashIntoType kmer_u)
     const
-        const
-    const
     {
         HashIntoType kmer_f, kmer_r;
         std:: string kmer_s = _revhash(kmer_u, _ksize);
@@ -291,8 +258,6 @@ public:
      *  @return A complete Kmer object.
      */
     Kmer build_kmer(HashIntoType kmer_f, HashIntoType kmer_r)
-    const
-        const
     const
     {
         HashIntoType kmer_u = uniqify_rc(kmer_f, kmer_r);
@@ -383,7 +348,7 @@ public:
     }
 
     /// @return Whether or not the iterator has completed.
-    bool done() const
+    bool done()
     {
         return index >= length;
     }
@@ -399,107 +364,6 @@ public:
     }
 }; // class KmerIterator
 
-//
-// KmerHashIterator - analogous to KmerIterator classes, but returns only
-// HashIntoType hashes, not full Kmer objects.  This supports irreversible
-// hashing.
-//
-
-class KmerHashIterator {
-public:
-    virtual HashIntoType first() = 0;
-    virtual HashIntoType next() = 0;
-    virtual bool done() const = 0;
-    virtual unsigned int get_start_pos() const = 0;
-    virtual unsigned int get_end_pos() const = 0;
-    virtual ~KmerHashIterator() { };
-};
-
-// TwoBitKmerHashIterator -- just wrap KmerIterator.
-
-class TwoBitKmerHashIterator : public KmerHashIterator {
-protected:
-    KmerIterator iter;
-public:
-    TwoBitKmerHashIterator(const char * seq, WordLength k) :
-        iter(seq, k) { } ;
-
-    HashIntoType first() { return iter.first(); }
-
-    HashIntoType next() { return iter.next(); }
-
-    bool done() const { return iter.done(); }
-
-    virtual unsigned int get_start_pos() const {
-        return iter.get_start_pos();
-    }
-
-    virtual unsigned int get_end_pos() const {
-        return iter.get_end_pos();
-    }
-};
-
-// RollingHashKmerIterator
-class RollingHashKmerIterator : public KmerHashIterator {
-    const char * _seq;
-    const std::string _rev;
-    const char _ksize;
-    unsigned int index;
-    unsigned int length;
-    bool _initialized;
-    CyclicHash<uint64_t> fwd_hasher;
-    CyclicHash<uint64_t> bwd_hasher;
-
-public:
-    RollingHashKmerIterator(const char * seq, unsigned char k) :
-        _seq(seq), _rev(oxli::_revcomp(seq)), _ksize(k), index(0),
-        _initialized(false), fwd_hasher(k), bwd_hasher(k)
-    {
-        length = strlen(_seq);
-    };
-
-    HashIntoType first() {
-        _initialized = true;
-
-        for (char i = 0; i < _ksize; ++i) {
-            fwd_hasher.eat(*(_seq + i));
-            bwd_hasher.eat(_rev[length - _ksize + i]);
-        }
-        index += 1;
-
-        return fwd_hasher.hashvalue + bwd_hasher.hashvalue;
-    }
-
-    HashIntoType next() {
-        if (!_initialized) {
-            return first();
-        }
-
-        if (done()) {
-            throw oxli_exception("past end of iterator");
-        }
-        fwd_hasher.update(*(_seq + index - 1), *(_seq + index + _ksize - 1));
-
-        // first argument is added, second is removed from the hash
-        bwd_hasher.reverse_update(
-          _rev[length - _ksize - index], _rev[length - index]);
-
-        index += 1;
-        return fwd_hasher.hashvalue + bwd_hasher.hashvalue;
-    }
-
-    bool done() const {
-        return (index + _ksize > length);
-    }
-    unsigned int get_start_pos() const {
-        if (!_initialized) { return 0; }
-        return index - 1;
-    }
-    unsigned int get_end_pos() const {
-        if (!_initialized) { return _ksize; }
-        return index + _ksize - 1;
-    }
-};
 }
 
 #endif // KMER_HASH_HH

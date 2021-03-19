@@ -1,7 +1,6 @@
 # This file is part of khmer, https://github.com/dib-lab/khmer/, and is
 # Copyright (C) 2010-2015, Michigan State University.
 # Copyright (C) 2015-2016, The Regents of the University of California.
-# Copyright (C) 2015-2016, The Regents of the University of California.
 # Copyright (C) 2016, Google, Inc
 #
 # Redistribution and use in source and binary forms, with or without
@@ -35,18 +34,17 @@
 #
 # Contact: khmer-project@idyll.org
 # pylint: disable=missing-docstring,protected-access,no-member,invalid-name
+from __future__ import print_function
+from __future__ import absolute_import, unicode_literals
 
 import gzip
 
 import os
 
 import khmer
-from khmer import Countgraph, SmallCountgraph, Nodegraph
 from . import khmer_tst_utils as utils
 from khmer import ReadParser
 import screed
-
-import pytest
 
 import pytest
 
@@ -55,7 +53,6 @@ MAX_BIGCOUNT = 65535
 
 # from http://www.rsok.com/~jrm/printprimes.html
 PRIMES_1m = [1000003, 1009837]
-ARGS_1m = (PRIMES_1m[0], 2)
 PRIMES_100m = [100009979, 100000007]
 PRIMES_1b = [1000000007, 1000000919]
 PRIMES_2b = [1999999973, 1999999943]
@@ -72,7 +69,7 @@ def teardown():
 def test_count_1():
     hi = khmer._Countgraph(12, PRIMES_1m)
 
-    kmer = 'G'*12
+    kmer = 'G' * 12
     hashval = hi.hash('G' * 12)
 
     assert hi.get(kmer) == 0
@@ -86,7 +83,7 @@ def test_count_1():
     assert hi.get(kmer) == 2
     assert hi.get(hashval) == 2
 
-    kmer = 'G'*11
+    kmer = 'G' * 11
     try:
         hi.hash(kmer)
         assert 0, "incorrect kmer size should fail"
@@ -96,7 +93,7 @@ def test_count_1():
 
 def test_count_2():
     hi = khmer._Countgraph(12, PRIMES_1m)
-    kmer = 'G'*12
+    kmer = 'G' * 12
     hashval = hi.hash('G' * 12)
 
     assert hi.get(kmer) == 0
@@ -113,54 +110,6 @@ def test_count_2():
 
 def test_revhash_1():
     hi = khmer._Countgraph(12, [1])
-    kmer = 'C'*12
-    hashval = hi.hash('C' * 12)
-
-    assert hi.reverse_hash(hashval) == kmer
-
-
-def test_count_1():
-    hi = khmer.Countgraph(12, *ARGS_1m)
-
-    kmer = 'G' * 12
-    hashval = hi.hash('G' * 12)
-
-    assert hi.get(kmer) == 0
-    assert hi.get(hashval) == 0
-
-    hi.count(kmer)
-    assert hi.get(kmer) == 1
-    assert hi.get(hashval) == 1
-
-    hi.count(kmer)
-    assert hi.get(kmer) == 2
-    assert hi.get(hashval) == 2
-
-    kmer = 'G' * 11
-
-    with pytest.raises(ValueError):
-        hi.hash(kmer)
-
-
-def test_count_2():
-    hi = khmer.Countgraph(12, *ARGS_1m)
-    kmer = 'G' * 12
-    hashval = hi.hash('G' * 12)
-
-    assert hi.get(kmer) == 0
-    assert hi.get(hashval) == 0
-
-    hi.count(kmer)
-    assert hi.get(kmer) == 1
-    assert hi.get(hashval) == 1
-
-    hi.count(hashval)                     # count hashes same as strings
-    assert hi.get(kmer) == 2
-    assert hi.get(hashval) == 2
-
-
-def test_revhash_1():
-    hi = khmer.Countgraph(12, 1, 1)
     kmer = 'C' * 12
     hashval = hi.hash('C' * 12)
 
@@ -170,7 +119,7 @@ def test_revhash_1():
 class Test_Countgraph(object):
 
     def setup(self):
-        self.hi = khmer.Countgraph(12, 1, 1, primes=PRIMES_1m)
+        self.hi = khmer._Countgraph(12, PRIMES_1m)
 
     def test_failed_get(self):
         GG = 'G' * 12                   # forward_hash: 11184810
@@ -183,7 +132,7 @@ class Test_Countgraph(object):
         try:
             hi.get(float(GGhash))
             assert "the previous statement should fail"
-        except TypeError as err:
+        except ValueError as err:
             print(str(err))
 
     def test_collision_1(self):
@@ -259,17 +208,6 @@ def test_get_raw_tables():
         assert size == len(table)
 
 
-def test_get_raw_tables_smallcountgraph():
-    # for the same number of entries a SmallCountgraph uses ~half the memory
-    # of a normal Countgraph
-    ht = khmer.SmallCountgraph(20, 1e5, 4)
-    tables = ht.get_raw_tables()
-
-    for size, table in zip(ht.hashsizes(), tables):
-        assert isinstance(table, memoryview)
-        assert size // 2 + 1 == len(table)
-
-
 def test_get_raw_tables_view():
     ht = khmer.Countgraph(20, 1e5, 4)
     tables = ht.get_raw_tables()
@@ -278,19 +216,6 @@ def test_get_raw_tables_view():
     ht.consume('AAAATTTTCCCCGGGGAAAA')
     for tab in tables:
         assert sum(tab.tolist()) == 1
-
-
-@pytest.mark.huge
-def test_get_raw_tables_view_smallcountgraph():
-    ht = khmer.SmallCountgraph(4, 1e5, 4)
-    tables = ht.get_raw_tables()
-    for tab in tables:
-        assert sum(tab.tolist()) == 0
-    ht.consume('AAAA')
-    # the actual count is 1 but stored in the first 4bits of a Byte
-    # and so becomes 16
-    for tab in tables:
-        assert sum(tab.tolist()) == int('00010000', 2)
 
 
 @pytest.mark.huge
@@ -306,7 +231,7 @@ def test_3_tables():
     x = list(PRIMES_1m)
     x.append(1000005)
 
-    hi = khmer.Countgraph(12, 1, 1, primes=x)
+    hi = khmer._Countgraph(12, x)
 
     GG = 'G' * 12                   # forward_hash: 11184810
     assert khmer.forward_hash(GG, 12) == 11184810
@@ -521,25 +446,24 @@ def test_get_kmer_counts_too_short():
     hi = khmer.Countgraph(6, 1e6, 2)
 
     hi.consume("AAAAAA")
-    with pytest.raises(ValueError):
-        counts = hi.get_kmer_counts("A")
+    counts = hi.get_kmer_counts("A")
+    assert len(counts) == 0
 
 
 def test_get_kmer_hashes_too_short():
     hi = khmer.Countgraph(6, 1e6, 2)
 
     hi.consume("AAAAAA")
-    with pytest.raises(ValueError):
-        hashes = hi.get_kmer_hashes("A")
+    hashes = hi.get_kmer_hashes("A")
+    assert len(hashes) == 0
 
 
 def test_get_kmers_too_short():
     hi = khmer.Countgraph(6, 1e6, 2)
 
     hi.consume("AAAAAA")
-
-    with pytest.raises(ValueError):
-        kmers = hi.get_kmers("A")
+    kmers = hi.get_kmers("A")
+    assert len(kmers) == 0
 
 
 def test_get_kmer_counts():
@@ -665,8 +589,6 @@ def test_get_kmers():
     kmers = hi.get_kmers("AGCTTTTC")
     assert kmers == ['AGCTTT', 'GCTTTT', 'CTTTTC']
 
-    kmers = hi.get_kmers("AGCTTTTC")
-    assert kmers == ['AGCTTT', 'GCTTTT', 'CTTTTC']
 
 @pytest.mark.huge
 def test_save_load_large():
@@ -674,58 +596,42 @@ def test_save_load_large():
         inpath = utils.get_test_data('random-20-a.fa')
         savepath = utils.get_temp_filename(ctfile)
 
-@pytest.mark.huge
-@pytest.mark.parametrize("ctfile", ['temp.ct', 'temp.ct.gz'])
-def test_save_load_large(ctfile):
-    inpath = utils.get_test_data('random-20-a.fa')
-    savepath = utils.get_temp_filename(ctfile)
+        sizes = khmer.get_n_primes_near_x(1, 2 ** 31 + 1000)
 
-    orig = khmer.Countgraph(12, 2**31, 1)
-    orig.consume_seqfile(inpath)
-    orig.save(savepath)
+        orig = khmer._Countgraph(12, sizes)
+        orig.consume_fasta(inpath)
+        orig.save(savepath)
 
-    loaded = Countgraph.load(savepath)
+        loaded = khmer.load_countgraph(savepath)
 
-    orig_count = orig.n_occupied()
-    loaded_count = loaded.n_occupied()
-    assert orig_count == 3966, orig_count
-    assert loaded_count == orig_count, loaded_count
+        orig_count = orig.n_occupied()
+        loaded_count = loaded.n_occupied()
+        assert orig_count == 3966, orig_count
+        assert loaded_count == orig_count, loaded_count
 
-
-@pytest.mark.parametrize("ctfile", ['temp.ct', 'temp.ct.gz'])
-def test_save_load_occupied(ctfile):
-    print('working with', ctfile)
-    inpath = utils.get_test_data('random-20-a.fa')
-    savepath = utils.get_temp_filename(ctfile)
-
-    orig = khmer.Countgraph(12, 1e5, 4)
-    orig.consume_seqfile(inpath)
-    orig.save(savepath)
-
-    loaded = Countgraph.load(savepath)
-
-    orig_count = orig.n_occupied()
-    loaded_count = loaded.n_occupied()
-    assert orig_count == 3886, orig_count
-    assert loaded_count == orig_count, loaded_count
+    for ctfile in ['temp.ct.gz', 'temp.ct']:
+        do_test(ctfile)
 
 
-@pytest.mark.parametrize("ctfile", ['temp.ct', 'temp.ct.gz'])
-def test_save_load_occupied_small(ctfile):
-    print('working with', ctfile)
-    inpath = utils.get_test_data('random-20-a.fa')
-    savepath = utils.get_temp_filename(ctfile)
+def test_save_load_occupied():
+    def do_test(ctfile):
+        print('working with', ctfile)
+        inpath = utils.get_test_data('random-20-a.fa')
+        savepath = utils.get_temp_filename(ctfile)
 
-    orig = khmer.SmallCountgraph(12, 1e5, 4)
-    orig.consume_seqfile(inpath)
-    orig.save(savepath)
+        orig = khmer.Countgraph(12, 1e5, 4)
+        orig.consume_fasta(inpath)
+        orig.save(savepath)
 
-    loaded = SmallCountgraph.load(savepath)
+        loaded = khmer.load_countgraph(savepath)
 
-    orig_count = orig.n_occupied()
-    loaded_count = loaded.n_occupied()
-    assert orig_count == 3886, orig_count
-    assert loaded_count == orig_count, loaded_count
+        orig_count = orig.n_occupied()
+        loaded_count = loaded.n_occupied()
+        assert orig_count == 3886, orig_count
+        assert loaded_count == orig_count, loaded_count
+
+    for ctfile in ['temp.ct', 'temp.ct.gz']:
+        do_test(ctfile)
 
 
 def test_save_load():
@@ -735,19 +641,20 @@ def test_save_load():
     sizes = list(PRIMES_1m)
     sizes.append(1000005)
 
-    hi = khmer.Countgraph(12, 1, 1, primes=sizes)
-    hi.consume_seqfile(inpath)
+    hi = khmer._Countgraph(12, sizes)
+    hi.consume_fasta(inpath)
     hi.save(savepath)
 
+    ht = khmer._Countgraph(12, sizes)
     try:
-        ht = Countgraph.load(savepath)
+        ht.load(savepath)
     except OSError as err:
         assert 0, 'Should not produce an OSError: ' + str(err)
 
-    tracking = khmer.Nodegraph(12, 1, 1, primes=sizes)
+    tracking = khmer._Nodegraph(12, sizes)
     x = hi.abundance_distribution(inpath, tracking)
 
-    tracking = khmer.Nodegraph(12, 1, 1, primes=sizes)
+    tracking = khmer._Nodegraph(12, sizes)
     y = ht.abundance_distribution(inpath, tracking)
 
     assert sum(x) == 3966, sum(x)
@@ -759,8 +666,10 @@ def test_load_truncated():
     savepath = utils.get_temp_filename('save.ht')
     truncpath = utils.get_temp_filename('trunc.ht')
 
-    hi = khmer.Countgraph(12, 200, 3)
-    hi.consume_seqfile(inpath)
+    sizes = khmer.get_n_primes_near_x(3, 200)
+
+    hi = khmer._Countgraph(12, sizes)
+    hi.consume_fasta(inpath)
     hi.save(savepath)
 
     data = open(savepath, 'rb').read()
@@ -770,7 +679,7 @@ def test_load_truncated():
         fp.close()
 
         try:
-            Countgraph.load(truncpath)
+            khmer.load_countgraph(truncpath)
             assert 0, "this should not be reached!"
         except OSError as err:
             print(str(err))
@@ -786,8 +695,8 @@ def test_load_gz():
     sizes.append(1000005)
 
     # save uncompressed hashtable.
-    hi = khmer.Countgraph(12, 1, 1, primes=sizes)
-    hi.consume_seqfile(inpath)
+    hi = khmer._Countgraph(12, sizes)
+    hi.consume_fasta(inpath)
     hi.save(savepath)
 
     # compress.
@@ -798,15 +707,16 @@ def test_load_gz():
     in_file.close()
 
     # load compressed hashtable.
+    ht = khmer._Countgraph(12, sizes)
     try:
-        ht = Countgraph.load(loadpath)
+        ht.load(loadpath)
     except OSError as err:
         assert 0, "Should not produce an OSError: " + str(err)
 
-    tracking = khmer.Nodegraph(12, 1, 1, primes=sizes)
+    tracking = khmer._Nodegraph(12, sizes)
     x = hi.abundance_distribution(inpath, tracking)
 
-    tracking = khmer.Nodegraph(12, 1, 1, primes=sizes)
+    tracking = khmer._Nodegraph(12, sizes)
     y = ht.abundance_distribution(inpath, tracking)
 
     assert sum(x) == 3966, sum(x)
@@ -820,31 +730,35 @@ def test_save_load_gz():
     sizes = list(PRIMES_1m)
     sizes.append(1000005)
 
-    hi = khmer.Countgraph(12, 1, 1, primes=sizes)
-    hi.consume_seqfile(inpath)
+    hi = khmer._Countgraph(12, sizes)
+    hi.consume_fasta(inpath)
     hi.save(savepath)
 
+    ht = khmer._Countgraph(12, sizes)
     try:
-        ht = Countgraph.load(savepath)
+        ht.load(savepath)
     except OSError as err:
         assert 0, 'Should not produce an OSError: ' + str(err)
 
-    tracking = khmer.Nodegraph(12, 1, 1, primes=sizes)
+    tracking = khmer._Nodegraph(12, sizes)
     x = hi.abundance_distribution(inpath, tracking)
 
-    tracking = khmer.Nodegraph(12, 1, 1, primes=sizes)
+    tracking = khmer._Nodegraph(12, sizes)
     y = ht.abundance_distribution(inpath, tracking)
 
     assert sum(x) == 3966, sum(x)
     assert x == y, (x, y)
 
 
-@pytest.mark.parametrize("ext", ['', '.gz'])
-def test_load_empty_files(ext):
+def test_load_empty_files():
+    def do_load_ct(fname):
+        with pytest.raises(OSError):
+            khmer.load_countgraph(fname)
+
     # Check empty files, compressed or not
-    fname = utils.get_test_data('empty-file' + ext)
-    with pytest.raises(OSError):
-        Countgraph.load(fname)
+    for ext in ['', '.gz']:
+        fn = utils.get_test_data('empty-file' + ext)
+        do_load_ct(fn)
 
 
 def test_trim_full():
@@ -948,6 +862,12 @@ def test_find_spectral_error_positions_err():
     except ValueError:
         pass
 
+    try:
+        hi.find_spectral_error_positions("ACGTACGN", 1)
+        assert 0, "should raise ValueError; contains N"
+    except ValueError:
+        pass
+
 
 def test_maxcount():
     # hashtable should saturate at some point so as not to overflow counter
@@ -997,8 +917,9 @@ def test_maxcount_with_bigcount_save():
     savepath = utils.get_temp_filename('tempcountingsave.ht')
     kh.save(savepath)
 
+    kh = khmer.Countgraph(1, 1, 1)
     try:
-        kh = Countgraph.load(savepath)
+        kh.load(savepath)
     except OSError as err:
         assert 0, "Should not produce an OSError: " + str(err)
 
@@ -1015,8 +936,9 @@ def test_bigcount_save():
     savepath = utils.get_temp_filename('tempcountingsave.ht')
     kh.save(savepath)
 
+    kh = khmer.Countgraph(1, 1, 1)
     try:
-        kh = Countgraph.load(savepath)
+        kh.load(savepath)
     except OSError as err:
         assert 0, "Should not produce an OSError: " + str(err)
 
@@ -1038,8 +960,9 @@ def test_nobigcount_save():
     savepath = utils.get_temp_filename('tempcountingsave.ht')
     kh.save(savepath)
 
+    kh = khmer.Countgraph(1, 1, 1)
     try:
-        kh = Countgraph.load(savepath)
+        kh.load(savepath)
     except OSError as err:
         assert 0, 'Should not produce an OSError: ' + str(err)
 
@@ -1061,7 +984,7 @@ def test_bigcount_abund_dist():
 
     seqpath = utils.get_test_data('test-abund-read-2.fa')
 
-    kh.consume_seqfile(seqpath)
+    kh.consume_fasta(seqpath)
 
     dist = kh.abundance_distribution(seqpath, tracking)
     print(kh.get('GGTTGACGGGGCTCAGGG'))
@@ -1077,7 +1000,7 @@ def test_bigcount_abund_dist_2():
 
     seqpath = utils.get_test_data('test-abund-read.fa')
 
-    kh.consume_seqfile(seqpath)
+    kh.consume_fasta(seqpath)
     for i in range(1000):
         kh.count('GGTTGACGGGGCTCAGGG')
 
@@ -1114,8 +1037,9 @@ def test_get_hashsizes():
 def test_load_notexist_should_fail():
     savepath = utils.get_temp_filename('tempcountingsave0.ht')
 
+    hi = khmer.Countgraph(12, 1000, 2)
     try:
-        hi = Countgraph.load(savepath)
+        hi.load(savepath)
         assert 0, "load should fail"
     except OSError as e:
         print(str(e))
@@ -1126,7 +1050,7 @@ def test_load_truncated_should_fail():
     savepath = utils.get_temp_filename('tempcountingsave0.ht')
 
     hi = khmer.Countgraph(12, 1000, 2)
-    hi.consume_seqfile(inpath)
+    hi.consume_fasta(inpath)
     hi.save(savepath)
 
     fp = open(savepath, 'rb')
@@ -1137,8 +1061,9 @@ def test_load_truncated_should_fail():
     fp.write(data[:1000])
     fp.close()
 
+    hi = khmer._Countgraph(12, [1])
     try:
-        hi = Countgraph.load(savepath)
+        hi.load(savepath)
         assert 0, "load should fail"
     except OSError as e:
         print(str(e))
@@ -1147,8 +1072,9 @@ def test_load_truncated_should_fail():
 def test_load_gz_notexist_should_fail():
     savepath = utils.get_temp_filename('tempcountingsave0.ht.gz')
 
+    hi = khmer.Countgraph(12, 1000, 2)
     try:
-        hi = Countgraph.load(savepath)
+        hi.load(savepath)
         assert 0, "load should fail"
     except OSError as e:
         print(str(e))
@@ -1159,7 +1085,7 @@ def test_load_gz_truncated_should_fail():
     savepath = utils.get_temp_filename('tempcountingsave0.ht.gz')
 
     hi = khmer.Countgraph(12, 1000, 2)
-    hi.consume_seqfile(inpath)
+    hi.consume_fasta(inpath)
     hi.save(savepath)
 
     fp = open(savepath, 'rb')
@@ -1170,8 +1096,9 @@ def test_load_gz_truncated_should_fail():
     fp.write(data[:1000])
     fp.close()
 
+    hi = khmer._Countgraph(12, [1])
     try:
-        hi = Countgraph.load(savepath)
+        hi.load(savepath)
         assert 0, "load should fail"
     except OSError as e:
         print(str(e))
@@ -1190,11 +1117,12 @@ def test_counting_file_version_check():
 
 
 def test_counting_gz_file_version_check():
+    ht = khmer.Countgraph(12, 1, 1)
 
     inpath = utils.get_test_data('badversion-k12.ct.gz')
 
     try:
-        ht = Countgraph.load(inpath)
+        ht.load(inpath)
         assert 0, "this should fail"
     except OSError as e:
         print(str(e))
@@ -1203,8 +1131,10 @@ def test_counting_gz_file_version_check():
 def test_counting_file_type_check():
     inpath = utils.get_test_data('goodversion-k12.ht')
 
+    kh = khmer.Countgraph(12, 1, 1)
+
     try:
-        kh = Countgraph.load(inpath)
+        kh.load(inpath)
         assert 0, "this should fail"
     except OSError as e:
         print(str(e))
@@ -1213,8 +1143,10 @@ def test_counting_file_type_check():
 def test_counting_gz_file_type_check():
     inpath = utils.get_test_data('goodversion-k12.ht.gz')
 
+    kh = khmer.Countgraph(12, 1, 1)
+
     try:
-        kh = Countgraph.load(inpath)
+        kh.load(inpath)
         assert 0, "this should fail"
     except OSError as e:
         print(str(e))
@@ -1222,7 +1154,7 @@ def test_counting_gz_file_type_check():
 
 def test_counting_bad_primes_list():
     try:
-        khmer.Countgraph(12, 1, 1, primes=["a", "b", "c"])
+        khmer._Countgraph(12, ["a", "b", "c"], 1)
         assert 0, "bad list of primes should fail"
     except TypeError as e:
         print(str(e))
@@ -1242,22 +1174,22 @@ def test_bad_use_bigcount():
 def test_consume_absentfasta():
     countgraph = khmer.Countgraph(4, 4 ** 4, 4)
     try:
-        countgraph.consume_seqfile("absent_file.fa")
+        countgraph.consume_fasta("absent_file.fa")
         assert 0, "This should fail"
     except OSError as err:
         print(str(err))
 
 
-def test_consume_absentfasta():
+def test_consume_absentfasta_with_reads_parser():
     countgraph = khmer.Countgraph(4, 4 ** 4, 4)
     try:
-        countgraph.consume_seqfile()
+        countgraph.consume_fasta_with_reads_parser()
         assert 0, "this should fail"
     except TypeError as err:
         print(str(err))
     try:
         readparser = ReadParser(utils.get_test_data('empty-file'))
-        countgraph.consume_seqfile(readparser)
+        countgraph.consume_fasta_with_reads_parser(readparser)
         assert 0, "this should fail"
     except OSError as err:
         print(str(err))
@@ -1359,9 +1291,9 @@ def test_badtrim():
 
 
 def test_badload():
-
+    countgraph = khmer.Countgraph(4, 4 ** 4, 4)
     try:
-        countgraph = Countgraph.load()
+        countgraph.load()
         assert 0, "this should fail"
     except TypeError as err:
         print(str(err))
@@ -1403,14 +1335,14 @@ def test_badconsume_and_tag():
         print(str(err))
 
 
-def test_consume_seqfile_and_tag():
+def test_consume_fasta_and_tag():
     countgraph = khmer.Countgraph(4, 4 ** 4, 4)
     try:
-        countgraph.consume_seqfile_and_tag()
+        countgraph.consume_fasta_and_tag()
         assert 0, "this should fail"
     except TypeError as err:
         print(str(err))
-    countgraph.consume_seqfile_and_tag(utils.get_test_data("test-graph2.fa"))
+    countgraph.consume_fasta_and_tag(utils.get_test_data("test-graph2.fa"))
 
 
 def test_consume_and_retrieve_tags_1():
@@ -1495,14 +1427,14 @@ def test_abund_dist_gz_bigcount():
     f_out.close()
     # load the compressed bigcount table
     try:
-        countgraph = Countgraph.load(outfile)
+        countgraph = khmer.load_countgraph(outfile)
     except OSError as err:
         assert 0, 'Should not produce OSError: ' + str(err)
 
     assert countgraph.n_occupied() != 0
     hashsizes = countgraph.hashsizes()
     kmer_size = countgraph.ksize()
-    tracking = khmer.Nodegraph(kmer_size, 1, 1, primes=hashsizes)
+    tracking = khmer._Nodegraph(kmer_size, hashsizes)
     abundances = countgraph.abundance_distribution(infile, tracking)
     # calculate abundance distribution for compressed bigcount table
     flag = False
@@ -1531,14 +1463,14 @@ def test_abund_dist_gz_bigcount_compressed_first():
     f_out.close()
     # load the compressed bigcount table
     try:
-        countgraph = Countgraph.load(outfile)
+        countgraph = khmer.load_countgraph(outfile)
     except OSError as err:
         assert 0, 'Should not produce OSError: ' + str(err)
 
     assert countgraph.n_occupied() != 0
     hashsizes = countgraph.hashsizes()
     kmer_size = countgraph.ksize()
-    tracking = khmer.Nodegraph(kmer_size, 1, 1, primes=hashsizes)
+    tracking = khmer._Nodegraph(kmer_size, hashsizes)
     abundances = countgraph.abundance_distribution(infile, tracking)
     # calculate abundance distribution for compressed bigcount table
     flag = False

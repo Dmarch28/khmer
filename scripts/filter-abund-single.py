@@ -45,17 +45,17 @@ placed in 'infile.abundfilt'.
 
 Use '-h' for parameter help.
 """
+from __future__ import print_function
 import os
 import sys
 import threading
 import textwrap
 import khmer
-
-from khmer import ReadParser
+import screed
 from khmer.utils import broken_paired_reader, write_record
 from khmer import khmer_args
 from khmer.khmer_args import (build_counting_args, report_on_config,
-                              add_threading_args, calculate_graphsize,
+                              add_threading_args, info, calculate_graphsize,
                               sanitize_help, check_argument_range)
 from khmer.kfile import (check_input_files, check_space,
                          check_space_for_graph,
@@ -85,18 +85,17 @@ def get_parser():
     """
     parser = build_counting_args(
         descr="Trims sequences at a minimum k-mer abundance "
-        "(in memory version).", epilog=textwrap.dedent(epilog),
-        citations=['counting', 'SeqAn'])
+        "(in memory version).", epilog=textwrap.dedent(epilog))
     add_threading_args(parser)
 
-    parser.add_argument('-C', '--cutoff', default=DEFAULT_CUTOFF,
+    parser.add_argument('--cutoff', '-C', default=DEFAULT_CUTOFF,
                         type=check_argument_range(0, 256, "cutoff"),
                         help="Trim at k-mers below this abundance.")
-    parser.add_argument('-V', '--variable-coverage', action='store_true',
+    parser.add_argument('--variable-coverage', '-V', action='store_true',
                         dest='variable_coverage', default=False,
                         help='Only trim low-abundance k-mers from sequences '
                         'that have high coverage.')
-    parser.add_argument('-Z', '--normalize-to', type=int, dest='normalize_to',
+    parser.add_argument('--normalize-to', '-Z', type=int, dest='normalize_to',
                         help='Base the variable-coverage cutoff on this median'
                         ' k-mer abundance.',
                         default=DEFAULT_NORMALIZE_LIMIT)
@@ -119,6 +118,8 @@ def get_parser():
 
 def main():
     args = sanitize_help(get_parser()).parse_args()
+    if not args.quiet:
+        info('filter-abund-single.py', ['counting', 'SeqAn'])
 
     configure_logging(args.quiet)
     check_input_files(args.datafile, args.force)
@@ -140,7 +141,7 @@ def main():
     for _ in range(args.threads):
         cur_thread = \
             threading.Thread(
-                target=graph.consume_seqfile,
+                target=graph.consume_fasta_with_reads_parser,
                 args=(rparser, )
             )
         threads.append(cur_thread)
@@ -155,20 +156,16 @@ def main():
     log_info('fp rate estimated to be {fpr:1.3f}', fpr=fp_rate)
 
     # the filtering loop
-    print('filtering', args.datafile, file=sys.stderr)
+    log_info('filtering {datafile}', datafile=args.datafile)
     if args.outfile is None:
         outfile = os.path.basename(args.datafile) + '.abundfilt'
     else:
         outfile = args.outfile
     outfp = open(outfile, 'wb')
     outfp = get_file_writer(outfp, args.gzip, args.bzip)
-    log_info('filtering {datafile}', datafile=args.datafile)
-    outfile = os.path.basename(args.datafile) + '.abundfilt'
-    outfile = open(outfile, 'wb')
-    outfp = get_file_writer(outfile, args.gzip, args.bzip)
 
-    paired_iter = broken_paired_reader(ReadParser(args.datafile),
-                                       min_length=graph.ksize(),
+    screed_iter = screed.open(args.datafile)
+    paired_iter = broken_paired_reader(screed_iter, min_length=graph.ksize(),
                                        force_single=True)
 
     for n, is_pair, read1, read2 in paired_iter:
@@ -179,16 +176,15 @@ def main():
                                         args.variable_coverage,
                                         args.normalize_to)
         if trimmed_record:
+            print((trimmed_record,))
             write_record(trimmed_record, outfp)
 
-    print('output in', outfile, file=sys.stderr)
-    log_info('output in {outfile}', outfile=outfile.name)
+    log_info('output in {outfile}', outfile=outfile)
 
     if args.savegraph:
         log_info('Saving k-mer countgraph filename {graph}',
                  graph=args.savegraph)
         graph.save(args.savegraph)
-
 
 if __name__ == '__main__':
     main()

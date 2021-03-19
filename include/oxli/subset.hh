@@ -42,11 +42,12 @@ Contact: khmer-project@idyll.org
 #include <queue>
 #include <string>
 
-#include "oxli.hh"
+#include "khmer.hh"
 
-namespace oxli
+namespace khmer
 {
-class Countgraph;
+class CountingHash;
+class Hashbits;
 class Hashgraph;
 
 struct pre_partition_info {
@@ -156,10 +157,10 @@ public:
                                      unsigned int& n_unassigned) const;
 
     void partition_average_coverages(PartitionCountMap &cm,
-                                     Countgraph * ht) const;
+                                     CountingHash * ht) const;
 
     unsigned long long repartition_largest_partition(unsigned int, unsigned int,
-            unsigned int, Countgraph&);
+            unsigned int, CountingHash&);
 
     void repartition_a_partition(const SeenSet& partition_tags);
     void _clear_partition(PartitionID, SeenSet& partition_tags);

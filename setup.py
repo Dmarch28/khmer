@@ -36,38 +36,28 @@
 # Contact: khmer-project@idyll.org
 """Setup for khmer project."""
 
-import glob
+import ez_setup
+
 import os
 import sys
 from os import listdir as os_listdir
 from os.path import join as path_join
-from os.path import splitext
 import shutil
 import subprocess
-import sys
-import sysconfig
 import tempfile
 
-from skbuild import setup
+from setuptools import setup
+from setuptools import Extension
+from setuptools.command.build_ext import build_ext as _build_ext
+from distutils.spawn import spawn
+from distutils.sysconfig import get_config_vars
+from distutils.dist import Distribution
+from distutils.errors import DistutilsPlatformError
 
 import versioneer
+ez_setup.use_setuptools(version="3.4.1")
 
 CMDCLASS = versioneer.get_cmdclass()
-
-try:
-    import Cython
-    from Cython.Distutils import Extension as CyExtension
-    HAS_CYTHON = True
-    cy_ext = 'pyx'
-    print('*** NOTE: Found Cython, extension files will be '
-          'transpiled if this is an install invocation.',
-          file=sys.stderr)
-except ImportError:
-    from setuptools import Extension as CyExtension
-    HAS_CYTHON = False
-    cy_ext = 'cpp'
-    print('*** WARNING: Cython not found, assuming cythonized '
-          'files available for compilation.', file=sys.stderr)
 
 # strip out -Wstrict-prototypes; a hack suggested by
 # http://stackoverflow.com/a/9740721
@@ -128,48 +118,23 @@ def check_for_openmp():
 
     return exit_code == 0
 
-
-def distutils_dir_name(dname):
-    """Returns the name of a distutils build directory"""
-    f = "{dirname}.{platform}-{version[0]}.{version[1]}"
-    return f.format(dirname=dname,
-                    platform=sysconfig.get_platform(),
-                    version=sys.version_info)
-
-
-def build_dir():
-    return path_join("build", distutils_dir_name("temp"))
-
 # We bundle tested versions of zlib & bzip2. To use the system zlib and bzip2
 # change setup.cfg or use the `--libraries z,bz2` parameter which will make our
 # custom build_ext command strip out the bundled versions.
 
-
 ZLIBDIR = 'third-party/zlib'
 BZIP2DIR = 'third-party/bzip2'
 
-BUILD_DEPENDS = [path_join("include", "khmer", bn + ".hh") for bn in [
-    "_cpy_khmer", "_cpy_utils", "_cpy_readparsers"
-]]
-BUILD_DEPENDS.extend(path_join("include", "oxli", bn + ".hh") for bn in [
-    "khmer", "kmer_hash", "hashtable", "labelhash", "hashgraph",
-    "hllcounter", "oxli_exception", "read_aligner", "subset", "read_parsers",
+BUILD_DEPENDS = []
+BUILD_DEPENDS.extend(path_join("lib", bn + ".hh") for bn in [
+    "khmer", "kmer_hash", "hashtable", "counting", "hashbits", "labelhash",
+    "hllcounter", "khmer_exception", "read_aligner", "subset", "read_parsers",
     "kmer_filters", "traversal", "assembler", "alphabets", "storage"])
-BUILD_DEPENDS.extend(glob.glob(path_join("khmer", "_cpy_*.hh")))
-BUILD_DEPENDS.extend(path_join("khmer", bn + ".hh") for bn in [
-    "_cpy_counttable", "_cpy_hashgraph", "_cpy_nodetable"])
-    "kmer_filters", "traversal", "assembler", "alphabets", "partitioning"])
-    "kmer_filters", "traversal", "assembler", "alphabets", "storage"])
-BUILD_DEPENDS.extend(path_join("khmer", bn + ".hh") for bn in [
-    "_cpy_counttable", "_cpy_hashgraph", "_cpy_nodetable",
-    "_cpy_smallcounttable", "_cpy_smallcountgraph"])
 
-SOURCES = [path_join("src", "khmer", bn + ".cc") for bn in [
-    "_cpy_khmer", "_cpy_utils", "_cpy_readparsers"
-]]
-SOURCES.extend(path_join("src", "oxli", bn + ".cc") for bn in [
-    "read_parsers", "kmer_hash", "hashtable", "hashgraph",
-    "labelhash", "subset", "read_aligner",
+SOURCES = ["khmer/_khmer.cc"]
+SOURCES.extend(path_join("lib", bn + ".cc") for bn in [
+    "read_parsers", "kmer_hash", "hashtable",
+    "hashbits", "labelhash", "counting", "subset", "read_aligner",
     "hllcounter", "traversal", "kmer_filters", "assembler", "alphabets",
     "storage"])
 
@@ -177,64 +142,29 @@ SOURCES.extend(path_join("third-party", "smhasher", bn + ".cc") for bn in [
     "MurmurHash3"])
 
 # Don't forget to update lib/Makefile with these flags!
-EXTRA_COMPILE_ARGS = ['-O3', '-std=c++11', '-pedantic',
-                      '-fno-omit-frame-pointer']
-EXTRA_LINK_ARGS = ['-fno-omit-frame-pointer']
+EXTRA_COMPILE_ARGS = ['-O3', '-std=c++11', '-pedantic']
+EXTRA_LINK_ARGS = []
 
 if sys.platform == 'darwin':
     # force 64bit only builds
     EXTRA_COMPILE_ARGS.extend(['-arch', 'x86_64', '-mmacosx-version-min=10.7',
                                '-stdlib=libc++'])
-    EXTRA_LINK_ARGS.append('-mmacosx-version-min=10.7')
 
 if check_for_openmp():
     EXTRA_COMPILE_ARGS.extend(['-fopenmp'])
     EXTRA_LINK_ARGS.extend(['-fopenmp'])
 
-CP_EXTENSION_MOD_DICT = \
+EXTENSION_MOD_DICT = \
     {
         "sources": SOURCES,
         "extra_compile_args": EXTRA_COMPILE_ARGS,
         "extra_link_args": EXTRA_LINK_ARGS,
         "depends": BUILD_DEPENDS,
-        "include_dirs": ["include", "."],
         "language": "c++",
         "define_macros": [("VERSION", versioneer.get_version()), ],
     }
 
-EXTENSION_MODS = [Extension("khmer._khmer", ** CP_EXTENSION_MOD_DICT)]
-
-CY_OPTS = {
-    'embedsignature': True,
-    'language_level': 3,
-    'c_string_type': 'unicode',
-    'c_string_encoding': 'utf8'
-}
-
-for cython_ext in glob.glob(os.path.join("khmer", "_oxli",
-                                         "*.{0}".format(cy_ext))):
-
-    CY_EXTENSION_MOD_DICT = \
-        {
-            "sources": [cython_ext, "khmer/_oxli/oxli_exception_convert.cc"],
-            "extra_compile_args": EXTRA_COMPILE_ARGS,
-            "extra_link_args": EXTRA_LINK_ARGS,
-            "extra_objects": [path_join(build_dir(), splitext(p)[0] + '.o')
-                              for p in SOURCES],
-            "depends": [],
-            "include_dirs": ["include", "."],
-            "language": "c++",
-            "define_macros": [("VERSION", versioneer.get_version()), ]
-        }
-
-    if HAS_CYTHON:
-        CY_EXTENSION_MOD_DICT['cython_directives'] = CY_OPTS
-
-    ext_name = "khmer._oxli.{0}".format(
-        splitext(os.path.basename(cython_ext))[0]
-    )
-    EXTENSION_MODS.append(CyExtension(ext_name, ** CY_EXTENSION_MOD_DICT))
-
+EXTENSION_MOD = Extension("khmer._khmer", ** EXTENSION_MOD_DICT)
 SCRIPTS = []
 SCRIPTS.extend([path_join("scripts", script)
                 for script in os_listdir("scripts")
@@ -249,9 +179,9 @@ CLASSIFIERS = [
     "Operating System :: POSIX :: Linux",
     "Operating System :: MacOS :: MacOS X",
     "Programming Language :: C++",
+    "Programming Language :: Python :: 2.7",
+    "Programming Language :: Python :: 3.3",
     "Programming Language :: Python :: 3.4",
-    "Programming Language :: Python :: 3.5",
-    "Programming Language :: Python :: 3.6",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 if "-rc" in versioneer.get_version():
@@ -264,14 +194,14 @@ SETUP_METADATA = \
         "name": "khmer",
         "version": versioneer.get_version(),
         "description": 'khmer k-mer counting library',
-        "long_description": open("README.md").read(),
+        "long_description": open("README.rst").read(),
         "author": "Michael R. Crusoe, Hussien F. Alameldin, Sherine Awad, "
                   "Elmar Bucher, Adam Caldwell, Reed Cartwright, "
                   "Amanda Charbonneau, Bede Constantinides, Greg Edvenson, "
                   "Scott Fay, Jacob Fenton, Thomas Fenzl, Jordan Fish, "
                   "Leonor Garcia-Gutierrez, Phillip Garland, Jonathan Gluck, "
-                  "Iv�n Gonz�lez, Sarah Guermond, Jiarong Guo, Aditi Gupta, "
-                  "Joshua R. Herr, Adina Howe, Alex Hyer, Andreas H�rpfer, "
+                  "Iván González, Sarah Guermond, Jiarong Guo, Aditi Gupta, "
+                  "Joshua R. Herr, Adina Howe, Alex Hyer, Andreas Härpfer, "
                   "Luiz Irber, Rhys Kidd, David Lin, Justin Lippi, "
                   "Tamer Mansour, Pamela McA'Nulty, Eric McDonald, "
                   "Jessica Mizzi, Kevin D. Murray, Joshua R. Nahum, "
@@ -291,18 +221,10 @@ SETUP_METADATA = \
         # http://docs.python.org/2/distutils/setupscript.html
         # additional-meta-data note #3
         "url": 'https://khmer.readthedocs.io/',
-        "packages": ['khmer', 'khmer.tests', 'oxli', 'khmer._oxli'],
-        "package_data": {'khmer/_oxli': ['*.pxd']},
+        "packages": ['khmer', 'khmer.tests', 'oxli'],
         "package_dir": {'khmer.tests': 'tests'},
-        "install_requires": ['screed >= 1.0', 'bz2file', 'Cython>=0.25.2'],
-        "setup_requires": ["pytest-runner>=2.0,<3dev", "setuptools>=18.0",
-                           "Cython>=0.25.2"],
-        "install_requires": ['screed >= 1.0', 'bz2file', 'Cython==0.25.2'],
-        "setup_requires": ["pytest-runner>=2.0,<3dev", "setuptools>=18.0"],
         "install_requires": ['screed >= 0.9', 'bz2file'],
         "setup_requires": ["pytest-runner>=2.0,<3dev"],
-        "setup_requires": ["pytest-runner>=2.0,<3dev", "setuptools>=18.0",
-                           "Cython>=0.25.2"],
         "extras_require": {':python_version=="2.6"': ['argparse>=1.2.1'],
                            'docs': ['sphinx', 'sphinxcontrib-autoprogram'],
                            'tests': ['pytest>=2.9'],
@@ -313,13 +235,73 @@ SETUP_METADATA = \
         #        "oxli = oxli:main"
         #    ]
         # },
+        "ext_modules": [EXTENSION_MOD, ],
         # "platforms": '', # empty as is conveyed by the classifiers below
         # "license": '', # empty as is conveyed by the classifier below
         "include_package_data": True,
         "zip_safe": False,
-        "classifiers": CLASSIFIERS,
-        "python_requires": '>=3.4'
+        "classifiers": CLASSIFIERS
     }
+
+
+class KhmerBuildExt(_build_ext):  # pylint: disable=R0904
+    """Specialized Python extension builder for khmer project.
+
+    Only run the library setup when needed, not on every invocation.
+
+    Also strips out the bundled zlib and bzip2 libraries if
+    `--libraries z,bz2` is specified or the equivalent is in setup.cfg
+    """
+
+    def run(self):
+        """Run extension builder."""
+        if "%x" % sys.maxsize != '7fffffffffffffff':
+            raise DistutilsPlatformError("%s require 64-bit operating system" %
+                                         SETUP_METADATA["packages"])
+
+        if sys.platform == 'darwin' and 'gcov' in self.libraries:
+            self.libraries.remove('gcov')
+
+        if "z" not in self.libraries:
+            zcmd = ['bash', '-c', 'cd ' + ZLIBDIR + ' && ( test Makefile -nt'
+                    ' configure || bash ./configure --static ) && make -f '
+                    'Makefile.pic PIC']
+            spawn(cmd=zcmd, dry_run=self.dry_run)
+            self.extensions[0].extra_objects.extend(
+                path_join("third-party", "zlib", bn + ".lo") for bn in [
+                    "adler32", "compress", "crc32", "deflate", "gzclose",
+                    "gzlib", "gzread", "gzwrite", "infback", "inffast",
+                    "inflate", "inftrees", "trees", "uncompr", "zutil"])
+        if "bz2" not in self.libraries:
+            bz2cmd = ['bash', '-c', 'cd ' + BZIP2DIR + ' && make -f '
+                      'Makefile-libbz2_so all']
+            spawn(cmd=bz2cmd, dry_run=self.dry_run)
+            self.extensions[0].extra_objects.extend(
+                path_join("third-party", "bzip2", bn + ".o") for bn in [
+                    "blocksort", "huffman", "crctable", "randtable",
+                    "compress", "decompress", "bzlib"])
+        _build_ext.run(self)
+
+CMDCLASS.update({'build_ext': KhmerBuildExt})
+
+_DISTUTILS_REINIT = Distribution.reinitialize_command
+
+
+def reinitialize_command(self, command, reinit_subcommands):
+    """Monkeypatch the original version from distutils.
+
+    It's supposed to match the behavior of Distribution.get_command_obj()
+    This fixes issues with 'pip install -e' and './setup.py test' not
+    respecting the setup.cfg configuration directives for the build_ext
+    command.
+    """
+    cmd_obj = _DISTUTILS_REINIT(self, command, reinit_subcommands)
+    options = self.command_options.get(command)
+    if options:
+        self._set_command_options(  # pylint: disable=protected-access
+            cmd_obj, options)
+    return cmd_obj
+Distribution.reinitialize_command = reinitialize_command
 
 
 setup(cmdclass=CMDCLASS, **SETUP_METADATA)

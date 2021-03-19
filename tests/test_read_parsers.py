@@ -35,8 +35,10 @@
 # pylint: disable=missing-docstring,invalid-name
 
 # Tests for the ReadParser and Read classes.
+from __future__ import print_function
+from __future__ import absolute_import
 from khmer import Read
-from khmer import ReadParser, Counttable, Nodegraph
+from khmer import ReadParser
 from screed import Record
 from . import khmer_tst_utils as utils
 import pytest
@@ -58,27 +60,15 @@ def test_read_type_basic():
         assert x.name == name
         assert x.sequence == sequence
         assert not hasattr(x, 'quality'), x
-        assert not hasattr(x, 'description'), x
-
-
-def test_read_quality_none():
-    r = Read(name="test", sequence="ACGT", quality=None)
-    assert not hasattr(r, 'quality')
+        assert not hasattr(x, 'annotations'), x
 
 
 def test_read_type_attributes():
-    r = Read(sequence='ACGT', quality='good', name='1234', description='desc')
+    r = Read(sequence='ACGT', quality='good', name='1234', annotations='ann')
     assert r.sequence == 'ACGT'
-    assert r.cleaned_seq == 'ACGT'
     assert r.quality == 'good'
     assert r.name == '1234'
-    assert r.description == 'desc'
-
-
-def test_read_type_cleaned_seq():
-    r = Read(sequence='acgtnN', name='1234')
-    assert r.sequence == 'acgtnN'
-    assert r.cleaned_seq == 'ACGTAA'
+    assert r.annotations == 'ann'
 
 
 def test_read_properties():
@@ -93,20 +83,6 @@ def test_read_properties():
         # if an attribute is empty it shouldn't exist
         assert not hasattr(read, 'annotations')
         assert read.quality == """][aaX__aa[`ZUZ[NONNFNNNNNO_____^RQ_"""
-
-
-def test_read_properties_fa():
-
-    # Note: Using a data file with only one read.
-    rparser = ReadParser(utils.get_test_data("single-read.fa"))
-
-    # Check the properties of all one reads in data set.
-    for read in rparser:
-        print(read.name)
-        assert read.name == "895:1:1:1246:14654 1:N:0:NNNNN"
-        assert read.sequence == "CAGGCGCCCACCACCGTGCCCTCCAACCTGATGGT"
-        # if an attribute is empty it shouldn't exist
-        assert not hasattr(read, 'quality')
 
 
 def test_with_default_arguments():
@@ -474,13 +450,5 @@ def test_iternext():
         print(str(err))
     except ValueError as err:
         print(str(err))
-
-
-def test_clean_seq():
-    for read in ReadParser(utils.get_test_data("test-abund-read-3.fa")):
-        clean = read.sequence.upper().replace("N", "A")
-        assert clean == read.cleaned_seq
-
-
 # vim: set filetype=python tabstop=4 softtabstop=4 shiftwidth=4 expandtab:
 # vim: set textwidth=79:

@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # This file is part of khmer, https://github.com/dib-lab/khmer/, and is
 # Copyright (C) 2010-2015, Michigan State University.
-# Copyright (C) 2015, The Regents of the University of California.
+# Copyright (C) 2015-2016, The Regents of the University of California.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -46,18 +46,20 @@ Use '-h' for parameter help.
 @CTB note that if threshold is != 1, those sequences will not be output
 by output_unassigned...
 """
+from __future__ import print_function
 
 import sys
 import screed
+import argparse
 import textwrap
 from contextlib import contextmanager
 import khmer
 
-from khmer import __version__
 from khmer.kfile import (check_input_files, check_space,
                          add_output_compression_type,
                          get_file_writer)
-from khmer.khmer_args import sanitize_help, KhmerArgumentParser
+from khmer.khmer_args import (info, sanitize_help, ComboFormatter,
+                              _VersionStdErrAction, __version__)
 from khmer.utils import write_record
 
 DEFAULT_MAX_SIZE = int(1e6)
@@ -74,7 +76,6 @@ def read_partition_file(filename):
 def get_parser():
     """Create parser for extract-partitions.py."""
     epilog = """
-    epilog = """\
     Example (results will be in ``example.group0000.fa``)::
 
         load-graph.py -k 20 example tests/test-data/random-20-a.fa
@@ -88,25 +89,27 @@ def get_parser():
     (2) count of partitions with n reads, (3) cumulative sum of partitions,
     (4) cumulative sum of reads.)
     """
-    parser = KhmerArgumentParser(
+    parser = argparse.ArgumentParser(
         description="Separate sequences that are annotated with partitions "
         "into grouped files.", epilog=textwrap.dedent(epilog),
-        citations=['graph'])
+        formatter_class=ComboFormatter)
     parser.add_argument('prefix', metavar='output_filename_prefix')
     parser.add_argument('part_filenames', metavar='input_partition_filename',
                         nargs='+')
-    parser.add_argument('-X', '--max-size', dest='max_size',
+    parser.add_argument('--max-size', '-X', dest='max_size',
                         default=DEFAULT_MAX_SIZE, type=int,
                         help='Max group size (n sequences)')
-    parser.add_argument('-m', '--min-partition-size', dest='min_part_size',
+    parser.add_argument('--min-partition-size', '-m', dest='min_part_size',
                         default=DEFAULT_THRESHOLD, type=int,
                         help='Minimum partition size worth keeping')
-    parser.add_argument('-n', '--no-output-groups', dest='output_groups',
+    parser.add_argument('--no-output-groups', '-n', dest='output_groups',
                         default=True, action='store_false',
                         help='Do not actually output groups files.')
-    parser.add_argument('-U', '--output-unassigned', default=False,
+    parser.add_argument('--output-unassigned', '-U', default=False,
                         action='store_true',
                         help='Output unassigned sequences, too')
+    parser.add_argument('--version', action=_VersionStdErrAction,
+                        version='khmer {v}'.format(v=__version__))
     parser.add_argument('-f', '--force', default=False, action='store_true',
                         help='Overwrite output file if it exists')
     add_output_compression_type(parser)
@@ -251,6 +254,7 @@ class PartitionExtractor(object):
 
 
 def main():
+    info('extract-partitions.py', ['graph'])
     args = sanitize_help(get_parser()).parse_args()
 
     distfilename = args.prefix + '.dist'
@@ -352,7 +356,6 @@ def main():
           (len(group_fps),
            args.prefix,
            suffix), file=sys.stderr)
-
 
 if __name__ == '__main__':
     main()

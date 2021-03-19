@@ -44,17 +44,18 @@ Output sequences will be placed in 'infile.abundfilt'.
 
 Use '-h' for parameter help.
 """
+from __future__ import print_function
 import sys
 import os
 import textwrap
+import argparse
 import khmer
-
+import screed
 from khmer import __version__
-from khmer import ReadParser, Countgraph
 from khmer.utils import (broken_paired_reader, write_record)
-from khmer.khmer_args import (add_threading_args, KhmerArgumentParser,
-                              sanitize_help, check_argument_range)
-from khmer.khmer_args import FileType as khFileType
+from khmer.khmer_args import (ComboFormatter, add_threading_args, info,
+                              sanitize_help, _VersionStdErrAction,
+                              check_argument_range)
 from khmer.kfile import (check_input_files, check_space,
                          add_output_compression_type, get_file_writer)
 from khmer.khmer_logger import (configure_logging, log_info, log_error,
@@ -77,33 +78,35 @@ def get_parser():
         load-into-counting.py -k 20 -x 5e7 countgraph data/100k-filtered.fa
         filter-abund.py -C 2 countgraph data/100k-filtered.fa
     """
-    parser = KhmerArgumentParser(
+    parser = argparse.ArgumentParser(
         description='Trim sequences at a minimum k-mer abundance.',
         epilog=textwrap.dedent(epilog),
-        citations=['counting'])
+        formatter_class=ComboFormatter)
     parser.add_argument('input_graph', metavar='input_count_graph_filename',
                         help='The input k-mer countgraph filename')
     parser.add_argument('input_filename', metavar='input_sequence_filename',
                         help='Input FAST[AQ] sequence filename', nargs='+')
     add_threading_args(parser)
-    parser.add_argument('-C', '--cutoff', dest='cutoff',
+    parser.add_argument('--cutoff', '-C', dest='cutoff',
                         default=DEFAULT_CUTOFF,
                         type=check_argument_range(0, 256, 'cutoff'),
                         help="Trim at k-mers below this abundance.")
-    parser.add_argument('-V', '--variable-coverage', action='store_true',
+    parser.add_argument('--variable-coverage', '-V', action='store_true',
                         dest='variable_coverage', default=False,
                         help='Only trim low-abundance k-mers from sequences '
                         'that have high coverage.')
-    parser.add_argument('-Z', '--normalize-to', type=int, dest='normalize_to',
+    parser.add_argument('--normalize-to', '-Z', type=int, dest='normalize_to',
                         help='Base the variable-coverage cutoff on this median'
                         ' k-mer abundance.',
                         default=DEFAULT_NORMALIZE_LIMIT)
     parser.add_argument('-o', '--output', dest='single_output_file',
-                        type=khFileType('wb'),
+                        type=argparse.FileType('wb'),
                         metavar="optional_output_filename",
                         help='Output the trimmed sequences into a single file '
                         'with the given filename instead of creating a new '
                         'file for each input file.')
+    parser.add_argument('--version', action=_VersionStdErrAction,
+                        version='khmer {v}'.format(v=__version__))
     parser.add_argument('-f', '--force', default=False, action='store_true',
                         help='Overwrite output file if it exists')
     parser.add_argument('-q', '--quiet', dest='quiet', default=False,
@@ -114,6 +117,8 @@ def get_parser():
 
 def main():
     args = sanitize_help(get_parser()).parse_args()
+    if not args.quiet:
+        info('filter-abund.py', ['counting'])
 
     configure_logging(args.quiet)
 
@@ -130,7 +135,7 @@ def main():
     check_space(infiles, args.force)
 
     log_info('loading countgraph: {graph}', graph=args.input_graph)
-    countgraph = Countgraph.load(args.input_graph)
+    countgraph = khmer.load_countgraph(args.input_graph)
     ksize = countgraph.ksize()
 
     log_info("K: {ksize}", ksize=ksize)
@@ -147,8 +152,8 @@ def main():
             outfp = open(outfile, 'wb')
             outfp = get_file_writer(outfp, args.gzip, args.bzip)
 
-        paired_iter = broken_paired_reader(ReadParser(infile),
-                                           min_length=ksize,
+        screed_iter = screed.open(infile)
+        paired_iter = broken_paired_reader(screed_iter, min_length=ksize,
                                            force_single=True)
 
         for n, is_pair, read1, read2 in paired_iter:

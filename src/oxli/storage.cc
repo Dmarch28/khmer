@@ -40,18 +40,15 @@ Contact: khmer-project@idyll.org
 #include <fstream>
 #include <iostream>
 
-#include "oxli/oxli_exception.hh"
-#include "oxli/hashtable.hh"
+#include "khmer_exception.hh"
+#include "hashtable.hh"
 #include "zlib.h"
 
-using namespace oxli;
+using namespace khmer;
 using namespace std;
 
 void Storage::set_use_bigcount(bool b)
 {
-    if (!_supports_bigcount) {
-        throw khmer_exception("bigcount is not supported for this storage.");
-    }
     _use_bigcount = b;
 }
 
@@ -63,7 +60,7 @@ bool Storage::get_use_bigcount()
 void BitStorage::update_from(const BitStorage& other)
 {
     if (_tablesizes != other._tablesizes) {
-        throw oxli_exception("both nodegraphs must have same table sizes");
+        throw khmer_exception("both nodegraphs must have same table sizes");
     }
 
     Byte tmp = 0;
@@ -99,7 +96,7 @@ void BitStorage::update_from(const BitStorage& other)
 void BitStorage::save(std::string outfilename, WordLength ksize)
 {
     if (!_counts[0]) {
-        throw oxli_exception();
+        throw khmer_exception();
     }
 
     unsigned int save_ksize = ksize;
@@ -130,13 +127,13 @@ void BitStorage::save(std::string outfilename, WordLength ksize)
         outfile.write((const char *) _counts[i], tablebytes);
     }
     if (outfile.fail()) {
-        throw oxli_file_exception(strerror(errno));
+        throw khmer_file_exception(strerror(errno));
     }
     outfile.close();
 }
 
 /**
- * Loads @param infilename into BitStorage, with error checking on
+ * Loads @param infilename into Hashbits, with error checking on
  * file type and file version.  Populates _counts internally.
  */
 void BitStorage::load(std::string infilename, WordLength &ksize)
@@ -156,13 +153,13 @@ void BitStorage::load(std::string infilename, WordLength &ksize)
         } else {
             err = "Unknown error in opening file: " + infilename;
         }
-        throw oxli_file_exception(err);
+        throw khmer_file_exception(err);
     } catch (const std::exception &e) {
         // Catching std::exception is a stopgap for
         // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66145
         std::string err = "Unknown error opening file: " + infilename + " "
                           + strerror(errno);
-        throw oxli_file_exception(err);
+        throw khmer_file_exception(err);
     }
 
     if (_counts) {
@@ -188,23 +185,23 @@ void BitStorage::load(std::string infilename, WordLength &ksize)
         infile.read((char *) &ht_type, 1);
         if (!(std::string(signature, 4) == SAVED_SIGNATURE)) {
             std::ostringstream err;
-            err << "Does not start with signature for a oxli file: 0x";
+            err << "Does not start with signature for a khmer file: 0x";
             for(size_t i=0; i < 4; ++i) {
                 err << std::hex << (int) signature[i];
             }
             err << " Should be: " << SAVED_SIGNATURE;
-            throw oxli_file_exception(err.str());
+            throw khmer_file_exception(err.str());
         } else if (!(version == SAVED_FORMAT_VERSION)) {
             std::ostringstream err;
             err << "Incorrect file format version " << (int) version
                 << " while reading k-mer graph from " << infilename
                 << "; should be " << (int) SAVED_FORMAT_VERSION;
-            throw oxli_file_exception(err.str());
+            throw khmer_file_exception(err.str());
         } else if (!(ht_type == SAVED_HASHBITS)) {
             std::ostringstream err;
             err << "Incorrect file format type " << (int) ht_type
                 << " while reading k-mer graph from " << infilename;
-            throw oxli_file_exception(err.str());
+            throw khmer_file_exception(err.str());
         }
 
         infile.read((char *) &save_ksize, sizeof(save_ksize));
@@ -242,17 +239,17 @@ void BitStorage::load(std::string infilename, WordLength &ksize)
         } else {
             err = "Error reading from k-mer graph file: " + infilename;
         }
-        throw oxli_file_exception(err);
+        throw khmer_file_exception(err);
     } catch (const std::exception &e) {
         // Catching std::exception is a stopgap for
         // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66145
         std::string err = "Unknown error opening file: " + infilename + " "
                           + strerror(errno);
-        throw oxli_file_exception(err);
+        throw khmer_file_exception(err);
     }
 }
 
-void ByteStorageFile::save(
+void CountingHashFile::save(
     const std::string   &outfilename,
     WordLength ksize,
     const ByteStorage &store)
@@ -262,14 +259,14 @@ void ByteStorageFile::save(
     std::string type = filename.substr(found + 1);
 
     if (type == "gz") {
-        ByteStorageGzFileWriter(filename, ksize, store);
+        CountingHashGzFileWriter(filename, ksize, store);
     } else {
-        ByteStorageFileWriter(filename, ksize, store);
+        CountingHashFileWriter(filename, ksize, store);
     }
 }
 
 
-ByteStorageFileReader::ByteStorageFileReader(
+CountingHashFileReader::CountingHashFileReader(
     const std::string   &infilename,
     WordLength& ksize,
     ByteStorage &store)
@@ -288,11 +285,11 @@ ByteStorageFileReader::ByteStorageFileReader(
         } else {
             err = "Unknown error in opening file: " + infilename;
         }
-        throw oxli_file_exception(err + " " + strerror(errno));
+        throw khmer_file_exception(err + " " + strerror(errno));
     } catch (const std::exception &e) {
         std::string err = "Unknown error opening file: " + infilename + " "
                           + strerror(errno);
-        throw oxli_file_exception(err);
+        throw khmer_file_exception(err);
     }
 
     if (store._counts) {
@@ -318,23 +315,23 @@ ByteStorageFileReader::ByteStorageFileReader(
         infile.read((char *) &ht_type, 1);
         if (!(std::string(signature, 4) == SAVED_SIGNATURE)) {
             std::ostringstream err;
-            err << "Does not start with signature for a oxli file: 0x";
+            err << "Does not start with signature for a khmer file: 0x";
             for(size_t i=0; i < 4; ++i) {
                 err << std::hex << (int) signature[i];
             }
             err << " Should be: " << SAVED_SIGNATURE;
-            throw oxli_file_exception(err.str());
+            throw khmer_file_exception(err.str());
         } else if (!(version == SAVED_FORMAT_VERSION)) {
             std::ostringstream err;
             err << "Incorrect file format version " << (int) version
                 << " while reading k-mer count file from " << infilename
                 << "; should be " << (int) SAVED_FORMAT_VERSION;
-            throw oxli_file_exception(err.str());
+            throw khmer_file_exception(err.str());
         } else if (!(ht_type == SAVED_COUNTING_HT)) {
             std::ostringstream err;
             err << "Incorrect file format type " << (int) ht_type
                 << " while reading k-mer count file from " << infilename;
-            throw oxli_file_exception(err.str());
+            throw khmer_file_exception(err.str());
         }
 
         infile.read((char *) &use_bigcount, 1);
@@ -395,15 +392,15 @@ ByteStorageFileReader::ByteStorageFileReader(
             err = "Error reading from k-mer count file: " + infilename + " "
                   + strerror(errno);
         }
-        throw oxli_file_exception(err);
+        throw khmer_file_exception(err);
     } catch (const std::exception &e) {
         std::string err = "Error reading from k-mer count file: " + infilename + " "
                           + strerror(errno);
-        throw oxli_file_exception(err);
+        throw khmer_file_exception(err);
     }
 }
 
-ByteStorageGzFileReader::ByteStorageGzFileReader(
+CountingHashGzFileReader::CountingHashGzFileReader(
     const std::string   &infilename,
     WordLength &ksize,
     ByteStorage    &store)
@@ -411,7 +408,7 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
     gzFile infile = gzopen(infilename.c_str(), "rb");
     if (infile == Z_NULL) {
         std::string err = "Cannot open k-mer count file: " + infilename;
-        throw oxli_file_exception(err);
+        throw khmer_file_exception(err);
     }
 
     if (store._counts) {
@@ -438,13 +435,13 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
         std::string err = "K-mer count file read error: " + infilename + " "
                           + strerror(errno);
         gzclose(infile);
-        throw oxli_file_exception(err);
+        throw khmer_file_exception(err);
     } else if (!(std::string(signature, 4) == SAVED_SIGNATURE)) {
         std::ostringstream err;
-        err << "Does not start with signature for a oxli " <<
+        err << "Does not start with signature for a khmer " <<
             "file: " << signature << " Should be: " <<
             SAVED_SIGNATURE;
-        throw oxli_file_exception(err.str());
+        throw khmer_file_exception(err.str());
     } else if (!(version == SAVED_FORMAT_VERSION)
                || !(ht_type == SAVED_COUNTING_HT)) {
         if (!(version == SAVED_FORMAT_VERSION)) {
@@ -453,13 +450,13 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
                 << " while reading k-mer count file from " << infilename
                 << "; should be " << (int) SAVED_FORMAT_VERSION;
             gzclose(infile);
-            throw oxli_file_exception(err.str());
+            throw khmer_file_exception(err.str());
         } else if (!(ht_type == SAVED_COUNTING_HT)) {
             std::ostringstream err;
             err << "Incorrect file format type " << (int) ht_type
                 << " while reading k-mer count file from " << infilename;
             gzclose(infile);
-            throw oxli_file_exception(err.str());
+            throw khmer_file_exception(err.str());
         }
     }
 
@@ -474,7 +471,7 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
         std::string err = "K-mer count file header read error: " + infilename
                           + " " + strerror(errno);
         gzclose(infile);
-        throw oxli_file_exception(err);
+        throw khmer_file_exception(err);
     }
 
     ksize = (WordLength) save_ksize;
@@ -500,7 +497,7 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
                 err = err + " " + gzerr;
             }
             gzclose(infile);
-            throw oxli_file_exception(err);
+            throw khmer_file_exception(err);
         }
 
         tablesize = save_tablesize;
@@ -529,7 +526,7 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
                     err = err + " " + gzerr;
                 }
                 gzclose(infile);
-                throw oxli_file_exception(err);
+                throw khmer_file_exception(err);
             }
 
             loaded += read_b;
@@ -547,7 +544,7 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
             err = err + " " + gzerr;
         }
         gzclose(infile);
-        throw oxli_file_exception(err);
+        throw khmer_file_exception(err);
     }
 
     if (n_counts) {
@@ -569,7 +566,7 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
                     err = err + " " + gzerr;
                 }
                 gzclose(infile);
-                throw oxli_file_exception(err);
+                throw khmer_file_exception(err);
             }
 
             store._bigcounts[kmer] = count;
@@ -579,13 +576,13 @@ ByteStorageGzFileReader::ByteStorageGzFileReader(
     gzclose(infile);
 }
 
-ByteStorageFileWriter::ByteStorageFileWriter(
+CountingHashFileWriter::CountingHashFileWriter(
     const std::string   &outfilename,
     const WordLength ksize,
     const ByteStorage& store)
 {
     if (!store._counts[0]) {
-        throw oxli_exception();
+        throw khmer_exception();
     }
 
     unsigned int save_ksize = ksize;
@@ -632,18 +629,18 @@ ByteStorageFileWriter::ByteStorageFileWriter(
         }
     }
     if (outfile.fail()) {
-        throw oxli_file_exception(strerror(errno));
+        throw khmer_file_exception(strerror(errno));
     }
     outfile.close();
 }
 
-ByteStorageGzFileWriter::ByteStorageGzFileWriter(
+CountingHashGzFileWriter::CountingHashGzFileWriter(
     const std::string   &outfilename,
     const WordLength ksize,
     const ByteStorage &store)
 {
     if (!store._counts[0]) {
-        throw oxli_exception();
+        throw khmer_exception();
     }
 
     int errnum = 0;
@@ -656,9 +653,9 @@ ByteStorageGzFileWriter::ByteStorageGzFileWriter(
     if (outfile == NULL) {
         const char * error = gzerror(outfile, &errnum);
         if (errnum == Z_ERRNO) {
-            throw oxli_file_exception(strerror(errno));
+            throw khmer_file_exception(strerror(errno));
         } else {
-            throw oxli_file_exception(error);
+            throw khmer_file_exception(error);
         }
     }
 
@@ -716,7 +713,7 @@ ByteStorageGzFileWriter::ByteStorageGzFileWriter(
                     msg << strerror(errno);
                 }
                 gzclose(outfile);
-                throw oxli_file_exception(msg.str());
+                throw khmer_file_exception(msg.str());
             }
             written += gz_result;
         }
@@ -735,14 +732,14 @@ ByteStorageGzFileWriter::ByteStorageGzFileWriter(
     }
     const char * error = gzerror(outfile, &errnum);
     if (errnum == Z_ERRNO) {
-        throw oxli_file_exception(strerror(errno));
+        throw khmer_file_exception(strerror(errno));
     } else if (errnum != Z_OK) {
-        throw oxli_file_exception(error);
+        throw khmer_file_exception(error);
     }
     gzclose(outfile);
 }
 
-void ByteStorageFile::load(
+void CountingHashFile::load(
     const std::string   &infilename,
     WordLength &ksize,
     ByteStorage &store)
@@ -752,293 +749,19 @@ void ByteStorageFile::load(
     std::string type = filename.substr(found + 1);
 
     if (type == "gz") {
-        ByteStorageGzFileReader(filename, ksize, store);
+        CountingHashGzFileReader(filename, ksize, store);
     } else {
-        ByteStorageFileReader(filename, ksize, store);
+        CountingHashFileReader(filename, ksize, store);
     }
 }
 
 void ByteStorage::save(std::string outfilename, WordLength ksize)
 {
-    ByteStorageFile::save(outfilename, ksize, *this);
+    CountingHashFile::save(outfilename, ksize, *this);
 }
 
 void ByteStorage::load(std::string infilename, WordLength& ksize)
 {
-    ByteStorageFile::load(infilename, ksize, *this);
+    CountingHashFile::load(infilename, ksize, *this);
 }
 
-
-void NibbleStorage::save(std::string outfilename, WordLength ksize)
-{
-    if (!_counts[0]) {
-        throw khmer_exception();
-    }
-
-    unsigned int save_ksize = ksize;
-    unsigned char save_n_tables = _n_tables;
-    unsigned long long save_tablesize;
-    unsigned long long save_occupied_bins = _occupied_bins;
-
-    ofstream outfile(outfilename.c_str(), ios::binary);
-
-    outfile.write(SAVED_SIGNATURE, 4);
-    unsigned char version = SAVED_FORMAT_VERSION;
-    outfile.write((const char *) &version, 1);
-
-    unsigned char ht_type = SAVED_SMALLCOUNT;
-    outfile.write((const char *) &ht_type, 1);
-
-    outfile.write((const char *) &save_ksize, sizeof(save_ksize));
-    outfile.write((const char *) &save_n_tables, sizeof(save_n_tables));
-    outfile.write((const char *) &save_occupied_bins,
-                  sizeof(save_occupied_bins));
-
-    for (unsigned int i = 0; i < save_n_tables; i++) {
-        save_tablesize = _tablesizes[i];
-
-        outfile.write((const char *) &save_tablesize, sizeof(save_tablesize));
-        outfile.write((const char *) _counts[i], save_tablesize / 2 + 1);
-    }
-}
-
-void NibbleStorage::load(std::string infilename, WordLength& ksize)
-{
-    ifstream infile;
-    // configure ifstream to raise exceptions for everything.
-    infile.exceptions(std::ifstream::failbit | std::ifstream::badbit |
-                      std::ifstream::eofbit);
-
-    try {
-        infile.open(infilename.c_str(), ios::binary);
-    } catch (std::ifstream::failure &e) {
-        std::string err;
-        if (!infile.is_open()) {
-            err = "Cannot open k-mer count file: " + infilename;
-        } else {
-            err = "Unknown error in opening file: " + infilename;
-        }
-        throw khmer_file_exception(err + " " + strerror(errno));
-    } catch (const std::exception &e) {
-        std::string err = "Unknown error opening file: " + infilename + " "
-                          + strerror(errno);
-        throw khmer_file_exception(err);
-    }
-
-    if (_counts) {
-        for (unsigned int i = 0; i < _n_tables; i++) {
-            delete[] _counts[i];
-            _counts[i] = NULL;
-        }
-        delete[] _counts;
-        _counts = NULL;
-    }
-    _tablesizes.clear();
-
-    try {
-        unsigned int save_ksize = 0;
-        unsigned char save_n_tables = 0;
-        unsigned long long save_tablesize = 0;
-        unsigned long long save_occupied_bins = 0;
-        char signature [4];
-        unsigned char version = 0, ht_type = 0;
-
-        infile.read(signature, 4);
-        infile.read((char *) &version, 1);
-        infile.read((char *) &ht_type, 1);
-        if (!(std::string(signature, 4) == SAVED_SIGNATURE)) {
-            std::ostringstream err;
-            err << "Does not start with signature for a khmer file: 0x";
-            for(size_t i=0; i < 4; ++i) {
-                err << std::hex << (int) signature[i];
-            }
-            err << " Should be: " << SAVED_SIGNATURE;
-            throw khmer_file_exception(err.str());
-        } else if (!(version == SAVED_FORMAT_VERSION)) {
-            std::ostringstream err;
-            err << "Incorrect file format version " << (int) version
-                << " while reading k-mer count file from " << infilename
-                << "; should be " << (int) SAVED_FORMAT_VERSION;
-            throw khmer_file_exception(err.str());
-        } else if (!(ht_type == SAVED_SMALLCOUNT)) {
-            std::ostringstream err;
-            err << "Incorrect file format type " << (int) ht_type
-                << " while reading k-mer count file from " << infilename;
-            throw khmer_file_exception(err.str());
-        }
-
-        infile.read((char *) &save_ksize, sizeof(save_ksize));
-        infile.read((char *) &save_n_tables, sizeof(save_n_tables));
-        infile.read((char *) &save_occupied_bins, sizeof(save_occupied_bins));
-
-        ksize = (WordLength) save_ksize;
-        _n_tables = (unsigned int) save_n_tables;
-        _occupied_bins = save_occupied_bins;
-
-        _counts = new Byte*[_n_tables];
-        for (unsigned int i = 0; i < _n_tables; i++) {
-            _counts[i] = NULL;
-        }
-
-        for (unsigned int i = 0; i < _n_tables; i++) {
-            uint64_t tablesize;
-            uint64_t tablebytes;
-
-            infile.read((char *) &save_tablesize, sizeof(save_tablesize));
-
-            tablebytes = save_tablesize / 2 + 1;
-            tablesize = save_tablesize;
-            _tablesizes.push_back(tablesize);
-
-            _counts[i] = new Byte[tablebytes];
-
-            unsigned long long loaded = 0;
-            while (loaded != tablebytes) {
-                infile.read((char *) _counts[i], tablebytes - loaded);
-                loaded += infile.gcount();
-            }
-        }
-        infile.close();
-    } catch (std::ifstream::failure &e) {
-        std::string err;
-        if (infile.eof()) {
-            err = "Unexpected end of k-mer count file: " + infilename;
-        } else {
-            err = "Error reading from k-mer count file: " + infilename + " "
-                  + strerror(errno);
-        }
-        throw khmer_file_exception(err);
-    } catch (const std::exception &e) {
-        std::string err = "Error reading from k-mer count file: " + infilename + " "
-                          + strerror(errno);
-        throw khmer_file_exception(err);
-    }
-}
-
-
-void QFStorage::save(std::string outfilename, WordLength ksize)
-{
-    ofstream outfile(outfilename.c_str(), ios::binary);
-
-    unsigned char version = SAVED_FORMAT_VERSION;
-    unsigned char ht_type = SAVED_QFCOUNT;
-
-    outfile.write(SAVED_SIGNATURE, 4);
-    outfile.write((const char *) &version, 1);
-    outfile.write((const char *) &ht_type, 1);
-    outfile.write((const char *) &ksize, sizeof(ksize));
-
-    /* just a hack to handle __uint128_t value. Don't know a better to handle it
-     * right now */
-    uint64_t tmp_range;
-    tmp_range = cf.range;
-
-    outfile.write((const char *) &cf.nslots, sizeof(cf.nslots));
-    outfile.write((const char *) &cf.xnslots, sizeof(cf.xnslots));
-    outfile.write((const char *) &cf.key_bits, sizeof(cf.key_bits));
-    outfile.write((const char *) &cf.value_bits, sizeof(cf.value_bits));
-    outfile.write((const char *) &cf.key_remainder_bits, sizeof(cf.key_remainder_bits));
-    outfile.write((const char *) &cf.bits_per_slot, sizeof(cf.bits_per_slot));
-    outfile.write((const char *) &tmp_range, sizeof(tmp_range));
-    outfile.write((const char *) &cf.nblocks, sizeof(cf.nblocks));
-    outfile.write((const char *) &cf.nelts, sizeof(cf.nelts));
-    outfile.write((const char *) &cf.ndistinct_elts, sizeof(cf.ndistinct_elts));
-    outfile.write((const char *) &cf.noccupied_slots, sizeof(cf.noccupied_slots));
-
-    #if BITS_PER_SLOT == 8 || BITS_PER_SLOT == 16 || BITS_PER_SLOT == 32 || BITS_PER_SLOT == 64
-        outfile.write((const char *) cf.blocks, sizeof(qfblock) * cf.nblocks);
-    #else
-        outfile.write((const char *) cf.blocks,
-                      (sizeof(qfblock) + SLOTS_PER_BLOCK * cf.bits_per_slot / 8) * cf.nblocks);
-    #endif
-    outfile.close();
-}
-
-
-void QFStorage::load(std::string infilename, WordLength &ksize)
-{
-    ifstream infile;
-    // configure ifstream to raise exceptions for everything.
-    infile.exceptions(std::ifstream::failbit | std::ifstream::badbit |
-                      std::ifstream::eofbit);
-
-    try {
-        infile.open(infilename.c_str(), ios::binary);
-    } catch (std::ifstream::failure &e) {
-        std::string err;
-        if (!infile.is_open()) {
-            err = "Cannot open k-mer count file: " + infilename;
-        } else {
-            err = "Unknown error in opening file: " + infilename;
-        }
-        throw oxli_file_exception(err + " " + strerror(errno));
-    } catch (const std::exception &e) {
-        std::string err = "Unknown error opening file: " + infilename + " "
-                          + strerror(errno);
-        throw oxli_file_exception(err);
-    }
-    WordLength save_ksize = 0;
-    char signature [4];
-    unsigned char version = 0, ht_type = 0;
-    uint64_t tmp_range;
-
-    infile.read(signature, 4);
-    infile.read((char *) &version, 1);
-    infile.read((char *) &ht_type, 1);
-
-    if (!(std::string(signature, 4) == SAVED_SIGNATURE)) {
-        std::ostringstream err;
-        err << "Does not start with signature for a oxli file: 0x";
-        for(size_t i=0; i < 4; ++i) {
-            err << std::hex << (int) signature[i];
-        }
-        err << " Should be: " << SAVED_SIGNATURE;
-        throw oxli_file_exception(err.str());
-    } else if (!(version == SAVED_FORMAT_VERSION)) {
-        std::ostringstream err;
-        err << "Incorrect file format version " << (int) version
-            << " while reading k-mer count file from " << infilename
-            << "; should be " << (int) SAVED_FORMAT_VERSION;
-        throw oxli_file_exception(err.str());
-    } else if (!(ht_type == SAVED_QFCOUNT)) {
-        std::ostringstream err;
-        err << "Incorrect file format type " << (int) ht_type
-            << " expected " << (int) SAVED_QFCOUNT
-            << " while reading k-mer count file from " << infilename;
-        throw oxli_file_exception(err.str());
-    }
-
-    infile.read((char *) &save_ksize, sizeof(save_ksize));
-    ksize = save_ksize;
-
-    infile.read((char *) &cf.nslots, sizeof(cf.nslots));
-    infile.read((char *) &cf.xnslots, sizeof(cf.xnslots));
-    infile.read((char *) &cf.key_bits, sizeof(cf.key_bits));
-    infile.read((char *) &cf.value_bits, sizeof(cf.value_bits));
-    infile.read((char *) &cf.key_remainder_bits, sizeof(cf.key_remainder_bits));
-    infile.read((char *) &cf.bits_per_slot, sizeof(cf.bits_per_slot));
-    infile.read((char *) &tmp_range, sizeof(tmp_range));
-
-    infile.read((char *) &cf.nblocks, sizeof(cf.nblocks));
-    infile.read((char *) &cf.nelts, sizeof(cf.nelts));
-    infile.read((char *) &cf.ndistinct_elts, sizeof(cf.ndistinct_elts));
-    infile.read((char *) &cf.noccupied_slots, sizeof(cf.noccupied_slots));
-    /* just a hack to handle __uint128_t value. Don't know a better to handle it
-     * right now */
-    cf.range = tmp_range;
-    // deallocate previously allocated blocks
-    free(cf.blocks);
-    /* allocate the space for the actual qf blocks */
-    #if BITS_PER_SLOT == 8 || BITS_PER_SLOT == 16 || BITS_PER_SLOT == 32 || BITS_PER_SLOT == 64
-        cf.blocks = (qfblock *)calloc(cf.nblocks, sizeof(qfblock));
-    #else
-        cf.blocks = (qfblock *)calloc(cf.nblocks, sizeof(qfblock) + SLOTS_PER_BLOCK * cf.bits_per_slot / 8);
-    #endif
-    #if BITS_PER_SLOT == 8 || BITS_PER_SLOT == 16 || BITS_PER_SLOT == 32 || BITS_PER_SLOT == 64
-        infile.read((char *) cf.blocks, sizeof(qfblock) * cf.nblocks);
-    #else
-        infile.read((char *) cf.blocks,
-                    (sizeof(qfblock) + SLOTS_PER_BLOCK * cf.bits_per_slot / 8) * cf.nblocks);
-    #endif
-    infile.close();
-}

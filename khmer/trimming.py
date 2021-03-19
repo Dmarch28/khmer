@@ -1,5 +1,9 @@
 # This file is part of khmer, https://github.com/dib-lab/khmer/, and is
+<<<<<<< HEAD:tests/test_memory.py
+# Copyright (C) 2017, The Regents of the University of California.
+=======
 # Copyright (C) 2016, The Regents of the University of California.
+>>>>>>> origin/feature/assembly/junction_count-merge-master:khmer/trimming.py
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -13,7 +17,7 @@
 #       disclaimer in the documentation and/or other materials provided
 #       with the distribution.
 #
-#     * Neither the name of the Michigan State University nor the names
+#     * Neither the name of the University of California nor the names
 #       of its contributors may be used to endorse or promote products
 #       derived from this software without specific prior written
 #       permission.
@@ -31,7 +35,31 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # Contact: khmer-project@idyll.org
+<<<<<<< HEAD:tests/test_memory.py
+# pylint: disable=C0111,C0103,missing-docstring,no-member,protected-access
+
+
+import khmer
+
+import pytest
+
+
+@pytest.mark.parametrize('sketch_allocator', [
+    khmer.Nodetable,
+    khmer.Counttable,
+    khmer.SmallCounttable,
+    khmer.Nodetable,
+    khmer.Counttable,
+    khmer.SmallCounttable,
+    khmer.GraphLabels.NodeGraphLabels,
+    khmer.GraphLabels.CountGraphLabels
+])
+def test_bigger_than_int(sketch_allocator):
+    'Support GB-sized sketches'
+    sketch = sketch_allocator(32, 2 ** 32, 1)
+=======
 """Common methods for trimming short reads on k-mer abundance."""
+from __future__ import print_function, unicode_literals
 import screed
 
 
@@ -65,3 +93,4 @@ def trim_record(countgraph, record, cutoff, variable_coverage=False,
         trim_rec = screed.Record(name=name, sequence=trim_seq)
 
     return trim_rec, True
+>>>>>>> origin/feature/assembly/junction_count-merge-master:khmer/trimming.py

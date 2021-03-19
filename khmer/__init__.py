@@ -36,22 +36,19 @@
 """This is khmer; please see http://khmer.readthedocs.io/."""
 
 
-from collections import namedtuple
+from __future__ import print_function
 from math import log
 import json
 
-#from khmer._khmer import GraphLabels as _GraphLabels
-#from khmer._khmer import ReadAligner as _ReadAligner
 from khmer._khmer import Countgraph as _Countgraph
-from khmer._khmer import SmallCountgraph as _SmallCountgraph
-from khmer._khmer import SmallCounttable as _SmallCounttable
-
 from khmer._khmer import GraphLabels as _GraphLabels
 from khmer._khmer import Nodegraph as _Nodegraph
-from khmer._khmer import Nodetable as _Nodetable
+from khmer._khmer import HLLCounter as _HLLCounter
 from khmer._khmer import ReadAligner as _ReadAligner
+from khmer._khmer import LinearAssembler
+from khmer._khmer import SimpleLabeledAssembler
+from khmer._khmer import JunctionCountAssembler
 from khmer._khmer import HashSet
-
 from khmer._khmer import Read
 from khmer._khmer import forward_hash
 # tests/test_{functions,countgraph,counting_single}.py
@@ -73,23 +70,6 @@ from khmer._khmer import ReadParser  # sandbox/to-casava-1.8-fastq.py
 # tests/test_read_parsers.py,scripts/{filter-abund-single,load-graph}.py
 # scripts/{abundance-dist-single,load-into-counting}.py
 
-from khmer._khmer import FILETYPES
-
-from khmer._oxli.graphs import (Counttable, QFCounttable, Nodetable,
-                                CyclicCounttable,
-                                SmallCounttable, Countgraph, SmallCountgraph,
-                                Nodegraph)
-from khmer._oxli.labeling import GraphLabels
-from khmer._oxli.legacy_partitioning import SubsetPartition, PrePartitionInfo
-from khmer._oxli.graphs import _Counttable
-#from khmer._oxli.graphs import Counttable
-#from khmer._oxli.graphs import _Counttable
-from khmer._oxli.graphs import Counttable
-from khmer._oxli.graphs import QFCounttable
-from khmer._oxli.parsing import FastxParser
-from khmer._oxli.readaligner import ReadAligner
-
-from khmer._oxli.utils import get_n_primes_near_x, is_prime
 import sys
 
 from struct import pack, unpack
@@ -99,13 +79,28 @@ __version__ = get_versions()['version']
 del get_versions
 
 
-_buckets_per_byte = {
-    # calculated by hand from settings in third-part/cqf/gqf.h
-    'qfcounttable': 1 / 1.26,
-    'countgraph': 1,
-    'smallcountgraph': 2,
-    'nodegraph': 8,
-}
+def load_nodegraph(filename):
+    """Load a nodegraph object from the given filename and return it.
+
+    Keyword argument:
+    filename -- the name of the nodegraph file
+    """
+    nodegraph = _Nodegraph(1, [1])
+    nodegraph.load(filename)
+
+    return nodegraph
+
+
+def load_countgraph(filename):
+    """Load a countgraph object from the given filename and return it.
+
+    Keyword argument:
+    filename -- the name of the countgraph file
+    """
+    countgraph = _Countgraph(1, [1])
+    countgraph.load(filename)
+
+    return countgraph
 
 
 def extract_nodegraph_info(filename):
@@ -156,9 +151,6 @@ def extract_countgraph_info(filename):
     Keyword argument:
     filename -- the name of the countgraph file to inspect
     """
-    CgInfo = namedtuple("CgInfo", ['ksize', 'n_tables', 'table_size',
-                                   'use_bigcount', 'version', 'ht_type',
-                                   'n_occupied'])
     ksize = None
     n_tables = None
     table_size = None
@@ -176,10 +168,7 @@ def extract_countgraph_info(filename):
             signature, = unpack('4s', countgraph.read(4))
             version, = unpack('B', countgraph.read(1))
             ht_type, = unpack('B', countgraph.read(1))
-            if ht_type != FILETYPES['SMALLCOUNT']:
-                use_bigcount, = unpack('B', countgraph.read(1))
-            else:
-                use_bigcount = None
+            use_bigcount, = unpack('B', countgraph.read(1))
             ksize, = unpack('I', countgraph.read(uint_size))
             n_tables, = unpack('B', countgraph.read(1))
             occupied, = unpack('Q', countgraph.read(ulonglong_size))
@@ -190,8 +179,8 @@ def extract_countgraph_info(filename):
     except:
         raise ValueError("Count graph file '{}' is corrupt ".format(filename))
 
-    return CgInfo(ksize, n_tables, round(table_size, -2), use_bigcount,
-                  version, ht_type, occupied)
+    return ksize, round(table_size, -2), n_tables, use_bigcount, version, \
+        ht_type, occupied
 
 
 def calc_expected_collisions(graph, force=False, max_false_pos=.2):
@@ -231,7 +220,47 @@ def calc_expected_collisions(graph, force=False, max_false_pos=.2):
     return fp_all
 
 
+def is_prime(number):
+    """Check if a number is prime."""
+    if number < 2:
+        return False
+    if number == 2:
+        return True
+    if number % 2 == 0:
+        return False
+    for _ in range(3, int(number ** 0.5) + 1, 2):
+        if number % _ == 0:
+            return False
+    return True
 
+
+def get_n_primes_near_x(number, target):
+    """Backward-find primes smaller than target.
+
+    Step backwards until a number of primes (other than 2) have been
+    found that are smaller than the target and return them.
+
+    Keyword arguments:
+    number -- the number of primes to find
+    target -- the number to step backwards from
+    """
+    if target == 1 and number == 1:
+        return [1]
+
+    primes = []
+    i = target - 1
+    if i % 2 == 0:
+        i -= 1
+    while len(primes) != number and i > 0:
+        if is_prime(i):
+            primes.append(i)
+        i -= 2
+
+    if len(primes) != number:
+        raise RuntimeError("unable to find %d prime numbers < %d" % (number,
+                                                                     target))
+
+    return primes
 
 
 # Expose the cpython objects with __new__ implementations.
@@ -239,29 +268,14 @@ def calc_expected_collisions(graph, force=False, max_false_pos=.2):
 # factory methods to the constructors defined over in cpython land.
 # Additional functionality can be added to these classes as appropriate.
 
-'''
 
-class Counttable(_Counttable):
-    def __new__(cls, k, starting_size, n_tables):
-        primes = get_n_primes_near_x(n_tables, starting_size)
-        return super().__new__(cls, k, primes)
-
-
+class Countgraph(_Countgraph):
 
     def __new__(cls, k, starting_size, n_tables):
         primes = get_n_primes_near_x(n_tables, starting_size)
-        countgraph = _SmallCountgraph.__new__(cls, k, primes)
+        countgraph = _Countgraph.__new__(cls, k, primes)
         countgraph.primes = primes
         return countgraph
-
-
-class SmallCounttable(_SmallCounttable):
-
-    def __new__(cls, k, starting_size, n_tables):
-        primes = get_n_primes_near_x(n_tables, starting_size)
-        counttable = _SmallCounttable.__new__(cls, k, primes)
-        counttable.primes = primes
-        return counttable
 
 
 class GraphLabels(_GraphLabels):
@@ -292,16 +306,30 @@ class Nodegraph(_Nodegraph):
         return nodegraph
 
 
-class Nodetable(_Nodetable):
+class HLLCounter(_HLLCounter):
+    """HyperLogLog counter.
 
-    def __new__(cls, k, starting_size, n_tables):
-        primes = get_n_primes_near_x(n_tables, starting_size)
-        nodetable = _Nodetable.__new__(cls, k, primes)
-        nodetable.primes = primes
-        return nodetable
+    A HyperLogLog counter is a probabilistic data structure specialized on
+    cardinality estimation.
+    There is a precision/memory consumption trade-off: error rate determines
+    how much memory is consumed.
+
+    # Creating a new HLLCounter:
+
+    >>> khmer.HLLCounter(error_rate, ksize)
+
+    where the default values are:
+      - error_rate: 0.01
+      - ksize: 20
+    """
+
+    def __len__(self):
+        """Return the cardinality estimate."""
+        return _HLLCounter.estimate_cardinality(self)
+
 
 class ReadAligner(_ReadAligner):
-    Sequence to graph aligner.
+    """Sequence to graph aligner.
 
     ReadAligner uses a Countgraph (the counts of k-mers in the target DNA
     sequences) as an implicit De Bruijn graph. Input DNA sequences are aligned
@@ -312,7 +340,7 @@ class ReadAligner(_ReadAligner):
     'defaultScoringMatrix'.
 
     The main method is 'align'.
-    
+    """
 
     defaultTransitionProbabilities = (  # _M, _Ir, _Ig, _Mu, _Iru, _Igu
         (log(0.9848843, 2), log(0.0000735, 2), log(0.0000334, 2),
@@ -358,7 +386,7 @@ class ReadAligner(_ReadAligner):
         return readaligner
 
     def __init__(self, *args, **kwargs):  # pylint: disable=unused-argument
-        
+        """
         Initialize ReadAligner.
 
         HMM state notation abbreviations:
@@ -393,13 +421,5 @@ class ReadAligner(_ReadAligner):
         during the __new__ process and so the class initialization actually
         occurs there. Instatiation is documented here in __init__ as this is
         the traditional way.
-        
+        """
         _ReadAligner.__init__(self)
-'''
-
-from khmer._oxli.assembly import (LinearAssembler, SimpleLabeledAssembler,
-                                  JunctionCountAssembler)
-from khmer._oxli.hashset import HashSet
-
-from khmer._oxli.hllcounter import HLLCounter
-from khmer._oxli.labeling import GraphLabels

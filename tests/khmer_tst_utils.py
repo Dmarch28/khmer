@@ -1,7 +1,6 @@
 # This file is part of khmer, https://github.com/dib-lab/khmer/, and is
 # Copyright (C) 2010-2015, Michigan State University.
 # Copyright (C) 2015-2016, The Regents of the University of California.
-# Copyright (C) 2015-2016, The Regents of the University of California.
 # Copyright (C) 2016, Google, Inc
 #
 # Redistribution and use in source and binary forms, with or without
@@ -36,6 +35,7 @@
 # Contact: khmer-project@idyll.org
 # pylint: disable=missing-docstring
 
+from __future__ import print_function
 import tempfile
 import os
 import shutil
@@ -47,7 +47,6 @@ import subprocess
 from io import open  # pylint: disable=redefined-builtin
 from hashlib import md5
 
-import pytest
 from khmer import reverse_complement as revcomp
 
 import pytest
@@ -83,7 +82,6 @@ def get_test_data(filename):
         filepath = os.path.join(os.path.dirname(__file__), 'test-data',
                                 filename)
     return filepath
-
 
 CLEANUPLIST = []
 
@@ -139,24 +137,14 @@ def _runscript(scriptname, sandbox=False):
     else:
         path = scriptpath()
 
-        scriptfile = os.path.join(path, scriptname)
-        if os.path.isfile(scriptfile):
-            if os.path.isfile(scriptfile):
-                exec(  # pylint: disable=exec-used
-                    compile(open(scriptfile).read(), scriptfile, 'exec'),
-                    namespace)
-                return 0
-        elif sandbox:
-            pytest.skip("sandbox tests are only run in a repository.")
     scriptfile = os.path.join(path, scriptname)
     if os.path.isfile(scriptfile):
         if os.path.isfile(scriptfile):
             exec(compile(open(scriptfile).read(), scriptfile, 'exec'),
                  namespace)
             return 0
-    else:
-        raise RuntimeError("Tried to execute {} but it is"
-                           " not a file.".format(scriptfile))
+    elif sandbox:
+        pytest.skip("sandbox tests are only run in a repository.")
 
     return -1
 
@@ -252,10 +240,7 @@ def longify(listofints):
     return listofints
 
 
-def copy_test_data(testfile, newfilename=None):
-    basename = os.path.basename(testfile)
-    if newfilename is not None:
-        basename = newfilename
-    infile = get_temp_filename(basename)
+def copy_test_data(testfile):
+    infile = get_temp_filename(os.path.basename(testfile))
     shutil.copyfile(get_test_data(testfile), infile)
     return infile

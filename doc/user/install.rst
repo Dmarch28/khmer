@@ -103,6 +103,7 @@ System/Homebrew Python
 
 If you are using the system or Homebrew Python distribution::
 
+      source khmerEnv/bin/activate
     python3 -m venv khmerEnv
     source khmerEnv/bin/activate
 

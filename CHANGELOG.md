@@ -12,8 +12,6 @@ under semantic versioning, but will be in future versions of khmer.
 - Cython wrapper for liboxli.
 - Cython containers for all liboxli classes.
 - Header install for liboxli.
-- New storage class using a Counting Quotient Filter with improved cache
-  locality over bloom filters.
 - New variants of the sequence bulk loading method with a "banding" mode and a
   "mask" mode. In "banding" mode, only k-mers whose hashed values fall within a
   specified range are counted. In "mask" mode, only k-mers not already pressent

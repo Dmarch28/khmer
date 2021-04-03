@@ -44,12 +44,18 @@ cdef class Sequence:
     def __cinit__(self, name=None, sequence=None,
                         quality=None, description=None,
                         cleaned_seq=None):
+    def __cinit__(self, str name=None, str sequence=None,
+                        str quality=None, str annotations=None):
 
         if name is not None and sequence is not None:
             self._obj.sequence = _bstring(sequence)
             self._obj.name = _bstring(name)
             if description is not None:
                 self._obj.description = _bstring(description)
+            self._obj.sequence = sequence.encode('UTF-8')
+            self._obj.name = name.encode('UTF-8')
+            if annotations is not None:
+                self._obj.annotations = annotations.encode('UTF-8')
             if quality is not None:
                 self._obj.quality = _bstring(quality)
             if cleaned_seq is not None:
@@ -96,6 +102,9 @@ cdef class Sequence:
     def description(self):
         cdef unicode description = self._obj.description
         return description if description else None
+    def annotations(self):
+        cdef str annotations = self._obj.annotations
+        return annotations if annotations else None
 
     @property
     def quality(self):
@@ -189,6 +198,8 @@ cdef class FastxParser:
 
     def __cinit__(self, filename, *args, **kwargs):
         self._this = get_parser[CpFastxReader](_bstring(filename))
+    def __cinit__(self, str filename, *args, **kwargs):
+        self._this.reset(new CpFastxParser(filename.encode()))
 
     cdef Sequence _next(self):
         if not self.is_complete():

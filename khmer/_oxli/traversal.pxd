@@ -2,9 +2,10 @@ from libc.stdint cimport uint32_t
 from libcpp.memory cimport shared_ptr
 from libcpp cimport bool
 
-from khmer._oxli.hashing cimport Kmer, CpKmer, KmerFilter, KmerQueue
-from khmer._oxli.graphs cimport Hashgraph, CpHashgraph
-
+from khmer._oxli.hashing cimport CpKmer, KmerFilter, KmerQueue
+from khmer._oxli.graphs cimport CpHashgraph
+from hashing cimport Kmer, CpKmer, KmerFilter, KmerQueue
+from graphs cimport Hashgraph, CpHashgraph
 
 cdef extern from "oxli/traversal.hh" namespace "oxli":
     cdef cppclass CpTraverser "oxli::Traverser":

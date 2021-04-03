@@ -75,16 +75,7 @@ cdef class GraphLabels:
     def get_tag_labels(self, object tag):
         cdef HashIntoType _tag = self.graph.sanitize_hash_kmer(tag)
         cdef LabelSet labels
-        deref(self._lh_this).get_tag_labels(_tag, labels)
-        cdef Label label
-        for label in labels:
-            yield label
-
-    def get_labels_for_sequence(self, str sequence):
-        '''Return labels for all the tags found in this sequence.'''
-        cdef string _sequence = self.graph._valid_sequence(sequence)
-        cdef LabelSet labels
-        deref(self._lh_this).get_labels_for_sequence(_sequence, labels)
+        deref(self._lh_this).get_tag_labels(tag, labels)
         cdef Label label
         for label in labels:
             yield label
@@ -105,20 +96,6 @@ cdef class GraphLabels:
         cdef Label label
         for label in deref(self._lh_this).all_labels:
             yield label
-
-    def tags(self):
-        '''Get all tagged k-mers as DNA strings.'''
-        cdef HashIntoType st
-        for st in deref(self.graph._hg_this).all_tags:
-            yield deref(self.graph._hg_this).unhash_dna(st)
-
-    def add_tag(self, object kmer):
-        cdef HashIntoType _kmer = self.graph.sanitize_hash_kmer(kmer)
-        deref(self.graph._hg_this).add_tag(_kmer)
-
-    def link_tag_and_label(self, object tag, Label label):
-        cdef HashIntoType _tag = self.graph.sanitize_hash_kmer(tag)
-        deref(self._lh_this).link_tag_and_label(_tag, label)
 
     def label_across_high_degree_nodes(self, str sequence, HashSet hdns,
                                              unsigned long long label=0):

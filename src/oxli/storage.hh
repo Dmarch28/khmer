@@ -38,33 +38,21 @@ Contact: khmer-project@idyll.org
 #ifndef STORAGE_HH
 #define STORAGE_HH
 
-namespace oxli
-#include <cassert>
-#include <array>
-#include <mutex>
-#include <unordered_map>
-using MuxGuard = std::lock_guard<std::mutex>;
-
-#include "gqf.h"
-
-namespace oxli {
-typedef std::unordered_map<HashIntoType, BoundedCounterType> KmerCountMap;
 namespace khmer
 {
 typedef std::map<HashIntoType, BoundedCounterType> KmerCountMap;
+class Hashbits;
+class CountingHash;
 
 //
 // base Storage class for hashtable-related storage of information in memory.
 //
 
-class Storage
-{
-protected:
-    bool _supports_bigcount;
+class Storage {
+public:
     bool _use_bigcount;
 
-public:
-    Storage() : _supports_bigcount(false), _use_bigcount(false) { } ;
+    Storage() : _use_bigcount(false) { } ;
     virtual ~Storage() { }
     virtual std::vector<uint64_t> get_tablesizes() const = 0;
     virtual const size_t n_tables() const = 0;
@@ -73,7 +61,7 @@ public:
     virtual const uint64_t n_occupied() const = 0;
     virtual const uint64_t n_unique_kmers() const = 0;
     virtual BoundedCounterType test_and_set_bits( HashIntoType khash ) = 0;
-    virtual bool add(HashIntoType khash) = 0;
+    virtual void add(HashIntoType khash) = 0;
     virtual const BoundedCounterType get_count(HashIntoType khash) const = 0;
     virtual Byte ** get_raw_tables() = 0;
 
@@ -98,6 +86,7 @@ public:
 
 class BitStorage : public Storage
 {
+friend class Hashbits;
 protected:
     std::vector<uint64_t> _tablesizes;
     size_t _n_tables;
@@ -105,17 +94,15 @@ protected:
     uint64_t _n_unique_kmers;
     Byte ** _counts;
 
-public:
     BitStorage(std::vector<uint64_t>& tablesizes) :
-        _tablesizes(tablesizes)
+        _tablesizes(tablesizes) 
     {
         _occupied_bins = 0;
         _n_unique_kmers = 0;
 
         _allocate_counters();
     }
-    ~BitStorage()
-    {
+    ~BitStorage() {
         if (_counts) {
             for (size_t i = 0; i < _n_tables; i++) {
                 delete[] _counts[i];
@@ -127,7 +114,7 @@ public:
             _n_tables = 0;
         }
     }
-
+    
     void _allocate_counters()
     {
         _n_tables = _tablesizes.size();
@@ -202,9 +189,9 @@ public:
         return 0; // kmer already seen
     } // test_and_set_bits
 
-    inline bool add(HashIntoType khash)
+    inline void add(HashIntoType khash)
     {
-        return test_and_set_bits(khash);
+        test_and_set_bits(khash);
     }
 
     // get the count for the given k-mer hash.
@@ -234,235 +221,6 @@ public:
 
 
 /*
- * \class NibbleStorage
- *
- * \brief A A CountMin sketch implementation using 4bit counters.
- *
- * NibbleStorage is used to track counts of k-mers by Hashtable
- * and derived classes.  It contains 'n_tables' different tables of
- * 'tablesizes' entries. It allocates half a byte per table entry.
- *
- * Like other Storage classes, NibbleStorage manages setting the bits and
- * tracking statistics, as well as save/load, and not much else.
- *
- */
-class NibbleStorage : public Storage
-{
-protected:
-    // table size is measured in number of entries in the table, not in bytes
-    std::vector<uint64_t> _tablesizes;
-    size_t _n_tables;
-    uint64_t _occupied_bins;
-    uint64_t _n_unique_kmers;
-    std::array<std::mutex, 32> mutexes;
-    static constexpr uint8_t _max_count{15};
-    Byte ** _counts;
-
-    // Compute index into the table, this retrieves the correct byte
-    // which you then need to select the correct nibble from
-    uint64_t _table_index(const HashIntoType k, const uint64_t tablesize) const
-    {
-        return (k % tablesize) / 2;
-    }
-    // Compute which half of the byte to use for this hash value
-    uint8_t _mask(const HashIntoType k, const uint64_t tablesize) const
-    {
-        return (k%tablesize)%2 ? 15 : 240;
-    }
-    // Compute which half of the byte to use for this hash value
-    uint8_t _shift(const HashIntoType k, const uint64_t tablesize) const
-    {
-        return (k%tablesize)%2 ? 0 : 4;
-    }
-
-public:
-    NibbleStorage(std::vector<uint64_t>& tablesizes) :
-        _tablesizes{tablesizes},
-        _occupied_bins{0}, _n_unique_kmers{0}
-    {
-        // to allow more than 32 tables increase the size of mutex pool
-        assert(_n_tables <= 32);
-        _allocate_counters();
-    }
-
-    ~NibbleStorage()
-    {
-        if (_counts) {
-            for (size_t i = 0; i < _n_tables; i++) {
-                delete[] _counts[i];
-                _counts[i] = NULL;
-            }
-            delete[] _counts;
-            _counts = NULL;
-            _n_tables = 0;
-        }
-    }
-
-    void _allocate_counters()
-    {
-        _n_tables = _tablesizes.size();
-
-        _counts = new Byte*[_n_tables];
-
-        for (size_t i = 0; i < _n_tables; i++) {
-            const uint64_t tablesize = _tablesizes[i];
-            const uint64_t tablebytes = tablesize / 2 + 1;
-
-            _counts[i] = new Byte[tablebytes];
-            memset(_counts[i], 0, tablebytes);
-        }
-    }
-
-
-    BoundedCounterType test_and_set_bits(HashIntoType khash)
-    {
-        BoundedCounterType x = get_count(khash);
-        add(khash);
-        return !x;
-    }
-
-    bool add(HashIntoType khash)
-    {
-        bool is_new_kmer = false;
-
-        for (unsigned int i = 0; i < _n_tables; i++) {
-            MuxGuard g(mutexes[i]);
-            Byte* const table(_counts[i]);
-            const uint64_t idx = _table_index(khash, _tablesizes[i]);
-            const uint8_t mask = _mask(khash, _tablesizes[i]);
-            const uint8_t shift = _shift(khash, _tablesizes[i]);
-            const uint8_t current_count = (table[idx] & mask) >> shift;
-
-            if (!is_new_kmer) {
-                if (current_count == 0) {
-                    is_new_kmer = true;
-
-                    // track occupied bins in the first table only, as proxy
-                    // for all.
-                    if (i == 0) {
-                        __sync_add_and_fetch(&_occupied_bins, 1);
-                    }
-                }
-            }
-            // if we have reached the maximum count stop incrementing the
-            // counter. This avoids overflowing it.
-            if (current_count == _max_count) {
-                continue;
-            }
-
-            // increase count, no checking for overflow
-            const uint8_t new_count = (current_count + 1) << shift;
-            table[idx] = (table[idx] & ~mask) | (new_count & mask);
-        }
-
-        if (is_new_kmer) {
-            __sync_add_and_fetch(&_n_unique_kmers, 1);
-        }
-
-        return is_new_kmer;
-    }
-
-    // get the count for the given k-mer hash.
-    const BoundedCounterType get_count(HashIntoType khash) const
-    {
-        uint8_t min_count = _max_count; // bound count by maximum
-
-        // get the minimum count across all tables
-        for (unsigned int i = 0; i < _n_tables; i++) {
-            const Byte* table(_counts[i]);
-            const uint64_t idx = _table_index(khash, _tablesizes[i]);
-            const uint8_t mask = _mask(khash, _tablesizes[i]);
-            const uint8_t shift = _shift(khash, _tablesizes[i]);
-            const uint8_t the_count = (table[idx] & mask) >> shift;
-
-            if (the_count < min_count) {
-                min_count = the_count;
-            }
-        }
-        return min_count;
-    }
-
-    // Accessors for protected/private table info members
-    std::vector<uint64_t> get_tablesizes() const
-    {
-        return _tablesizes;
-    }
-    const size_t n_tables() const
-    {
-        return _n_tables;
-    }
-    const uint64_t n_unique_kmers() const
-    {
-        return _n_unique_kmers;
-    }
-    const uint64_t n_occupied() const
-    {
-        return _occupied_bins;
-    }
-    void save(std::string outfilename, WordLength ksize);
-    void load(std::string infilename, WordLength& ksize);
-
-    Byte ** get_raw_tables()
-    {
-        return _counts;
-    }
-};
-
-
-/*
- * \class QFStorage
- *
- * \brief A Quotient Filter storage
- */
- class QFStorage : public Storage {
-protected:
-  QF cf;
-
-public:
-  QFStorage(int size) {
-    // size is the power of two to specify the number of slots in
-    // the filter (2**size). Third argument sets the number of bits used
-    // in the key (current value of size+8 is copied from the CQF example)
-    // Final argument is the number of bits allocated for the value, which
-    // we do not use.
-    qf_init(&cf, (1ULL << size), size+8, 0);
-  }
-
-  ~QFStorage() { qf_destroy(&cf); }
-
-  BoundedCounterType test_and_set_bits(HashIntoType khash) {
-    BoundedCounterType x = get_count(khash);
-    add(khash);
-    return !x;
-  }
-
-  //
-  bool add(HashIntoType khash) {
-      bool is_new = get_count(khash) == 0;
-      qf_insert(&cf, khash % cf.range, 0, 1);
-      return is_new;
-  }
-
-  // get the count for the given k-mer hash.
-  const BoundedCounterType get_count(HashIntoType khash) const {
-    return qf_count_key_value(&cf, khash % cf.range, 0);
-  }
-
-  // Accessors for protected/private table info members
-  // xnslots is larger than nslots. It includes some extra slots to deal
-  // with some details of how the counting is implemented
-  std::vector<uint64_t> get_tablesizes() const { return {cf.xnslots}; }
-  const size_t n_tables() const { return 1; }
-  const uint64_t n_unique_kmers() const { return cf.ndistinct_elts; }
-  const uint64_t n_occupied() const { return cf.noccupied_slots; }
-  void save(std::string outfilename, WordLength ksize);
-  void load(std::string infilename, WordLength &ksize);
-
-  Byte **get_raw_tables() { return nullptr; }
-};
-
-
-/*
  * \class ByteStorage
  *
  * \brief A CountMin sketch implementation.
@@ -476,20 +234,19 @@ public:
  *
  */
 
-class ByteStorageFile;
-class ByteStorageFileReader;
-class ByteStorageFileWriter;
-class ByteStorageGzFileReader;
-class ByteStorageGzFileWriter;
+class CountingHashFile;
+class CountingHashFileReader;
+class CountingHashFileWriter;
+class CountingHashGzFileReader;
+class CountingHashGzFileWriter;
 
-class ByteStorage : public Storage
-{
-    friend class ByteStorageFile;
-    friend class ByteStorageFileReader;
-    friend class ByteStorageFileWriter;
-    friend class ByteStorageGzFileReader;
-    friend class ByteStorageGzFileWriter;
-    friend class CountGraph;
+class ByteStorage : public Storage {
+    friend class CountingHashFile;
+    friend class CountingHashFileReader;
+    friend class CountingHashFileWriter;
+    friend class CountingHashGzFileReader;
+    friend class CountingHashGzFileWriter;
+    friend class CountingHash;
 protected:
     unsigned int    _max_count;
     unsigned int    _max_bigcount;
@@ -522,7 +279,7 @@ public:
         _bigcount_spin_lock(false), _tablesizes(tablesizes),
         _n_unique_kmers(0), _occupied_bins(0)
     {
-        _supports_bigcount = true;
+
         _allocate_counters();
     }
 
@@ -544,23 +301,11 @@ public:
         }
     }
 
-    std::vector<uint64_t> get_tablesizes() const
-    {
-        return _tablesizes;
-    }
+    std::vector<uint64_t> get_tablesizes() const { return _tablesizes; }
 
-    const uint64_t n_unique_kmers() const
-    {
-        return _n_unique_kmers;
-    }
-    const size_t n_tables() const
-    {
-        return _n_tables;
-    }
-    const uint64_t n_occupied() const
-    {
-        return _occupied_bins;
-    }
+    const uint64_t n_unique_kmers() const { return _n_unique_kmers; }
+    const size_t n_tables() const { return _n_tables; }
+    const uint64_t n_occupied() const { return _occupied_bins; }
 
     void save(std::string, WordLength);
     void load(std::string, WordLength&);
@@ -572,7 +317,7 @@ public:
         return !x;
     }
 
-    inline bool add(HashIntoType khash)
+    inline void add(HashIntoType khash)
     {
         bool is_new_kmer = false;
         unsigned int  n_full	  = 0;
@@ -581,7 +326,6 @@ public:
         for (unsigned int i = 0; i < _n_tables; i++) {
             const uint64_t bin = khash % _tablesizes[i];
             Byte current_count = _counts[ i ][ bin ];
-
             if (!is_new_kmer) {
                 if (current_count == 0) {
                     is_new_kmer = true;
@@ -599,7 +343,7 @@ public:
             //	 However, do we actually care if there is a little
             //	 bit of slop here? It can always be trimmed off later, if
             //	 that would help with stats.
-
+            
             if ( _max_count > current_count ) {
                 __sync_add_and_fetch( *(_counts + i) + bin, 1 );
             } else {
@@ -624,7 +368,6 @@ public:
             __sync_add_and_fetch(&_n_unique_kmers, 1);
         }
 
-        return is_new_kmer;
     }
 
     // get the count for the given k-mer hash.
@@ -665,7 +408,7 @@ public:
 
 // Helper classes for saving ByteStorage objs to disk & loading them.
 
-class ByteStorageFile
+class CountingHashFile
 {
 public:
     static void load(const std::string &infilename,
@@ -676,37 +419,37 @@ public:
                      const ByteStorage &store);
 };
 
-class ByteStorageFileReader : public ByteStorageFile
+class CountingHashFileReader : public CountingHashFile
 {
 public:
-    ByteStorageFileReader(const std::string &infilename,
-                          WordLength &ksize,
-                          ByteStorage &store);
+    CountingHashFileReader(const std::string &infilename,
+                           WordLength &ksize,
+                           ByteStorage &store);
 };
 
-class ByteStorageGzFileReader : public ByteStorageFile
+class CountingHashGzFileReader : public CountingHashFile
 {
 public:
-    ByteStorageGzFileReader(const std::string &infilename,
-                            WordLength &ksize,
-                            ByteStorage &store);
+    CountingHashGzFileReader(const std::string &infilename,
+                             WordLength &ksize,
+                             ByteStorage &store);
 };
 
 
-class ByteStorageFileWriter : public ByteStorageFile
+class CountingHashFileWriter : public CountingHashFile
 {
 public:
-    ByteStorageFileWriter(const std::string &outfilename,
-                          const WordLength ksize,
-                          const ByteStorage &store);
+    CountingHashFileWriter(const std::string &outfilename,
+                           const WordLength ksize,
+                           const ByteStorage &store);
 };
 
-class ByteStorageGzFileWriter : public ByteStorageFile
+class CountingHashGzFileWriter : public CountingHashFile
 {
 public:
-    ByteStorageGzFileWriter(const std::string &outfilename,
-                            const WordLength ksize,
-                            const ByteStorage &store);
+    CountingHashGzFileWriter(const std::string &outfilename,
+                             const WordLength ksize,
+                             const ByteStorage &store);
 };
 }
 

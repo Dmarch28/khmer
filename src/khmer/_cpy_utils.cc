@@ -2,7 +2,6 @@
 #include "oxli/oxli.hh"
 
 using namespace oxli;
-using namespace oxli::read_parsers;
 
 namespace khmer {
 
@@ -40,10 +39,30 @@ bool convert_PyObject_to_HashIntoType(PyObject * value,
         WordLength ksize)
 {
     if (PyInt_Check(value) || PyLong_Check(value)) {
-        return convert_PyLong_to_HashIntoType(value, hashval);
+        return convert_PyLong_to_HashIntoType((PyObject*)value, (HashIntoType&)hashval);
+    } else if (PyUnicode_Check(value))  {
+        std::string s = PyBytes_AsString(PyUnicode_AsEncodedString(
+                                             value, "utf-8", "strict"));
+        if (strlen(s.c_str()) != ksize) {
+            PyErr_SetString(PyExc_ValueError,
+                            "k-mer length must equal the k-mer size");
+            return false;
+        }
+        hashval = _hash(s, ksize);
+        return true;
+
+    } else if (PyBytes_Check(value)) {
+        std::string s = PyBytes_AsString(value);
+        if (strlen(s.c_str()) != ksize) {
+            PyErr_SetString(PyExc_ValueError,
+                            "k-mer length must equal the k-mer size");
+            return false;
+        }
+        hashval = _hash(s, ksize);
+        return true;
     } else {
         PyErr_SetString(PyExc_ValueError,
-                        "must use a hash");
+                        "k-mers must be either a hash or a string");
         return false;
     }
 }
@@ -61,10 +80,10 @@ bool ht_convert_PyObject_to_HashIntoType(PyObject * value,
         const Hashtable * ht)
 {
     if (PyInt_Check(value) || PyLong_Check(value)) {
-        return convert_PyLong_to_HashIntoType(value, hashval);
+        return convert_PyLong_to_HashIntoType((PyObject*)value, hashval);
     } else if (PyUnicode_Check(value))  {
         PyObject* val_as_str = PyUnicode_AsEncodedString(value,
-                               "utf-8", "strict");
+           "utf-8", "strict");
         std::string s = PyBytes_AsString(val_as_str);
         if (strlen(s.c_str()) != ht->ksize()) {
             Py_DECREF(val_as_str);
@@ -72,15 +91,7 @@ bool ht_convert_PyObject_to_HashIntoType(PyObject * value,
                             "k-mer length must equal the k-mer size");
             return false;
         }
-
-        try {
-            hashval = ht->hash_dna(s.c_str());
-        } catch (oxli_exception &e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            Py_DECREF(val_as_str);
-            return false;
-        }
-
+        hashval = ht->hash_dna(s.c_str());
         Py_DECREF(val_as_str);
         return true;
 
@@ -91,12 +102,7 @@ bool ht_convert_PyObject_to_HashIntoType(PyObject * value,
                             "k-mer length must equal the k-mer size");
             return false;
         }
-        try {
-            hashval = ht->hash_dna(s.c_str());
-        } catch (oxli_exception &e) {
-            PyErr_SetString(PyExc_ValueError, e.what());
-            return false;
-        }
+        hashval = ht->hash_dna(s.c_str());
         return true;
     } else {
         PyErr_SetString(PyExc_ValueError,
@@ -109,7 +115,7 @@ bool ht_convert_PyObject_to_HashIntoType(PyObject * value,
 // Note: will set error condition and return false if cannot do.
 
 bool ht_convert_PyObject_to_Kmer(PyObject * value,
-                                 Kmer& kmer, const Hashtable * ht)
+                                        Kmer& kmer, const Hashtable * ht)
 {
     if (PyInt_Check(value) || PyLong_Check(value)) {
         HashIntoType h;
@@ -171,7 +177,5 @@ bool convert_Pytablesizes_to_vector(PyListObject * sizes_list_o,
     }
     return true;
 }
-
-FastxParserPtr& _PyObject_to_khmer_ReadParser(PyObject * py_object);
 
 }

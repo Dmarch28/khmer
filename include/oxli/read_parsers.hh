@@ -51,6 +51,10 @@ Contact: khmer-project@idyll.org
 #include "oxli.hh"
 #include "oxli_exception.hh"
 
+namespace seqan
+{
+    class SequenceStream; // forward dec seqan dep
+}
 
 namespace seqan
 {
@@ -222,11 +226,14 @@ inline PartitionID _parse_partition_id(std::string name)
     if (*s == '\t') {
         p = (PartitionID) atoi(s + 1);
     } else {
+        std::cerr << "consume_partitioned_fasta barfed on read "
+                  << name << "\n";
+        throw oxli_exception();
         std::string err;
         err = "consume_partitioned_fasta cannot find partition ID for read ";
         err += name;
 
-        throw oxli_value_exception(err);
+        throw khmer_value_exception(err);
     }
 
     return p;

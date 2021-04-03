@@ -10,22 +10,45 @@ from libcpp.vector cimport vector
 from libcpp.set cimport set
 from libcpp.string cimport string
 
-from khmer._oxli.utils cimport _bstring, is_str, is_num
+from khmer._oxli.utils cimport _bstring
 from khmer._oxli.utils import get_n_primes_near_x
 from khmer._oxli.parsing cimport (CpFastxReader, CPyReadParser_Object,
                                   get_parser, CpReadParser, FastxParser,
                                   FastxParserPtr)
 from khmer._oxli.hashset cimport HashSet
 from khmer._oxli.legacy_partitioning cimport (CpSubsetPartition, SubsetPartition,
-                                   cp_pre_partition_info, PrePartitionInfo)
-from khmer._oxli.oxli_types cimport MAX_BIGCOUNT, HashIntoType
-from khmer._oxli.traversal cimport Traverser
-
+from khmer._oxli.parsing cimport (CpFastxReader, CPyReadParser_Object, get_parser,
+from .utils cimport _bstring, is_str, is_num
+from .utils import get_n_primes_near_x
+from .parsing cimport (CpFastxReader, CPyReadParser_Object, get_parser,
+                      CpReadParser, FastxParserPtr)
+from khmer._oxli.oxli_types cimport MAX_BIGCOUNT
+from khmer._khmer import Countgraph as PyCountgraph
+from khmer._khmer import Nodegraph as PyNodegraph
+from khmer._khmer import GraphLabels as PyGraphLabels
 from khmer._khmer import ReadParser
+from .hashset cimport HashSet
+from .legacy_partitioning cimport (CpSubsetPartition, SubsetPartition,
+                                   cp_pre_partition_info, PrePartitionInfo)
+from .oxli_types cimport MAX_BIGCOUNT, HashIntoType
+from .traversal cimport Traverser
+
+from parsing cimport CpFastxReader, CPyReadParser_Object, get_parser
+from .utils cimport _bstring
+from .utils import get_n_primes_near_x
+from graphs cimport CpQFCounttable
+from parsing cimport CpFastxReader, CPyReadParser_Object
+from oxli_types cimport MAX_BIGCOUNT
+from .._khmer import Countgraph as PyCountgraph
+from .._khmer import Nodegraph as PyNodegraph
+from .._khmer import GraphLabels as PyGraphLabels
+from .._khmer import Nodetable as PyNodetable
+from .._khmer import ReadParser
+
 
 CYTHON_TABLES = (Hashtable, Nodetable, Counttable, CyclicCounttable,
                  SmallCounttable,
-                 QFCounttable,BufferedQFCounttable, Nodegraph, Countgraph, SmallCountgraph)
+                 QFCounttable, Nodegraph, Countgraph, SmallCountgraph)
 
 
 cdef class Hashtable:
@@ -53,6 +76,26 @@ cdef class Hashtable:
 
     cdef HashIntoType sanitize_hash_kmer(self, object kmer) except -1:
         '''Sanitize a hashed k-mer, or hash if not already.'''
+
+cdef CpLabelHash * get_labelhash_ptr(object labels):
+    if not isinstance(labels, PyGraphLabels):
+        return NULL
+
+    cdef CPyGraphLabels_Object * ptr = <CPyGraphLabels_Object*> labels
+    return deref(ptr).labelhash
+
+
+cdef CpHashtable * hashtable_arg_shim(object table,
+                                      allowed=(PyNodegraph, PyCountgraph,
+                                               Nodetable, Counttable,
+                                               SmallCounttable, QFCounttable)):
+    cdef CPyHashtable_Object* cpyhashtable
+    cdef CpHashtable * hashtable
+
+    if isinstance(table, allowed):
+        if isinstance(table, CYTHON_TABLES):
+            hashtable = (<Hashtable>table).c_table.get()
+    cdef HashIntoType sanitize_hash_kmer(self, object kmer):
         cdef HashIntoType handled
         if is_num(kmer):
             handled = <HashIntoType>kmer
@@ -289,7 +332,55 @@ cdef class Hashtable:
             x = deref(self._ht_this).abundance_distribution[CpFastxReader](\
                 _parser, _tracking
             )
+    def abundance_distribution(self, file_name, Hashtable tracking):
+        """Calculate the k-mer abundance distribution over reads in file_name."""
+        cdef FastxParserPtr parser = get_parser[CpFastxReader](_bstring(file_name))
+        cdef CpHashtable * cptracking = tracking._ht_this.get()
+        cdef uint64_t * x = deref(self._ht_this).\
+                abundance_distribution[CpFastxReader](parser, cptracking)
+        cdef CPyReadParser_Object* parser
+        if isinstance(file_name, str):
+            read_parser = ReadParser(file_name)
+            parser = <CPyReadParser_Object*>read_parser
 
+        else:
+            raise ValueError('Expected file_name to be string, '
+                             'got {} instead.'.format(type(file_name)))
+
+        cdef CPyHashtable_Object* hashtable
+        if isinstance(tracking, (PyNodetable, PyNodegraph)):
+            hashtable = <CPyHashtable_Object*>tracking
+        else:
+            raise ValueError('Expected `tracking` to be a Nodetable or '
+                             'Nodegraph, got {} instead.'.format(type(tracking)))
+
+        cdef uint64_t * x = deref(self.c_table).abundance_distribution[CpFastxReader](
+                parser.parser, hashtable.hashtable)
+        abunds = []
+        for i in range(MAX_BIGCOUNT):
+            abunds.append(x[i])
+        return abunds
+
+    def abundance_distribution_with_reads_parser(self, object read_parser, Hashtable tracking):
+        """Calculate the k-mer abundance distribution over reads."""
+        cdef CpHashtable * cptracking = hashtable_arg_shim(tracking,
+                                                      allowed=(PyNodegraph, Nodetable))
+
+
+        cdef CpHashtable * cptracking = tracking._ht_this.get()
+ 
+        cdef CPyHashtable_Object* hashtable
+        if isinstance(tracking, (PyNodetable, PyNodegraph)):
+            hashtable = <CPyHashtable_Object*>tracking
+        else:
+            raise ValueError('Expected `tracking` to be a Nodetable or '
+                             'Nodegraph, got {} instead.'.format(type(tracking)))
+
+        cdef CPyReadParser_Object* parser
+        parser = <CPyReadParser_Object*>read_parser
+        cdef uint64_t * x = deref(self._ht_this).abundance_distribution[CpFastxReader](
+                parser.parser, cptracking)
+                parser.parser, hashtable.hashtable)
         abunds = []
         for i in range(MAX_BIGCOUNT):
             abunds.append(x[i])
@@ -318,34 +409,6 @@ cdef class Hashtable:
         """Number of tables used in the storage."""
         return deref(self._ht_this).n_tables()
 
-    def set_use_bigcount(self, bigcount):
-        deref(self._ht_this).set_use_bigcount(<bool>bigcount)
-
-    def get_use_bigcount(self):
-        return deref(self._ht_this).get_use_bigcount()
-
-    def get_kmer_hashes_as_hashset(self, str sequence):
-        cdef HashSet hashes = HashSet(self.ksize())
-        deref(self._ht_this).get_kmer_hashes_as_hashset(_bstring(sequence),
-                                                        hashes.hs)
-        return hashes
-
-    cdef list _get_raw_tables(self, uint8_t ** table_ptrs, vector[uint64_t] sizes):
-        cdef Py_buffer buf_info
-        cdef object view
-        cdef list views = []
-        for table_idx in range(0, len(sizes)):
-            PyBuffer_FillInfo(&buf_info, None, table_ptrs[table_idx],
-                              sizes[table_idx], 0, PyBUF_FULL_RO)
-            view = PyMemoryView_FromBuffer(&buf_info)
-            views.append(view)
-        return views
-
-    def get_raw_tables(self):
-        cdef uint8_t ** table_ptrs = deref(self._ht_this).get_raw_tables()
-        cdef vector[uint64_t] sizes = deref(self._ht_this).get_tablesizes()
-        return self._get_raw_tables(table_ptrs, sizes)
-
 
 cdef class QFCounttable(Hashtable):
     """Count kmers using a counting quotient filter.
@@ -368,10 +431,8 @@ cdef class QFCounttable(Hashtable):
         Set the number of slots used by the counting quotient filter. This
         determines the amount of memory used and how many k-mers can be entered
         into the datastructure. Each slot uses roughly 1.3 bytes.
-    slot size: integer
     """
-
-    def __cinit__(self, int k, uint64_t size,uint64_t slotsize):
+    def __cinit__(self, int k, uint64_t size):
         # size has to be a power of two
         power_of_two = ((size & (size - 1) == 0) and
                         (size != 0))
@@ -379,72 +440,16 @@ cdef class QFCounttable(Hashtable):
             raise ValueError("size has to be a power of two, not"
                              " {}.".format(size))
         if type(self) is QFCounttable:
-            self._qf_this = make_shared[CpQFCounttable](k, <uint64_t>log(size, 2),slotsize)
+            self.c_table.reset(<CpHashtable*>new CpQFCounttable(k, int(log(size, 2))))
+            self._qf_this = make_shared[CpQFCounttable](k, <uint64_t>log(starting_size, 2))
             self._ht_this = <shared_ptr[CpHashtable]>self._qf_this
-
 
     @classmethod
     def load(cls, file_name):
         """Load the graph from the specified file."""
-        cdef QFCounttable table = cls(1, 1,1)
+        cdef QFCounttable table = cls(1, 1)
         deref(table._qf_this).load(_bstring(file_name))
         return table
-
-
-cdef class BufferedQFCounttable(Hashtable):
-    """Count kmers using a counting quotient filter.
-
-    The counting quotient filter (CQF) is an extension of the quotient filter
-    that supports counting in addition to simple membership testing. A CQF has
-    better cache locality compared to (Small)Counttable which increases
-    performance.
-
-    Each new k-mer uses one slot, and the number of slots used per k-mer
-    increases the more often the same k-mer is entered into the CQF. As a result
-    the CQF can be "full" and will stop accepting calls to `add` and `count`.
-
-    Parameters
-    ----------
-    k : integer
-        k-mer size
-
-    size : integer
-        Set the number of slots used by the counting quotient filter. This
-        determines the amount of memory used and how many k-mers can be entered
-        into the datastructure. Each slot uses roughly 1.3 bytes.
-    slot size: integer
-    """
-
-    def __cinit__(self, int k, uint64_t size,uint64_t slotsize):
-        # size has to be a power of two
-        power_of_two = ((size & (size - 1) == 0) and
-                        (size != 0))
-        if not power_of_two:
-            raise ValueError("size has to be a power of two, not"
-                             " {}.".format(size))
-        if type(self) is BufferedQFCounttable:
-            self._qf_this = make_shared[CpBufferedQFCounttable](k, <uint64_t>log(size, 2),slotsize)
-            self._ht_this = <shared_ptr[CpHashtable]>self._qf_this
-
-
-    @classmethod
-    def load(cls, file_name):
-        """Load the graph from the specified file."""
-        cdef BufferedQFCounttable table = cls(1, 1,1)
-        deref(table._qf_this).load(_bstring(file_name))
-        return table
-
-    def addToBufferQuery(self, str sequence):
-        '''add the kmers on seq to query buffer.'''
-        cdef bytes data = self._valid_sequence(sequence)
-        return <bool>deref(self._qf_this).addToBufferQuery(data)
-
-    def queryBuffer(self):
-        return <bool>deref(self._qf_this).queryBuffer()
-
-    def clearQueryBuffer(self):
-        return <bool>deref(self._qf_this).clearQueryBuffer()
-
 
 cdef class Counttable(Hashtable):
 
@@ -460,7 +465,14 @@ cdef class Counttable(Hashtable):
                 _primes = get_n_primes_near_x(n_tables, starting_size)
             self._ct_this = make_shared[CpCounttable](k, _primes)
             self._ht_this = <shared_ptr[CpHashtable]>self._ct_this
+            self._ht_this(self._ct_this)
+            self.c_table.reset(<CpHashtable*>new CpCounttable(k, primes))
+cdef class BigCountHashtable(Hashtable):
+    def set_use_bigcount(self, bigcount):
+        deref(self.c_table).set_use_bigcount(bigcount)
 
+    def get_use_bigcount(self):
+        return deref(self.c_table).get_use_bigcount()
 
 cdef class CyclicCounttable(Hashtable):
 
@@ -499,6 +511,8 @@ cdef class SmallCounttable(Hashtable):
         for i in range(len(sizes)):
             sizes[i] = (sizes[i] // 2) + 1
         return self._get_raw_tables(table_ptrs, sizes)
+    def get_use_bigcount(self):
+        return deref(self.c_table).get_use_bigcount()
 
 
 cdef class Nodetable(Hashtable):
@@ -508,6 +522,8 @@ cdef class Nodetable(Hashtable):
         if primes is None:
             primes = list()
         cdef vector[uint64_t] _primes
+    def __cinit__(self, int k, uint64_t starting_size, int n_tables):
+        cdef vector[uint64_t] primes
         if type(self) is Nodetable:
             if primes:
                 _primes = primes
@@ -515,6 +531,10 @@ cdef class Nodetable(Hashtable):
                 _primes = get_n_primes_near_x(n_tables, starting_size)
             self._nt_this = make_shared[CpNodetable](k, _primes)
             self._ht_this = <shared_ptr[CpHashtable]>self._nt_this
+            self._ht_this(self._nt_this)
+            self.c_table.reset(<CpHashtable*>new CpNodetable(k, primes))
+        primes = get_n_primes_near_x(n_tables, starting_size)
+        self.c_table.reset(<CpHashtable*>new CpCounttable(k, primes))
 
 
 cdef class Hashgraph(Hashtable):
@@ -556,6 +576,11 @@ cdef class Hashgraph(Hashtable):
         the graph.'''
         cdef bytes _kmer = self.sanitize_kmer(kmer)
         return deref(self._hg_this).kmer_degree(_kmer)
+        return deref(self._hg_this).kmer_degree(_bstring(kmer))
+        return deref(self.c_table).kmer_degree(_bstring(kmer))
+        pass
+    def set_use_bigcount(self, bigcount):
+        deref(self.c_table).set_use_bigcount(bigcount)
 
     def count_kmers_within_radius(self, object kmer, int radius, int max_count=0):
         '''Calculate the number of neighbors with given radius in the graph.'''
@@ -629,6 +654,7 @@ cdef class Hashgraph(Hashtable):
         deref(self._hg_this).get_tags_for_sequence(_sequence, hs.hs)
         return hs
 
+            
     def find_all_tags_list(self, object kmer):
         '''Find all tags within range of the given k-mer, return as list'''
         cdef CpKmer _kmer = self._build_kmer(kmer)
@@ -666,6 +692,11 @@ cdef class Hashgraph(Hashtable):
         cdef HashIntoType _kmer = self.sanitize_hash_kmer(kmer)
         deref(self._hg_this).add_tag(_kmer)
 
+        if isinstance(kmer, basestring):
+            deref(self._hg_this).add_tag(deref(self._hg_this).hash_dna(_bstring(kmer)))
+        else:
+            return deref(self._hg_this).add_tag(<uint64_t>kmer)
+    
     def get_tagset(self):
         '''Get all tagged k-mers as DNA strings.'''
         cdef HashIntoType st
@@ -856,6 +887,11 @@ cdef class Hashgraph(Hashtable):
         cdef HashIntoType _kmer = self.sanitize_hash_kmer(kmer)
         deref(self._hg_this).add_stop_tag(_kmer)
 
+        if isinstance(kmer, basestring):
+            deref(self._hg_this).add_stop_tag(deref(self._hg_this).hash_dna(_bstring(kmer)))
+        else:
+            return deref(self._hg_this).add_stop_tag(<uint64_t>kmer)
+    
     def get_stop_tags(self):
         '''Return a DNA list of all of the stop tags.'''
         cdef HashIntoType st
@@ -885,7 +921,6 @@ cdef class Countgraph(Hashgraph):
                 _primes = get_n_primes_near_x(n_tables, starting_size)
             self._cg_this = make_shared[CpCountgraph](k, _primes)
             self._hg_this = <shared_ptr[CpHashgraph]>self._cg_this
-            self._ht_this = <shared_ptr[CpHashtable]>self._hg_this
 
     def do_subset_partition_with_abundance(self, BoundedCounterType min_count,
                                                  BoundedCounterType max_count,
@@ -926,7 +961,7 @@ cdef class SmallCountgraph(Hashgraph):
                 _primes = get_n_primes_near_x(n_tables, starting_size)
             self._sg_this = make_shared[CpSmallCountgraph](k, _primes)
             self._hg_this = <shared_ptr[CpHashgraph]>self._sg_this
-            self._ht_this = <shared_ptr[CpHashtable]>self._hg_this
+
 
     def get_raw_tables(self):
         cdef uint8_t ** table_ptrs = deref(self._sg_this).get_raw_tables()
@@ -951,7 +986,15 @@ cdef class Nodegraph(Hashgraph):
                 _primes = get_n_primes_near_x(n_tables, starting_size)
             self._ng_this = make_shared[CpNodegraph](k, _primes)
             self._hg_this = <shared_ptr[CpHashgraph]>self._ng_this
-            self._ht_this = <shared_ptr[CpHashtable]>self._hg_this
 
     def update(self, Nodegraph other):
         deref(self._ng_this).update_from(deref(other._ng_this))
+        for st in deref(self.c_table).stop_tags:
+            yield deref(self.c_table).unhash_dna(st)
+        pass
+    def get_use_bigcount(self):
+        return deref(self.c_table).get_use_bigcount()
+"""
+        if type(self) is Counttable:
+            primes = get_n_primes_near_x(n_tables, starting_size)
+            self.c_table.reset(<CpHashtable*>new CpCounttable(k, primes))

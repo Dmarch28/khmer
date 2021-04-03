@@ -40,7 +40,6 @@ Contact: khmer-project@idyll.org
 #include <string.h>
 #include <algorithm>
 #include <string>
-#include <assert.h>
 
 #include "MurmurHash3.h"
 #include "oxli/oxli.hh"
@@ -66,13 +65,8 @@ HashIntoType _hash(const char * kmer, const WordLength k,
                    HashIntoType& _h, HashIntoType& _r)
 {
     // sizeof(HashIntoType) * 8 bits / 2 bits/base
-
-    if (k > sizeof(HashIntoType)*4) {
+    if (!(k <= sizeof(HashIntoType)*4) || !(strlen(kmer) >= k)) {
         throw oxli_exception("Supplied kmer string doesn't match the underlying k-size.");
-    }
-
-    if (strlen(kmer) < k) {
-        throw oxli_exception("k-mer is too short to hash.");
     }
 
     HashIntoType h = 0, r = 0;
@@ -127,6 +121,17 @@ HashIntoType _hash(const std::string kmer, const WordLength k,
     return _hash(kmer.c_str(), k, h, r);
 }
 
+HashIntoType _hash(const std::string kmer, const WordLength k)
+{
+    return _hash(kmer.c_str(), k);
+}
+
+HashIntoType _hash(const std::string kmer, const WordLength k,
+                   HashIntoType& h, HashIntoType& r)
+{
+    return _hash(kmer.c_str(), k, h, r);
+}
+
 //
 // _revhash: given an unsigned int, return the associated k-mer.
 //
@@ -161,28 +166,44 @@ std::string _revcomp(const std::string& kmer)
         c = tbl[(int)*from];
         *from = tbl[(int)*to];
         *to = c;
+        switch(kmer[i]) {
+        case 'A':
+            complement = 'T';
+            break;
+        case 'C':
+            complement = 'G';
+            break;
+        case 'G':
+            complement = 'C';
+            break;
+        case 'T':
+            complement = 'A';
+            break;
+        default:
+            throw oxli::oxli_exception("Invalid base in read");
+            break;
+        }
+        out[ksize - i - 1] = complement;
     }
     return out;
 }
 
-HashIntoType _hash_murmur(const std::string& kmer, const WordLength k)
+HashIntoType _hash_murmur(const std::string& kmer)
 {
     HashIntoType h = 0;
     HashIntoType r = 0;
 
-    return oxli::_hash_murmur(kmer, k, h, r);
-
+    return oxli::_hash_murmur(kmer, h, r);
 }
 
-HashIntoType _hash_murmur(const std::string& kmer, const WordLength k,
+HashIntoType _hash_murmur(const std::string& kmer,
                           HashIntoType& h, HashIntoType& r)
 {
     uint64_t out[2];
     uint32_t seed = 0;
-    MurmurHash3_x64_128((void *)kmer.c_str(), k, seed, &out);
+    MurmurHash3_x64_128((void *)kmer.c_str(), kmer.size(), seed, &out);
     h = out[0];
 
-    assert(kmer.length() == k); // an assumption of the below code
     std::string rev = oxli::_revcomp(kmer);
 
     if (rev == kmer) {
@@ -192,18 +213,25 @@ HashIntoType _hash_murmur(const std::string& kmer, const WordLength k,
     }
 
     MurmurHash3_x64_128((void *)rev.c_str(), k, seed, &out);
+    std::string rev = khmer::_revcomp(kmer);
+    if (rev == kmer) {
+        // self complement kmer, can't use bitwise XOR
+        r = out[0];
+        return h;
+    }
+
+    MurmurHash3_x64_128((void *)rev.c_str(), rev.size(), seed, &out);
     r = out[0];
 
     return h ^ r;
 }
 
-HashIntoType _hash_murmur_forward(const std::string& kmer, const WordLength k)
+HashIntoType _hash_murmur_forward(const std::string& kmer)
 {
     HashIntoType h = 0;
     HashIntoType r = 0;
 
-    oxli::_hash_murmur(kmer, k, h, r);
-
+    oxli::_hash_murmur(kmer, h, r);
     return h;
 }
 
@@ -274,18 +302,6 @@ std::pair<uint64_t, uint64_t> compute_band_interval(unsigned int num_bands,
     std::pair<uint64_t, uint64_t> interval (min, max);
     return interval;
 }
-
-uint64_t ihash(uint64_t key,uint64_t mask)
-	{    
-		key = (~key + (key << 21)) & mask; // key = (key << 21) - key - 1;
-		key = key ^ key >> 24;
-		key = ((key + (key << 3)) + (key << 8)) & mask; // key * 265
-		key = key ^ key >> 14;
-		key = ((key + (key << 2)) + (key << 4)) & mask; // key * 21
-		key = key ^ key >> 28;
-		key = (key + (key << 31)) & mask;
-		return key;
-	}
 
 KmerIterator::KmerIterator(const char * seq,
                            unsigned char k) :

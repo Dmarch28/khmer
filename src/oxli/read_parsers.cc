@@ -42,31 +42,14 @@ Contact: khmer-project@idyll.org
 #include "seqan/stream.h" // IWYU pragma: keep
 #include "oxli/oxli_exception.hh"
 #include "oxli/read_parsers.hh"
-
+#include "khmer_exception.hh"
+#include "read_parsers.hh"
 
 namespace oxli
 {
 
 namespace read_parsers
 {
-
-unsigned char _to_valid_dna(const unsigned char c)
-{
-    switch(c) {
-    case 'A':
-    case 'C':
-    case 'G':
-    case 'T':
-        return c;
-    case 'a':
-    case 'c':
-    case 'g':
-    case 't':
-        return toupper(c);
-    default:
-        return 'A';
-    }
-}
 
 template<typename SeqIO>
 void ReadParser<SeqIO>::_init()
@@ -259,11 +242,18 @@ void FastxReader::_init()
     _stream = std::unique_ptr<seqan::SequenceStream>(new seqan::SequenceStream());
     seqan::open(*_stream, _filename.c_str());
     if (!seqan::isGood(*_stream)) {
+    seqan::open((*_stream), _filename.c_str());
+    if (!seqan::isGood((*_stream))) {
+        std::string message = "Could not open ";
+        message = message + _filename + " for reading.";
+    seqan::open(_stream, _filename.c_str());
+    if (!seqan::isGood(_stream)) {
         std::string message = "File ";
         message = message + _filename + " contains badly formatted sequence";
         message = message + " or does not exist.";
         throw InvalidStream(message);
     } else if (seqan::atEnd(*_stream)) {
+    } else if (seqan::atEnd((*_stream))) {
         std::string message = "File ";
         message = message + _filename + " does not contain any sequences!";
         throw InvalidStream(message);
@@ -272,7 +262,8 @@ void FastxReader::_init()
 }
 
 FastxReader::FastxReader()
-    : _filename("-"), _spin_lock(0), _num_reads(0), _have_qualities(false)
+    : _filename("-"), _spin_lock(0), _num_reads(0), _have_qualities(false),
+      _stream(new seqan::SequenceStream())
 {
     _init();
 }
@@ -281,7 +272,8 @@ FastxReader::FastxReader(const std::string& infile)
     : _filename(infile),
       _spin_lock(0),
       _num_reads(0),
-      _have_qualities(false)
+      _have_qualities(false),
+      _stream(new seqan::SequenceStream())
 {
     _init();
 }
@@ -300,6 +292,13 @@ FastxReader& FastxReader::operator= (FastxReader& other) {
     _spin_lock = other._spin_lock;
     _num_reads = other._num_reads;
     _have_qualities = other._have_qualities;
+FastxReader::FastxReader(FastxReader& other)
+    : _filename(other._filename),
+      _spin_lock(other._spin_lock),
+      _num_reads(other._num_reads),
+      _have_qualities(other._have_qualities),
+      _stream(new seqan::SequenceStream())
+{
     _stream = std::move(other._stream);
     return *this;
 }
@@ -309,11 +308,13 @@ FastxReader::FastxReader(FastxReader&&) noexcept {}
 FastxReader::~FastxReader()
 {
     seqan::close(*_stream);
+    seqan::close((*_stream));
 }
 
 bool FastxReader::is_complete()
 {
     return !seqan::isGood(*_stream) || seqan::atEnd(*_stream);
+    return !seqan::isGood((*_stream)) || seqan::atEnd((*_stream));
 }
 
 size_t FastxReader::get_num_reads()
@@ -324,6 +325,7 @@ size_t FastxReader::get_num_reads()
 void FastxReader::close()
 {
     seqan::close(*_stream);
+    seqan::close((*_stream));
 }
 
 Read FastxReader::get_next_read()
@@ -333,8 +335,10 @@ Read FastxReader::get_next_read()
     const char *invalid_read_exc = NULL;
     while (!__sync_bool_compare_and_swap(&_spin_lock, 0, 1));
     bool atEnd = seqan::atEnd(*_stream);
+    bool atEnd = seqan::atEnd((*_stream));
     if (!atEnd) {
         ret = seqan::readRecord(read.name, read.sequence, read.quality, *_stream);
+        ret = seqan::readRecord(read.name, read.sequence, read.quality, (*_stream));
         if (ret == 0) {
             // Detect if we're parsing something w/ qualities on the first read
             // only
@@ -387,7 +391,8 @@ template FastxParserPtr get_parser<FastxReader>(const std::string& filename);
 
 } // namespace read_parsers
 
+
 } // namespace oxli
 
 // vim: set ft=cpp sts=4 sw=4 tw=80:
-
+} // namespace khmer

@@ -58,16 +58,21 @@ Contact: khmer-project@idyll.org
 #include "storage.hh"
 #include "subset.hh"
 
-
+namespace oxli
 using namespace std;
 
-namespace oxli
+namespace khmer
 {
 namespace read_parsers
 {
-template<typename SeqIO> class ReadParser;
-class FastxReader;
-}
+class IParser;
+}  // namespace read_parsers
+}  // namespace oxli
+    namespace read_parsers
+    {
+        template<typename SeqIO> class ReadParser;
+        class FastxReader;
+    }
 }
 
 #define CALLBACK_PERIOD 100000
@@ -165,14 +170,12 @@ public:
     explicit Hashtable(const Hashtable&);
     Hashtable& operator=(const Hashtable&);
 
-    virtual KmerHashIteratorPtr new_kmer_iterator(const char * sp) const
-    {
+    virtual KmerHashIteratorPtr new_kmer_iterator(const char * sp) const {
         KmerHashIterator * ki = new TwoBitKmerHashIterator(sp, _ksize);
         return unique_ptr<KmerHashIterator>(ki);
     }
 
-    virtual KmerHashIteratorPtr new_kmer_iterator(const std::string& s) const
-    {
+    virtual KmerHashIteratorPtr new_kmer_iterator(const std::string& s) const {
         return new_kmer_iterator(s.c_str());
     }
 
@@ -246,11 +249,11 @@ public:
         return store->get_count(khash);
     }
 
-    virtual void save(std::string filename)
+    void save(std::string filename)
     {
         store->save(filename, _ksize);
     }
-    virtual void load(std::string filename)
+    void load(std::string filename)
     {
         store->load(filename, _ksize);
         _init_bitstuff();
@@ -432,78 +435,20 @@ public:
             BoundedCounterType min_abund) const;
 };
 
-
-class MurmurKmerHashIterator : public KmerHashIterator
-{
-    const char * _seq;
-    const char _ksize;
-    unsigned int index;
-    unsigned int length;
-    bool _initialized;
-public:
-    MurmurKmerHashIterator(const char * seq, unsigned char k) :
-        _seq(seq), _ksize(k), index(0), _initialized(false)
-    {
-        length = strlen(_seq);
-    };
-
-    HashIntoType first()
-    {
-        _initialized = true;
-        return next();
-    }
-
-    HashIntoType next()
-    {
-        if (!_initialized) {
-            _initialized = true;
-        }
-
-        if (done()) {
-            throw oxli_exception("past end of iterator");
-        }
-
-        std::string kmer;
-        kmer.assign(_seq + index, _ksize);
-        index += 1;
-        return _hash_murmur(kmer, _ksize);
-    }
-
-    bool done() const
-    {
-        return (index + _ksize > length);
-    }
-
-    unsigned int get_start_pos() const
-    {
-        if (!_initialized) {
-            return 0;
-        }
-        return index - 1;
-    }
-    unsigned int get_end_pos() const
-    {
-        if (!_initialized) {
-            return _ksize;
-        }
-        return index + _ksize - 1;
-    }
-};
-
-
-class MurmurHashtable : public oxli::Hashtable
+// Hashtable-derived class with ByteStorage.
+class Counttable : public oxli::Hashtable
 {
 public:
-    explicit MurmurHashtable(WordLength ksize, Storage * s)
-        : Hashtable(ksize, s) { };
+    explicit Counttable(WordLength ksize, std::vector<uint64_t> sizes)
+        : Hashtable(ksize, new ByteStorage(sizes)) { } ;
 
     inline
     virtual
     HashIntoType
-    hash_dna(const char * kmer) const
-    {
+    hash_dna(const char * kmer) const {
         if (!(strlen(kmer) >= _ksize)) {
             throw oxli_value_exception("Supplied kmer string doesn't match the underlying k-size.");
+            throw khmer_exception("Supplied kmer string doesn't match the underlying k-size.");
         }
         return _hash_murmur(kmer, _ksize);
     }
@@ -555,12 +500,16 @@ public:
     hash_dna_top_strand(const char * kmer) const
     {
         throw oxli_value_exception("not implemented");
+    hash_dna_top_strand(const char * kmer) const {
+        throw khmer_exception("not implemented");
     }
 
     inline virtual HashIntoType
     hash_dna_bottom_strand(const char * kmer) const
     {
         throw oxli_value_exception("not implemented");
+    hash_dna_bottom_strand(const char * kmer) const {
+        throw khmer_exception("not implemented");
     }
 
     inline virtual std::string
@@ -583,8 +532,9 @@ public:
     {
         store->load(filename, _ksize);
         _init_bitstuff();
+    unhash_dna(HashIntoType hashval) const {
+        throw khmer_exception("not implemented");
     }
-};
 
 
 // Hashtable-derived class with ByteStorage.
@@ -593,6 +543,7 @@ class Counttable : public oxli::MurmurHashtable
 public:
     explicit Counttable(WordLength ksize, std::vector<uint64_t> sizes)
         : MurmurHashtable(ksize, new ByteStorage(sizes)) { } ;
+    virtual KmerHashIteratorPtr new_kmer_iterator(const char * sp) const;
 };
 
 class CyclicCounttable : public oxli::CyclicHashtable
@@ -603,55 +554,27 @@ public:
 };
 
 // Hashtable-derived class with NibbleStorage.
-class SmallCounttable : public oxli::MurmurHashtable
+class SmallCounttable : public khmer::Hashtable
 {
 public:
     explicit SmallCounttable(WordLength ksize, std::vector<uint64_t> sizes)
-          : MurmurHashtable(ksize, new NibbleStorage(sizes)) { };
+        : Hashtable(ksize, new NibbleStorage(sizes)) { } ;
 };
 
 // Hashtable-derived class with QFStorage.
-class QFCounttable : public oxli::Hashtable
+class QFCounttable : public oxli::MurmurHashtable
 {
 public:
-    explicit QFCounttable(WordLength ksize, int size,int slotsize)
-        : Hashtable(ksize, new QFStorage(size,slotsize)) { } ;
+    explicit QFCounttable(WordLength ksize, int size)
+        : MurmurHashtable(ksize, new QFStorage(size)) { } ;
 };
-
-class BufferedQFCounttable : public oxli::Hashtable
-{
-public:
-    explicit BufferedQFCounttable(WordLength ksize, int size,int slotsize)
-        : Hashtable(ksize, new BufferedMQFStorage(size,slotsize)) { } ;
-    bool addToBufferQuery(const std::string &s) const
-        {
-          KmerHashIteratorPtr kmers = ((Hashtable*)this)->new_kmer_iterator(s);
-          while(!kmers->done()) {
-            HashIntoType kmer = kmers->next();
-            bool res=((BufferedMQFStorage*)store)->addToQueryBuffer(kmer);
-            if(!res)
-              return false;
-          }
-          return true;
-        }
-    bool queryBuffer(){
-          return ((BufferedMQFStorage*)store)->queryBuffer();
-        }
-    bool clearQueryBuffer()
-    {
-      return ((BufferedMQFStorage*)store)->clearQueryBuffer();
-    }
-
-
-};
-
 
 // Hashtable-derived class with BitStorage.
-class Nodetable : public oxli::MurmurHashtable
+class Nodetable : public Hashtable
 {
 public:
     explicit Nodetable(WordLength ksize, std::vector<uint64_t> sizes)
-        : MurmurHashtable(ksize, new BitStorage(sizes)) { } ;
+        : Hashtable(ksize, new BitStorage(sizes)) { } ;
 };
 
 }

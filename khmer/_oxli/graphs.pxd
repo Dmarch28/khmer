@@ -10,7 +10,15 @@ from khmer._oxli.hashing cimport Kmer, CpKmer, KmerSet, CpKmerFactory, CpKmerIte
 from khmer._oxli.parsing cimport CpReadParser, CpSequence, FastxParserPtr
 from khmer._oxli.legacy_partitioning cimport (CpSubsetPartition, cp_pre_partition_info,
                                    SubsetPartition)
+from khmer._oxli.hashing cimport CpKmer, KmerSet
+from khmer._oxli.parsing cimport CpReadParser, CpSequence
 from khmer._oxli.utils cimport oxli_raise_py_error
+from .oxli_types cimport *
+from .hashing cimport Kmer, CpKmer, KmerSet, CpKmerFactory, CpKmerIterator
+from .parsing cimport CpReadParser, CpSequence
+from .legacy_partitioning cimport (CpSubsetPartition, cp_pre_partition_info,
+                                   SubsetPartition)
+from .utils cimport oxli_raise_py_error
 
 
 cdef extern from "Python.h":
@@ -37,7 +45,8 @@ cdef extern from "oxli/storage.hh":
         bool get_use_bigcount()
 
 
-cdef extern from "oxli/hashtable.hh" namespace "oxli" nogil:
+
+cdef extern from "oxli/hashtable.hh" namespace "oxli":
     cdef cppclass CpHashtable "oxli::Hashtable" (CpKmerFactory):
         const WordLength ksize() const
         HashIntoType hash_dna(const char *) except +oxli_raise_py_error
@@ -110,6 +119,7 @@ cdef extern from "oxli/hashtable.hh" namespace "oxli" nogil:
         CpCyclicHashtable(WordLength, CpStorage *)
 
     cdef cppclass CpCounttable "oxli::Counttable" (CpMurmurHashtable):
+    cdef cppclass CpCounttable "oxli::Counttable" (CpHashtable):
         CpCounttable(WordLength, vector[uint64_t])
 
     cdef cppclass CpCyclicCounttable "oxli::CyclicCounttable" (CpCyclicHashtable):
@@ -119,20 +129,14 @@ cdef extern from "oxli/hashtable.hh" namespace "oxli" nogil:
         CpSmallCounttable(WordLength, vector[uint64_t])
 
     cdef cppclass CpNodetable "oxli::Nodetable" (CpMurmurHashtable):
+    cdef cppclass CpNodetable "oxli::Nodetable" (CpHashtable):
         CpNodetable(WordLength, vector[uint64_t])
 
     cdef cppclass CpQFCounttable "oxli::QFCounttable" (CpHashtable):
-        CpQFCounttable(WordLength, uint64_t,uint64_t) except +oxli_raise_py_error
+        CpQFCounttable(WordLength, uint64_t) except +oxli_raise_py_error
 
 
-    cdef cppclass CpBufferedQFCounttable "oxli::BufferedQFCounttable" (CpHashtable):
-        CpBufferedQFCounttable(WordLength, uint64_t,uint64_t) except +oxli_raise_py_error
-        bool addToBufferQuery(const string &)
-        bool queryBuffer()
-        bool clearQueryBuffer()
-
-
-cdef extern from "oxli/hashgraph.hh" namespace "oxli" nogil:
+cdef extern from "oxli/hashgraph.hh" namespace "oxli":
     cdef cppclass CpHashgraph "oxli::Hashgraph" (CpHashtable):
         set[HashIntoType] all_tags
         set[HashIntoType] stop_tags
@@ -174,12 +178,12 @@ cdef extern from "oxli/hashgraph.hh" namespace "oxli" nogil:
                                        unsigned long long &) except +oxli_raise_py_error
 
         uintptr_t trim_on_stoptags(string)
+        uintptr_t trim_on_stoptags(string) nogil
 
         unsigned int traverse_from_kmer(CpKmer,
                                         uint32_t,
                                         KmerSet&,
                                         uint32_t) nogil
-        void get_tags_for_sequence(string&, set[HashIntoType]&)
         void print_tagset(string)
         void save_tagset(string)
         void load_tagset(string) except +oxli_raise_py_error
@@ -191,6 +195,7 @@ cdef extern from "oxli/hashgraph.hh" namespace "oxli" nogil:
         void extract_unique_paths(string, uint32_t, float, vector[string])
         void calc_connected_graph_size(CpKmer, uint64_t&, KmerSet&,
                                        const uint64_t, bool)
+                                       const uint64_t, bool) nogil
         uint32_t kmer_degree(HashIntoType, HashIntoType)
         uint32_t kmer_degree(const char *)
         void find_high_degree_nodes(const char *, set[HashIntoType] &) const
@@ -222,7 +227,7 @@ cdef extern from "oxli/labelhash.hh" namespace "oxli":
                                                uint64_t &,
                                                CallbackFn,
                                                void *)
-        void _seqfile_and_tag_with_labels[SeqIO](const string &,
+        void consume_seqfile_and_tag_with_labels[SeqIO](const string &,
                                                uint32_t &,
                                                uint64_t &)
         void consume_seqfile_and_tag_with_labels[SeqIO](
@@ -251,6 +256,10 @@ cdef extern from "oxli/labelhash.hh" namespace "oxli":
                                              const Label)
 
 
+cdef CpHashgraph * get_hashgraph_ptr(object graph)
+cdef CpLabelHash * get_labelhash_ptr(object graph)
+
+
 cdef class Hashtable:
     cdef shared_ptr[CpHashtable] _ht_this
 
@@ -262,24 +271,17 @@ cdef class Hashtable:
     cdef FastxParserPtr _get_parser(self, object parser_or_filename) except *
     cdef list _get_raw_tables(self, uint8_t **, vector[uint64_t])
 
-
 cdef class QFCounttable(Hashtable):
     cdef shared_ptr[CpQFCounttable] _qf_this
 
-cdef class BufferedQFCounttable(Hashtable):
-    cdef shared_ptr[CpBufferedQFCounttable] _qf_this
 
 cdef class SmallCounttable(Hashtable):
     cdef shared_ptr[CpSmallCounttable] _st_this
-
+cdef class BigCountHashtable(Hashtable):
+    pass
 
 cdef class Counttable(Hashtable):
     cdef shared_ptr[CpCounttable] _ct_this
-
-
-cdef class CyclicCounttable(Hashtable):
-    cdef shared_ptr[CpCyclicCounttable] _cct_this
-
 
 cdef class Nodetable(Hashtable):
     cdef shared_ptr[CpNodetable] _nt_this

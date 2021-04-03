@@ -50,6 +50,7 @@ corresponds to the one in ``include``. The main CPython module is built in
 ``src/khmer/_cpy_khmer.hh``.
 
 The ``khmer/`` directory contains the `khmer` package (``khmer/__init__.py``,
+etc) and the C++-to-Python bridge (``khmer/_khmer.cc``).
 etc) and experimental Cython bindings under ``khmer/_oxli``.
 
 The ``scripts/`` and ``sandbox/`` directory contain Python command-line scripts.
